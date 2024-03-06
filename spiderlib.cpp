@@ -74,6 +74,10 @@ static void OutputHTMLContent(const std::string& str_title, const std::string& s
 	/*
 		write the *.txt file
 	*/
+	if(str_title.empty() || str_content.empty()){
+		std::cerr << "OutputHTMLContent: input empty!" << '\n';
+		return;
+	}
 	std::string str_txt_path;
 	try{
 		std::string str_outpath = spiderlib::file_crawled_output_folder_path;
@@ -95,6 +99,7 @@ static void OutputHTMLContent(const std::string& str_title, const std::string& s
 	catch(const std::exception& e){
 		std::cerr << "OutputHTMLContent: " << e.what() << '\n';
 	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));//seconds
 	/*
 		write the binary file to destination folder
 	*/
@@ -265,11 +270,11 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 					if(!the_right_template.empty()){
 						if (!spiderlib::str_last_url.empty() && spiderlib::str_last_url == str_domain) {
 							// if it's an adjusted template by removing the old template
-							std::erase_if(spiderlib::website_template, [str_domain](const auto& pair) { return pair.first == str_domain; });	
+							std::erase_if(spiderlib::website_template, [&str_domain](const auto& pair) { return pair.first == str_domain; });	
 							for (const auto& wt : the_right_template) {
 								spiderlib::website_template[str_domain] = wt;
 							}
-							spiderlib::str_last_url.clear();
+							spiderlib::str_last_url = str_domain;
 						}
 						the_right_template.clear();
 					}
@@ -299,12 +304,13 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 		*/
 		spiderlib::str_is_crawling.erase(std::remove(spiderlib::str_is_crawling.begin(), spiderlib::str_is_crawling.end(), url), spiderlib::str_is_crawling.end());
 		write_url_to_binaryfile(spiderlib::url_type::url_crawling);
-		std::this_thread::sleep_for(std::chrono::milliseconds(300));//seconds
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));//seconds
 		/*
 			update the crawled list and crawled binary file
 		*/
 		spiderlib::str_crawled.push_back(url);
 		write_url_to_binaryfile(spiderlib::url_type::url_crawled);
+		std::this_thread::sleep_for(std::chrono::seconds(2));//seconds
 	}
 	catch(const std::exception& e){
 		std::cerr << e.what() << '\n';
@@ -422,7 +428,7 @@ void spiderlib::start_working(const std::string& url_list){
 		for(const auto& item : spiderlib::str_broken){
 			for(auto it=spiderlib::str_is_crawling.begin(); it != spiderlib::str_is_crawling.end();){
 				if(*it == item){
-					spiderlib::str_is_crawling.erase(it);
+					it = spiderlib::str_is_crawling.erase(it);
 				}
 				else{
 					++it;
@@ -437,7 +443,7 @@ void spiderlib::start_working(const std::string& url_list){
 		for(const auto& item : spiderlib::str_crawled){
 			for(auto it=spiderlib::str_is_crawling.begin(); it != spiderlib::str_is_crawling.end();){
 				if(*it == item){
-					spiderlib::str_is_crawling.erase(it);
+					it = spiderlib::str_is_crawling.erase(it);
 				}
 				else{
 					++it;
