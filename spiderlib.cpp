@@ -142,7 +142,7 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 			return;
 		}
 		str_domain = spiderlib::extractDomainFromUrl(url);
-		std::string url_rule = "(https?:\\/\\/)?(www\\.)?([a-zA-Z0-9-]+\\.){1,}[a-zA-Z]{2,}(\\/[a-zA-Z0-9\\/\\.-]*)?";
+		std::string url_rule = "(https?:\\/\\/)?(www\\.)?([a-zA-Z0-9-]+\\.){1,}[a-zA-Z]{2,}(\\/[a-zA-Z0-9\\/.-]*)?";
 		std::vector<std::pair<size_t, std::string>> indexedNames;
 		std::regex pattern = std::regex(url_rule);
         std::smatch match;
@@ -378,6 +378,8 @@ static void crawling_the_www(const std::string& the_link_spider_to_crawl){
 			if(!spiderlib::str_is_crawling.empty()){
 				spiderlib::str_is_crawling.erase(std::remove(spiderlib::str_is_crawling.begin(), spiderlib::str_is_crawling.end(), the_link_spider_to_crawl), spiderlib::str_is_crawling.end());
 				write_url_to_binaryfile(spiderlib::url_type::url_crawling);
+				crawling_the_www(spiderlib::str_is_crawling[0]);
+				return;
 			}
         }
 	}
