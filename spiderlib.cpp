@@ -59,13 +59,13 @@ static void remove_str_is_crawling(const std::string& strurl){
 }
 static void write_url_to_binaryfile(const spiderlib::url_type& ult){
 	nlp_lib nl_j;
-	if(ult == spiderlib::url_type::url_broken){
+	if(ult == spiderlib::url_type::url_broken && !spiderlib::str_broken.empty()){
 		nl_j.WriteBinaryOne_from_std(spiderlib::str_broken,spiderlib::file_broken_link_path);
 	}
-	else if(ult == spiderlib::url_type::url_crawled){
+	else if(ult == spiderlib::url_type::url_crawled && !spiderlib::str_crawled.empty()){
 		nl_j.WriteBinaryOne_from_std(spiderlib::str_crawled,spiderlib::file_crawled_link_path);
 	}
-	else if(ult == spiderlib::url_type::url_crawling){
+	else if(ult == spiderlib::url_type::url_crawling && !spiderlib::str_is_crawling.empty()){
 		nl_j.WriteBinaryOne_from_std(spiderlib::str_is_crawling,spiderlib::file_crawling_link_path);
 	}
 	std::cout << "Successfully write the file to binary!" << '\n';
@@ -79,16 +79,21 @@ static void OutputHTMLContent(const std::string& str_title, const std::string& s
 		return;
 	}
 	std::string str_txt_path;
+	std::string str_outpath;
 	try{
-		std::string str_outpath = spiderlib::file_crawled_output_folder_path;
+		str_outpath = spiderlib::file_crawled_output_folder_path;
 		if(!str_outpath.empty()){
 			if(str_outpath.back()!='/'){
 				str_outpath.append("/");
 			}
 			str_outpath.append(str_title);
-			str_txt_path = str_outpath;
-			str_txt_path.append(".txt");
 		}
+		else{
+			std::cerr << "Output folder path is empty!" << '\n';
+			return;
+		}
+		str_txt_path = str_outpath;
+		str_txt_path.append(".txt");
 		std::ofstream ofile(str_txt_path,std::ios::out);
 		if(!ofile.is_open()){
 			ofile.open(str_txt_path,std::ios::out);
@@ -99,12 +104,14 @@ static void OutputHTMLContent(const std::string& str_title, const std::string& s
 	catch(const std::exception& e){
 		std::cerr << "OutputHTMLContent: " << e.what() << '\n';
 	}
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));//seconds
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000));//seconds
 	/*
 		write the binary file to destination folder
 	*/
-	nlp_lib nl_j;
-	nl_j.WriteBinaryOne_from_txt(str_txt_path);
+	if(!str_txt_path.empty()){
+		nlp_lib nl_j;
+		nl_j.WriteBinaryOne_from_txt(str_txt_path);
+	}
 }
 /*
 	add std::condition_variable& cv to the parameter
