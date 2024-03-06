@@ -124,6 +124,11 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 			return;
 		}
 		std::string str_title = get_title_content(htmlContent);
+		if(str_title.empty()){
+			spiderlib::str_broken.push_back(url);//add to broken link list
+			write_url_to_binaryfile(spiderlib::url_type::url_broken);//write to binary file
+			return;
+		}
 		str_domain = spiderlib::extractDomainFromUrl(url);
 		std::string url_rule = "(https?:\\/\\/)?(www\\.)?([a-zA-Z0-9-]+\\.){1,}[a-zA-Z]{2,}(\\/[a-zA-Z0-9\\/\\.-]*)?";
 		std::vector<std::pair<size_t, std::string>> indexedNames;
@@ -232,6 +237,11 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 			start analying htmlContent
 		*/
 		std::string web_content_without_html_tags = wSpider_j.G_removehtmltags(htmlContent);
+		if(web_content_without_html_tags.size() < 50){
+			spiderlib::str_broken.push_back(url);//add to broken link list
+			write_url_to_binaryfile(spiderlib::url_type::url_broken);//write to binary file
+			return;
+		}
 		std::cout << "********************Content**********************" << '\n';
 		std::cout << web_content_without_html_tags << '\n';
 		std::cout << "*************************************************" << '\n';
