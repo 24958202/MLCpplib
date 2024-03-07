@@ -1149,7 +1149,7 @@ std::string WebSpiderLib::GetURLContent(const std::string& url){
         curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         // For completeness
         curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 10000L); // Using milliseconds for timeout
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 20000L); // Using milliseconds for timeout
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 2000L);
         curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
         curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)1024*1024*1024);
@@ -1230,6 +1230,18 @@ std::string WebSpiderLib::G_removehtmltags(std::string& HTML_DOC){
 	std::string strOut =  websl_j.removeHtmlTags_google(output->root);
 	gumbo_destroy_output(&kGumboDefaultOptions, output);
 	return strOut;
+}
+std::string WebSpiderLib::extractDomainFromUrl(const std::string& url){
+    std::regex domainRegex(R"(?:https?:\/\/)?(?:www\.)?([^\/]+)\.([a-zA-Z]{2,}(?=/))");
+    std::smatch match;
+    if (std::regex_search(url, match, domainRegex)) {
+		std::string fullDomain = match[1];
+		size_t pos = fullDomain.find("://");
+		if(pos != std::string::npos){
+			return fullDomain.substr(pos+3);
+		}
+    } 
+	return "";
 }
 /*
     end WebSpiderLib
