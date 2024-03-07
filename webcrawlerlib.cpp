@@ -110,8 +110,9 @@ void webcrawlerlib::OutputHTMLContent(const std::string& str_title, const std::s
 }
 /*
 	add std::condition_variable& cv to the parameter
+	std::condition_variable& cv, 
 */
-void webcrawlerlib::get_one_page_urls(std::condition_variable& cv, const std::string& url){
+void webcrawlerlib::get_one_page_urls(const std::string& url){
 	//get all urls of the site
 	Jsonlib jsl_j;
 	WebSpiderLib wSpider_j;
@@ -337,7 +338,7 @@ void webcrawlerlib::get_one_page_urls(std::condition_variable& cv, const std::st
 	/*
 		notify the main thread if exceed the specific time
 	*/
-	cv.notify_one();
+	//cv.notify_one();
 }
 void webcrawlerlib::crawling_the_www(const std::string& the_link_spider_to_crawl){
 	/*
@@ -365,36 +366,7 @@ void webcrawlerlib::crawling_the_www(const std::string& the_link_spider_to_crawl
 			}
 		}
 	}
-	/*
-		get all urls in the page
-	*/
-	std::condition_variable cv;
-	std::mutex mtx;
-	bool finished = false;
-	std::jthread thread([&](){
-		get_one_page_urls(cv,the_link_spider_to_crawl);
-	});
-	/*
-		wait for 7 seconds or until the function finishes
-	*/
-	{
-		std::unique_lock<std::mutex>lock(mtx);
-		if (cv.wait_for(lock, std::chrono::seconds(12), [&]{ return finished; })) {
-            std::cout << "Web page was crawled on time." << std::endl;
-        } else {
-            std::cout << "Function exceeded pre-defined time." << std::endl;
-            thread.request_stop();
-			/*
-				remove this bad link from the list and update and binary file
-			*/
-			if(!str_is_crawling.empty()){
-				str_is_crawling.erase(std::remove(str_is_crawling.begin(), str_is_crawling.end(), the_link_spider_to_crawl), str_is_crawling.end());
-				write_url_to_binaryfile(url_type::url_crawling);
-				crawling_the_www(str_is_crawling[0]);
-				return;
-			}
-        }
-	}
+	get_one_page_urls(the_link_spider_to_crawl);
 	if(str_is_crawling.size()>0){
 		crawling_the_www(str_is_crawling[0]);
 	}
