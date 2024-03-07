@@ -132,8 +132,8 @@ void webcrawlerlib::get_one_page_urls(std::condition_variable& cv, const std::st
 	*/
 	if(url.find("http") == std::string::npos
 				&& url.find(".jpg") != std::string::npos && url.find(".jpeg") != std::string::npos
-				&& url.find(".gif") != std::string::npos && url.find("?") != std::string::npos
-				&& url.find(".png") != std::string::npos && url.find(".css") != std::string::npos
+				&& url.find(".gif") != std::string::npos && url.find(".png") != std::string::npos 
+				&& url.find(".css") != std::string::npos
 				&& url.find(".js") != std::string::npos){
 		std::cout << "Bad url, move next... " << '\n';
 		str_broken.push_back(url);//add to broken link list
@@ -202,9 +202,8 @@ void webcrawlerlib::get_one_page_urls(std::condition_variable& cv, const std::st
 				*/
 				if(url.find("http") != std::string::npos
 				&& url.find(".jpg") == std::string::npos && url.find(".jpeg") == std::string::npos
-				&& url.find(".gif") == std::string::npos && url.find("?") == std::string::npos
-				&& url.find(".png") == std::string::npos && url.find(".css") == std::string::npos
-				&& url.find(".js") == std::string::npos){
+				&& url.find(".gif") == std::string::npos && url.find(".png") == std::string::npos 
+				&& url.find(".css") == std::string::npos && url.find(".js") == std::string::npos){
 					std::cout << "url saved: " << url << std::endl;
 				}
 				else{
