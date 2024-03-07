@@ -28,7 +28,8 @@ std::vector<std::string> spiderlib::str_is_crawling;
 std::vector<std::string> spiderlib::str_broken;
 
 std::string spiderlib::extractDomainFromUrl(const std::string& url) {
-    std::regex domainRegex(R"(https?://([^/]+))");//R"(^(?:https?:\/\/)?([^\/\r\n]+))");
+    //std::regex domainRegex(R"(https?://([^/]+))");//R"(^(?:https?:\/\/)?([^\/\r\n]+))");
+    std::regex domainRegex(R"(?:https?:\/\/)?(?:www\.)?([^\/]+)\.([a-zA-Z]{2,})");
     std::smatch match;
     if (std::regex_search(url, match, domainRegex)) {
 		std::string fullDomain = match[1];
