@@ -17,7 +17,7 @@
 #define APP_VERSION "0.3"
 
 std::string webcrawlerlib::extractDomainFromUrl(const std::string& url){
-    std::regex domainRegex(R"(https?://([^/]+))");//R"(^(?:https?:\/\/)?([^\/\r\n]+))");
+    std::regex domainRegex(R"(?:https?:\/\/)?(?:www\.)?([^\/]+)\.([a-zA-Z]{2,})");
     std::smatch match;
     if (std::regex_search(url, match, domainRegex)) {
 		std::string fullDomain = match[1];
