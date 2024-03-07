@@ -152,7 +152,7 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
             strReturn = match[0].str();
             strReturn = std::string(wSpider_j.str_trim(strReturn));
             if(!strReturn.empty()){
-                indexedNames.push_back({match.position(1), strReturn});
+                indexedNames.push_back({match.position(), strReturn});
                 searchStart = match.suffix().first;
             }
             else{
