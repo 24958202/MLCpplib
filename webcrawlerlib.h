@@ -23,7 +23,7 @@ class webcrawlerlib{
         void remove_str_is_crawling(const std::string&);
         void write_url_to_binaryfile(const url_type&);
         void OutputHTMLContent(const std::string&, const std::string&);
-        void get_one_page_urls(std::condition_variable&, const std::string&);
+        void get_one_page_urls(const std::string&);
         void crawling_the_www(const std::string&);
         void start_crawling();
     public:
