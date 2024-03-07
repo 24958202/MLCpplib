@@ -16,16 +16,17 @@
 #include "authorinfo/author_info.h"
 #define APP_VERSION "0.3"
 
-std::string extractDomainFromUrl(const std::string& url) {
-    // Updated regex pattern
-    // This pattern will ignore protocols and 'www.', and capture the domain and TLD
-    std::regex domainRegex(R"((?:https?:\/\/)?(?:www\.)?([^\/:\s]+)\.([a-zA-Z]{2,}))");
+std::string webcrawlerlib::extractDomainFromUrl(const std::string& url) {
+    std::regex domainRegex(R"(https?://([^/]+))");
     std::smatch match;
-    if (std::regex_search(url, match, domainRegex) && match.size() > 1) {
-        // Directly return the domain and TLD as captured by the regex
-        return match[1].str() + "." + match[2].str();
-    }
-    return "";
+    if (std::regex_search(url, match, domainRegex)) {
+		std::string fullDomain = match[1];
+		size_t pos = fullDomain.find("://");
+		if(pos != std::string::npos){
+			return fullDomain.substr(pos+3);
+		}
+    } 
+	return "";
 }
 std::string webcrawlerlib::getRawHtml(const std::string& strurl){
 	WebSpiderLib wSpider_j;
