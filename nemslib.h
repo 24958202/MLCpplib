@@ -221,9 +221,11 @@ class WebSpiderLib{
             const std::string HTML_DOC = readTextFile_en("/Volumes/WorkDisk/MacBk/pytest/ML_pdf/bow_test/htmlTags_to_removed.txt");
             WebSpiderLib websl_j;
             std::string strOutput = G_removehtmltags(HTML_DOC);
+            extractDomainFromUrl can get the www.domain.com from url
         */
         std::string removeHtmlTags_google(GumboNode* node);
         std::string G_removehtmltags(std::string&);
+        std::string extractDomainFromUrl(const std::string&);
 };
 /*
     to record how much time a procedure spent
