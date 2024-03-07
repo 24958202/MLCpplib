@@ -49,6 +49,7 @@ class Jsonlib{
         void remove_numbers(std::string&);
         std::string str_replace(std::string&, std::string&, const std::string&);
         std::vector<std::string> read_single_col_list(const std::string&);
+	void removeDuplicates(std::vector<std::string>&);
 };
 /*-Begin SQLite3 library*/
 class SQLite3Library {
