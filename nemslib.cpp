@@ -208,6 +208,12 @@ std::vector<std::string> Jsonlib::read_single_col_list(const std::string& file_p
       stopwordFile.close();
       return url_list;
 }
+void Jsonlib::removeDuplicates(std::vector<std::string>& vec){
+    if(!vec.empty()){
+         std::set<std::string> uniqueSet(vec.begin(),vec.end());
+        vec.assign(uniqueSet.begin(),uniqueSet.end());
+    }
+}
 /*-End Json Library-*/
 /*-start Sqlite3 Library-*/
 SQLite3Library::SQLite3Library(const std::string& db_file) : db_file(db_file), connection(nullptr) {}
