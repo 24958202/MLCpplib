@@ -42,8 +42,14 @@ std::string spiderlib::extractDomainFromUrl(const std::string& url) {
 static std::string getRawHtml(const std::string& strurl){
 	WebSpiderLib wSpider_j;
 	std::string str_content;
-	str_content = wSpider_j.GetURLContent(strurl);
-	return str_content;
+	try{
+		str_content = wSpider_j.GetURLContent(strurl);
+		return str_content;
+	}
+	catch(const std::exception& e){
+		std::cout << e.what() << '\n';
+	}
+	return "";
 }
 static std::string get_title_content(std::string& raw_str){
 	WebSpiderLib wSpider_j;
@@ -127,8 +133,27 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 	std::vector<std::string> the_right_template;
 	std::string str_domain;
 	std::vector<unsigned int> int_url_length;
+	/*
+		start crawling
+	*/
+	std::cout << "Url to crawl: " << '\n';
+	std::cout << url << '\n';
+	/*
+		check if it's a qualified url
+	*/
+	if(url.find("http") == std::string::npos
+				&& url.find(".jpg") != std::string::npos && url.find(".jpeg") != std::string::npos
+				&& url.find(".gif") != std::string::npos && url.find(".png") != std::string::npos 
+				&& url.find(".css") != std::string::npos
+				&& url.find(".js") != std::string::npos){
+		std::cout << "Bad url, move next... " << '\n';
+		spiderlib::str_broken.push_back(url);//add to broken link list
+		write_url_to_binaryfile(spiderlib::url_type::url_broken);//write to binary file
+		return;
+	}
+
 	std::string htmlContent = getRawHtml(url);
-	std::this_thread::sleep_for(std::chrono::seconds(3));//seconds
+	std::this_thread::sleep_for(std::chrono::seconds(5));//seconds
 	try{
 		if(htmlContent.empty()){
 			spiderlib::str_broken.push_back(url);//add to broken link list
@@ -178,20 +203,23 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 			remove unnecessary links, images links etc.
 		*/
 		if(!urls.empty()){
+			std::cout << "verifing url link list..." << '\n';
 			for(const auto& url : urls){
+				std::cout << "Checking link: >> " << url << '\n'; 
 				/*
 					save urls to txt files
 				*/
 				if(url.find("http") != std::string::npos
-				&& url.find(".jpg") == std::string::npos && url.find("?") == std::string::npos
-				&& url.find(".png") == std::string::npos && url.find(".css") == std::string::npos
-				&& url.find(".js") == std::string::npos){
+				&& url.find(".jpg") == std::string::npos && url.find(".jpeg") == std::string::npos
+				&& url.find(".gif") == std::string::npos && url.find(".png") == std::string::npos 
+				&& url.find(".css") == std::string::npos && url.find(".js") == std::string::npos){
 					std::cout << "url saved: " << url << std::endl;
 				}
 				else{
 					//std::cout << "url not related to the website: " <<  url << std::endl;
 					//erase items gn from std::vector<std::string>persons
 					urls.erase(std::remove(urls.begin(), urls.end(), url), urls.end());//remove the item from the list
+					std::cout << "It's a bad link >> " << url << '\n';
 				}
 			}
 		}
@@ -249,11 +277,6 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 			start analying htmlContent
 		*/
 		std::string web_content_without_html_tags = wSpider_j.G_removehtmltags(htmlContent);
-		if(web_content_without_html_tags.size() < 50){
-			spiderlib::str_broken.push_back(url);//add to broken link list
-			write_url_to_binaryfile(spiderlib::url_type::url_broken);//write to binary file
-			return;
-		}
 		std::cout << "********************Content**********************" << '\n';
 		std::cout << web_content_without_html_tags << '\n';
 		std::cout << "*************************************************" << '\n';
@@ -317,7 +340,6 @@ static void get_one_page_urls(std::condition_variable& cv, const std::string& ur
 		*/
 		spiderlib::str_crawled.push_back(url);
 		write_url_to_binaryfile(spiderlib::url_type::url_crawled);
-		std::this_thread::sleep_for(std::chrono::seconds(2));//seconds
 	}
 	catch(const std::exception& e){
 		std::cerr << e.what() << '\n';
@@ -367,7 +389,7 @@ static void crawling_the_www(const std::string& the_link_spider_to_crawl){
 	*/
 	{
 		std::unique_lock<std::mutex>lock(mtx);
-		if (cv.wait_for(lock, std::chrono::seconds(18), [&]{ return finished; })) {
+		if (cv.wait_for(lock, std::chrono::seconds(12), [&]{ return finished; })) {
             std::cout << "Web page was crawled on time." << std::endl;
         } else {
             std::cout << "Function exceeded pre-defined time." << std::endl;
