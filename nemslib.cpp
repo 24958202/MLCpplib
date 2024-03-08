@@ -209,9 +209,15 @@ std::vector<std::string> Jsonlib::read_single_col_list(const std::string& file_p
       return url_list;
 }
 void Jsonlib::removeDuplicates(std::vector<std::string>& vec){
-    if(!vec.empty()){
-         std::set<std::string> uniqueSet(vec.begin(),vec.end());
-        vec.assign(uniqueSet.begin(),uniqueSet.end());
+     if(!vec.empty()){
+        try{
+            std::sort(vec.begin(), vec.end());
+            auto it = std::unique(vec.begin(), vec.end());
+            vec.erase(it, vec.end());
+        }
+        catch(const std::exception& e){
+            std::cerr << e.what() << '\n';
+        }
     }
 }
 /*-End Json Library-*/
