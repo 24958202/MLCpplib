@@ -12,6 +12,7 @@ class webcrawlerlib{
         std::vector<std::string> str_to_crawle;
         std::vector<std::string> str_is_crawling;
         std::vector<std::string> str_broken; 
+        std::vector<std::string> str_temp_url_current_site;
         enum url_type{
             url_broken,
             url_crawled,
