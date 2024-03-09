@@ -366,7 +366,7 @@ void webcrawlerlib::crawling_the_www(const std::string& the_link_spider_to_crawl
 			}
 		}
 	}
-	get_one_page_urls(the_link_spider_to_crawl);
+	this->get_one_page_urls(the_link_spider_to_crawl);
 	if(str_is_crawling.size()>0){
 		crawling_the_www(str_is_crawling[0]);
 	}
