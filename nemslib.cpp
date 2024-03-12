@@ -21,6 +21,7 @@ lib compile:
 #include <vector>
 #include <string>
 #include <random>
+#include <set>
 #include <algorithm>
 #include <numeric>
 #include <cmath>
@@ -209,7 +210,7 @@ std::vector<std::string> Jsonlib::read_single_col_list(const std::string& file_p
       return url_list;
 }
 void Jsonlib::removeDuplicates(std::vector<std::string>& vec){
-     if(!vec.empty()){
+    if(!vec.empty()){
         try{
             std::sort(vec.begin(), vec.end());
             auto it = std::unique(vec.begin(), vec.end());
@@ -1054,12 +1055,13 @@ void SysLogLib::sys_timedelay(size_t& mini_sec){
     std::this_thread::sleep_for(std::chrono::milliseconds(mini_sec));
 }
 void SysLogLib::writeLog(const std::string& logpath, const std::string& log_message) {
-    size_t path_last = logpath.rfind('/', logpath.length()-1);
-    std::string strLog;
-    if (path_last != std::string::npos){
-        strLog = logpath;
-    }else{
-        strLog = logpath + "/";
+    if(logpath.empty() || log_message.empty()){
+        std::cerr << "SysLogLib::writeLog input empty!" << '\n'; 
+        return;
+    }
+    std::string strLog = logpath;
+    if(strLog.back() != '\n'){
+        strLog.append("/");
     }
     if (!std::filesystem::exists(strLog)) {
         try {
@@ -1070,13 +1072,13 @@ void SysLogLib::writeLog(const std::string& logpath, const std::string& log_mess
         }
     }
     SysLogLib::CurrentDateTime currentDateTime = SysLogLib::getCurrentDateTime();
-    strLog = strLog +  currentDateTime.current_date + ".txt";
+    strLog.append(currentDateTime.current_date);
+    strLog.append(".txt");
     std::ofstream file(strLog, std::ios::app);
-    if (file.is_open()) {
-        file << currentDateTime.current_time + " : " + log_message << std::endl;
-    } else {
-        std::cout << "Unable to open the log file." << std::endl;
+    if (!file.is_open()) {
+        file.open(strLog, std::ios::app);
     }
+    file << currentDateTime.current_time + " : " + log_message << std::endl;
     file.close();
     std::cout << currentDateTime.current_date << " " << currentDateTime.current_time << " : " << log_message << std::endl;
 }
@@ -1613,6 +1615,26 @@ std::vector<std::string> nlp_lib::ReadBinaryOne(const std::string& str_txt_file_
     file.close();
     return exp_list;
 }
+void nlp_lib::AppendBinaryOne(const std::string& str_txt_file_path,const std::string& strContent){
+    if(str_txt_file_path.empty() || strContent.empty()){
+        std::cerr << "nlp_lib::AppendBinaryOne input empty!" << '\n';
+        return;
+    }
+    std::vector<std::string> exp_list;
+    exp_list = this->ReadBinaryOne(str_txt_file_path);
+    if(!exp_list.empty()){
+        auto it = std::find_if(exp_list.begin(),exp_list.end(),[strContent](const std::string& s){ return s == strContent;});
+        if(it != exp_list.end()){
+            /*
+                the record has already existed.
+            */
+        this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
+        return;
+        }
+        exp_list.push_back(strContent);
+        this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
+    }
+}
 std::vector<std::string> nlp_lib::remove_repeated_items_vs(const std::vector<std::string>& vec){
     std::vector<std::string> const_vec(vec.begin(), vec.end());
     try{
@@ -1670,6 +1692,111 @@ std::vector<std::string> nlp_lib::get_numbers(const std::string& str_in){
         }
     }
     return str_nums;
+}
+void nlp_lib::read_books(const std::string& input_folder_path,const std::string& output_folder_path, 
+const std::string& binaryOnePath,const std::string& stopwordListPath,const std::string& output_log_path){
+    if(input_folder_path.empty() || output_folder_path.empty() || stopwordListPath.empty() || output_log_path.empty()){
+        std::cerr << "read_books input empty!" << '\n';
+        return;
+    }
+    WebSpiderLib jsl_j;
+    nemslib nems_j;/* initialize stop word*/
+    SysLogLib syslog_j;
+    syslog_j.writeLog(output_log_path,"Initialize stopword list...");
+    nems_j.set_stop_word_file_path(stopwordListPath);
+    for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".txt") {
+            std::ifstream file(entry.path());
+            syslog_j.writeLog(output_log_path,"Reading book: ");
+            syslog_j.writeLog(output_log_path,entry.path());
+            if (file.is_open()) {
+                std::string line;
+                std::string str_book;
+                std::vector<std::string> book_token;
+                std::vector<std::string> book_token_xy;
+                std::vector<std::unordered_map<std::string,unsigned int>> get_topics_withf;
+                std::string book_output_path;
+                std::string st_book_temp;
+                while (std::getline(file, line)) {
+                    line = std::string(jsl_j.str_trim(line));
+                    str_book += line + '\n';
+                }
+                syslog_j.writeLog(output_log_path,"Getting the book's topic...");
+                /*
+                    check tagging
+                */
+                get_topics_withf = nems_j.get_topics_freq(str_book);
+                syslog_j.writeLog(output_log_path,"Printing out the book's topic...");
+                for(const auto& gtw : get_topics_withf){
+                    for(const auto& gt : gtw){
+                        std::stringstream ss;
+                        ss << "Topic: " << gt.first << " Freq: " << gt.second << '\n';
+                        syslog_j.writeLog(output_log_path,ss.str());
+                    }
+                }
+                /*
+                    start saving the binary
+                */
+                syslog_j.writeLog(output_log_path,"Tokenizing the book...");
+                book_token = nems_j.tokenize_en(str_book);
+                if(!book_token.empty()){
+                    syslog_j.writeLog(output_log_path,"Adding the book to the library...");
+                    for(const auto& bt : book_token){
+                        try{
+                            /*
+                                check binary one
+                            */
+                            std::vector<std::string> binary_one = this->ReadBinaryOne(binaryOnePath);
+                            if(!binary_one.empty()){
+                                auto it = std::find_if(binary_one.begin(),binary_one.end(),[bt](const std::string& s){ return s == bt;});
+                                if(it != binary_one.end()){
+                                    unsigned int pos = std::distance(binary_one.begin(), it);
+                                    st_book_temp = std::to_string(pos);
+                                    book_token_xy.push_back(st_book_temp);
+                                    std::stringstream ss;
+                                    ss << "st_book_temp>> " << st_book_temp << '\n';
+                                    syslog_j.writeLog(output_log_path,ss.str());
+                                }
+                                else{/*it's a new word*/
+                                    /*
+                                        save it iin binary one
+                                    */
+                                    this->AppendBinaryOne(binaryOnePath,bt);
+                                    unsigned int pos = binary_one.size()-1;
+                                    st_book_temp = std::to_string(pos);
+                                    book_token_xy.push_back(st_book_temp);
+                                    std::stringstream ss;
+                                    ss << "st_book_temp>> " << st_book_temp << '\n';
+                                    syslog_j.writeLog(output_log_path,ss.str());
+                                }
+                                /*
+                                    output the file
+                                    output_folder_path + entry.path().filename()
+                                */
+                                book_output_path = output_folder_path;
+                                if(book_output_path.back()!='/'){
+                                    book_output_path.append("/");
+                                }
+                                book_output_path.append(entry.path().filename().string());
+                                std::stringstream ss;
+                                ss << "book_output_path>> " << book_output_path << '\n';
+                                syslog_j.writeLog(output_log_path,ss.str());
+                                this->WriteBinaryOne_from_std(book_token_xy,book_output_path);
+                            }
+                            else{/* start creating a new binary*/
+                                binary_one.push_back(bt);
+                                this->WriteBinaryOne_from_std(binary_one,binaryOnePath);
+                            }
+                        }
+                        catch(const std::exception& e){
+                            std::cerr << e.what() << '\n';
+                        }
+                    }
+                }
+            }
+            file.close();
+        }
+    }
 }
 /*
     nlp_lib--end;
