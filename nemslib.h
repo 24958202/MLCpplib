@@ -50,6 +50,10 @@ class Jsonlib{
         std::string str_replace(std::string&, std::string&, const std::string&);
         std::vector<std::string> read_single_col_list(const std::string&);
         void removeDuplicates(std::vector<std::string>&);
+        /*
+            remove last char in a string
+        */
+        std::string remove_last_char_in_a_string(const std::string&);
 };
 /*-Begin SQLite3 library*/
 class SQLite3Library {
@@ -299,6 +303,7 @@ class nlp_lib{
             para2: string to append
         */
         void AppendBinaryOne(const std::string&,const std::string&);
+        void AppendBinaryOne_allow_repeated_items(const std::string&,const std::string&);
         /*
             remove repeated items in std::vector<std::string>
         */
@@ -316,13 +321,16 @@ class nlp_lib{
         /*
             read an article and save into a binary file
             para1: input folder path
-            para2: output folder path
+            para2: output file path : books.bin
             para3: binaryOne path
             para4: stopword list Path
             para5: log file path (to get working status of the function)
         */
-        void read_books(const std::string&,const std::string&,const std::string&,const std::string&,const std::string&);
-        
+        void write_books(const std::string&,const std::string&,const std::string&,const std::string&,const std::string&);
+        /*
+            read the books.bin file,para1: the books.bin file path
+        */
+        std::vector<std::string> read_books(const std::string&);
 };
 /*
     nlp_lib--end
