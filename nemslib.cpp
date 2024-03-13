@@ -221,6 +221,9 @@ void Jsonlib::removeDuplicates(std::vector<std::string>& vec){
         }
     }
 }
+std::string Jsonlib::remove_last_char_in_a_string(const std::string& str){
+    return str.substr(0,str.size()-1);
+}
 /*-End Json Library-*/
 /*-start Sqlite3 Library-*/
 SQLite3Library::SQLite3Library(const std::string& db_file) : db_file(db_file), connection(nullptr) {}
@@ -1628,9 +1631,34 @@ void nlp_lib::AppendBinaryOne(const std::string& str_txt_file_path,const std::st
             /*
                 the record has already existed.
             */
-        this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
-        return;
+            return;
         }
+        exp_list.push_back(strContent);
+        this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
+    }
+    else{
+        /*
+            The binary file does not exists, you have to create one
+        */
+        exp_list.push_back(strContent);
+        this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
+    }
+}
+void nlp_lib::AppendBinaryOne_allow_repeated_items(const std::string& str_txt_file_path,const std::string& strContent){
+    if(str_txt_file_path.empty() || strContent.empty()){
+        std::cerr << "nlp_lib::AppendBinaryOne input empty!" << '\n';
+        return;
+    }
+    std::vector<std::string> exp_list;
+    exp_list = this->ReadBinaryOne(str_txt_file_path);
+    if(!exp_list.empty()){
+        exp_list.push_back(strContent);
+        this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
+    }
+    else{
+        /*
+            The binary file does not exists, you have to create one
+        */
         exp_list.push_back(strContent);
         this->WriteBinaryOne_from_std(exp_list,str_txt_file_path);
     }
@@ -1693,9 +1721,12 @@ std::vector<std::string> nlp_lib::get_numbers(const std::string& str_in){
     }
     return str_nums;
 }
-void nlp_lib::read_books(const std::string& input_folder_path,const std::string& output_folder_path, 
+/*
+
+*/
+void nlp_lib::write_books(const std::string& input_folder_path,const std::string& bookbin_path, 
 const std::string& binaryOnePath,const std::string& stopwordListPath,const std::string& output_log_path){
-    if(input_folder_path.empty() || output_folder_path.empty() || stopwordListPath.empty() || output_log_path.empty()){
+    if(input_folder_path.empty() || bookbin_path.empty() || stopwordListPath.empty() || output_log_path.empty()){
         std::cerr << "read_books input empty!" << '\n';
         return;
     }
@@ -1715,8 +1746,11 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
                 std::vector<std::string> book_token;
                 std::vector<std::string> book_token_xy;
                 std::vector<std::unordered_map<std::string,unsigned int>> get_topics_withf;
-                std::string book_output_path;
                 std::string st_book_temp;
+                std::string str_book_saved;
+                std::string str_topics_without_freq;
+                std::string str_topics_with_freq;
+                std::string book_y;//y-coordinate
                 while (std::getline(file, line)) {
                     line = std::string(jsl_j.str_trim(line));
                     str_book += line + '\n';
@@ -1725,15 +1759,31 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
                 /*
                     check tagging
                 */
+                str_book_saved = entry.path().stem().string();//.filename().string();
+                str_book_saved.append("^~&");
+                /*
+                    get the topics of the article
+                */
                 get_topics_withf = nems_j.get_topics_freq(str_book);
                 syslog_j.writeLog(output_log_path,"Printing out the book's topic...");
                 for(const auto& gtw : get_topics_withf){
                     for(const auto& gt : gtw){
+                        std::stringstream sss;
+                        sss << gt.first << "-" << gt.second << ",";
+                        str_topics_with_freq += sss.str();
+                        str_topics_without_freq += gt.first + ",";
                         std::stringstream ss;
                         ss << "Topic: " << gt.first << " Freq: " << gt.second << '\n';
                         syslog_j.writeLog(output_log_path,ss.str());
+                        std::cout << ss.str() << '\n';
                     }
                 }
+                str_topics_without_freq = str_topics_without_freq.substr(0,str_topics_without_freq.size()-1);
+                str_topics_with_freq = str_topics_with_freq.substr(0,str_topics_with_freq.size()-1);
+                str_book_saved.append(str_topics_without_freq);
+                str_book_saved.append("^~&");
+                str_book_saved.append(str_topics_with_freq);
+                str_book_saved.append("^~&");
                 /*
                     start saving the binary
                 */
@@ -1759,9 +1809,10 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
                                 }
                                 else{/*it's a new word*/
                                     /*
-                                        save it iin binary one
+                                        save it in binary one
                                     */
-                                    this->AppendBinaryOne(binaryOnePath,bt);
+                                    binary_one.push_back(bt);
+                                    this->WriteBinaryOne_from_std(binary_one,binaryOnePath);
                                     unsigned int pos = binary_one.size()-1;
                                     st_book_temp = std::to_string(pos);
                                     book_token_xy.push_back(st_book_temp);
@@ -1773,17 +1824,15 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
                                     output the file
                                     output_folder_path + entry.path().filename()
                                 */
-                                book_output_path = output_folder_path;
-                                if(book_output_path.back()!='/'){
-                                    book_output_path.append("/");
+                                if(!book_token_xy.empty()){
+                                    for(const auto& bt : book_token_xy){
+                                        book_y += bt + ",";
+                                    }
                                 }
-                                book_output_path.append(entry.path().filename().string());
-                                std::stringstream ss;
-                                ss << "book_output_path>> " << book_output_path << '\n';
-                                syslog_j.writeLog(output_log_path,ss.str());
-                                this->WriteBinaryOne_from_std(book_token_xy,book_output_path);
+                                book_y = book_y.substr(0,book_y.size()-1);
                             }
                             else{/* start creating a new binary*/
+                                book_y = bt;
                                 binary_one.push_back(bt);
                                 this->WriteBinaryOne_from_std(binary_one,binaryOnePath);
                             }
@@ -1793,10 +1842,24 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
                         }
                     }
                 }
+                str_book_saved.append(book_y);
+                this->AppendBinaryOne(bookbin_path,str_book_saved);
+                std::stringstream ss;
+                ss << "Book: " << entry.path().filename().string() << " was successfully saved!" << '\n';
+                syslog_j.writeLog(output_log_path,ss.str());
             }
             file.close();
         }
     }
+}
+std::vector<std::string> nlp_lib::read_books(const std::string& books_bin_path){
+    std::vector<std::string> str_book;
+    if(books_bin_path.empty()){
+        std::cerr << "nlp_lib::read_books input empty!" << '\n';
+        return str_book;
+    }
+    str_book = this->ReadBinaryOne(books_bin_path);
+    return str_book;
 }
 /*
     nlp_lib--end;
