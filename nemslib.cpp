@@ -1730,13 +1730,14 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
         std::cerr << "read_books input empty!" << '\n';
         return;
     }
+    std::unordered_set<std::string> ProcessFileNames;
     WebSpiderLib jsl_j;
     nemslib nems_j;/* initialize stop word*/
     SysLogLib syslog_j;
     syslog_j.writeLog(output_log_path,"Initialize stopword list...");
     nems_j.set_stop_word_file_path(stopwordListPath);
     for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".txt") {
+        if (entry.is_regular_file() && entry.path().extension() == ".txt" && ProcessFileNames.find(entry.path()) == ProcessFileNames.end()) {
             std::ifstream file(entry.path());
             syslog_j.writeLog(output_log_path,"Reading book: ");
             syslog_j.writeLog(output_log_path,entry.path());
@@ -1847,8 +1848,21 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
                 std::stringstream ss;
                 ss << "Book: " << entry.path().filename().string() << " was successfully saved!" << '\n';
                 syslog_j.writeLog(output_log_path,ss.str());
+                /*
+                    add the file to Processed list
+                */
+                ProcessFileNames.insert(entry.path());
             }
             file.close();
+        }
+    }
+    /*
+        Check new files, and process the new file
+    */
+    for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".txt" && ProcessFileNames.find(entry.path()) == ProcessFileNames.end()){
+            this->write_books(input_folder_path,bookbin_path,binaryOnePath,stopwordListPath,output_log_path);
+            return;
         }
     }
 }
