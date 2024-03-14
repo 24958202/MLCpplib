@@ -1866,16 +1866,6 @@ const std::string& binaryOnePath,const std::string& stopwordListPath,const std::
     }
     syslog_j.writeLog(output_log_path,"All jobs are done!");
 }
-    /*
-        Check new files, and process the new file
-    */
-    for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".txt" && ProcessFileNames.find(entry.path()) == ProcessFileNames.end()){
-            this->write_books(input_folder_path,bookbin_path,binaryOnePath,stopwordListPath,output_log_path);
-            return;
-        }
-    }
-}
 std::vector<std::string> nlp_lib::read_books(const std::string& books_bin_path){
     std::vector<std::string> str_book;
     if(books_bin_path.empty()){
