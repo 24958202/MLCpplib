@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <unordered_set>
 #include <map>
 #include <unordered_map>
 #include <sqlite3.h>
