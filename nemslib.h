@@ -271,6 +271,8 @@ struct exp_data2{
     std::string exp_value;
 };
 class nlp_lib{
+    private:
+ 	std::unordered_set<std::string> ProcessFileNames;
     public:
         /*
             language pre-processing tools
@@ -324,7 +326,7 @@ class nlp_lib{
             para2: output file path : books.bin
             para3: binaryOne path
             para4: stopword list Path
-            para5: log file path (to get working status of the function)
+            para5: log file folder path (to get working status of the function)
         */
         void write_books(const std::string&,const std::string&,const std::string&,const std::string&,const std::string&);
         /*
