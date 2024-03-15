@@ -1155,26 +1155,33 @@ std::string WebSpiderLib::findWordBehindSpan(const std::string& input, const std
     return "";
 }
 std::string WebSpiderLib::GetURLContent(const std::string& url){
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-	CURL* curl = curl_easy_init();
-	std::string output;
-	if (curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &WebSpiderLib::WriteCallback);
+   curl_global_init(CURL_GLOBAL_DEFAULT);
+    CURL* curl = curl_easy_init();
+    std::string output;
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &output);
-        // Set the allowed redirection protocols to HTTP and HTTPS
-        curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-        // For completeness
+        /* For completeness */
         curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 20000L); // Using milliseconds for timeout
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 2000L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        /* only allow redirects to HTTP and HTTPS URLs */
+        //curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, "http,https");
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
         curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
-        curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)1024*1024*1024);
+        /* each transfer needs to be done within 20 seconds! */
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 20000L);
+        /* connect fast or fail */
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 2000L);
+        /* skip files larger than a gigabyte */
+        curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE,
+                        (curl_off_t)1024*1024*1024);
         curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "cookies.txt"); // Use a cookie file if needed
+        curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
         curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
-        // Set a proper User-Agent header
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3");
-        // Authentication settings
+        // Set the User-Agent header to simulate a browser
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"); //"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3");
         curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
         curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
         curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
@@ -1182,14 +1189,14 @@ std::string WebSpiderLib::GetURLContent(const std::string& url){
         // Disable SSL verification (not recommended for production)
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-		CURLcode res = curl_easy_perform(curl);
-		if (res != CURLE_OK) {
-			std::cerr << "Error: " << curl_easy_strerror(res) << std::endl;
-		}
-		curl_easy_cleanup(curl);
-	}
-	curl_global_cleanup();
-	return output;
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "Error: " << curl_easy_strerror(res) << std::endl;
+        }
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+    return output;
 }
 std::string WebSpiderLib::GetURLContentAndSave(const std::string& url, const std::string& strReg){
     /*
