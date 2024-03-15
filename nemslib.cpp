@@ -1177,7 +1177,7 @@ std::string WebSpiderLib::GetURLContent(const std::string& url){
         /* skip files larger than a gigabyte */
         curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE,
                         (curl_off_t)1024*1024*1024);
-        curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "cookies.txt"); // Use a cookie file if needed
+        //curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "cookies.txt"); // Use a cookie file if needed
         curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
         curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
         // Set the User-Agent header to simulate a browser
