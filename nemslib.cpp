@@ -13,6 +13,8 @@ lib compile:
     updated on Feb 25, 2024 : changed tokenized_en -> works both for English & Chinese/ add get_topics_freq which shows the frequency of the topic;
     version 0.3
     Add lots of features from file_pro.cpp and others 
+    Version 0.4
+    Add write_file & read_file
 */
 #include "nemslib.h"
 #include "authorinfo/author_info.h"
@@ -1141,8 +1143,10 @@ std::vector<std::string> WebSpiderLib::findAllSpans(const std::string& input, co
     std::smatch match;
     std::string::const_iterator searchStart(input.cbegin());
     while (std::regex_search(searchStart, input.cend(), match, regexPattern)) {
-        spans.push_back(match[0].str());
-        searchStart = match.suffix().first;
+    	if(!match.empty()){
+    		spans.push_back(match[0].str());
+    	}
+    	searchStart = match.suffix().first;
     }
     return spans;
 }
@@ -1150,7 +1154,9 @@ std::string WebSpiderLib::findWordBehindSpan(const std::string& input, const std
     std::regex regexPattern(strreg);
     std::smatch match;
     if (std::regex_search(input, match, regexPattern)) {
-        return match[1].str();
+    	if(match.size()>1){
+    		return match[1].str();
+    	}
     }
     return "";
 }
@@ -1259,11 +1265,13 @@ std::string WebSpiderLib::extractDomainFromUrl(const std::string& url){
     std::regex domainRegex(R"(?:https?:\/\/)?(?:www\.)?([^\/]+)\.([a-zA-Z]{2,}(?=/))");
     std::smatch match;
     if (std::regex_search(url, match, domainRegex)) {
-		std::string fullDomain = match[1];
-		size_t pos = fullDomain.find("://");
-		if(pos != std::string::npos){
-			return fullDomain.substr(pos+3);
-		}
+    	if(match.size()>1){
+    		std::string fullDomain = match[1];
+			size_t pos = fullDomain.find("://");
+			if(pos != std::string::npos){
+				return fullDomain.substr(pos+3);
+			}
+    	}
     } 
 	return "";
 }
