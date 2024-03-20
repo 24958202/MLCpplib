@@ -59,8 +59,8 @@ void expend_english_voc(const std::string& folder_path){
 		ini 
 		put the word checked in the checked list
 	*/
-	if(std::filesystem::exists("home/ronnieji/lib/db_tools/webUrls/english_voc.bin")){
-		words_checked = dic_j.get_english_voc_already_checked_in_db("home/ronnieji/lib/db_tools/webUrls/english_voc.bin");
+	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/webUrls/english_voc.bin")){
+		words_checked = dic_j.get_english_voc_already_checked_in_db("/home/ronnieji/lib/db_tools/webUrls/english_voc.bin");
 	}
 	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/webUrls/missed_words.bin")){
 		words_missed = get_missed_words("/home/ronnieji/lib/db_tools/webUrls/missed_words.bin");
@@ -137,7 +137,7 @@ void expend_english_voc(const std::string& folder_path){
 									if(dic_j.check_word_onlineDictionary(
 									strcheck,
 									iniWordType,
-									"home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+									"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
 									"/home/ronnieji/lib/db_tools/log"
 									)==1){
 										words_checked.push_back(strcheck);
@@ -146,13 +146,13 @@ void expend_english_voc(const std::string& folder_path){
 										if(dic_j.check_word_onMerriamWebsterDictionary(
 											strcheck,
 											iniWordType,
-											"home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+											"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
 											"/home/ronnieji/lib/db_tools/log"
 										)==1){
 											words_checked.push_back(strcheck);
 										}
 										else{//this word can not be found online
-											add_missed_words("home/ronnieji/lib/db_tools/webUrls/words_not_found.bin",strcheck);
+											add_missed_words("/home/ronnieji/lib/db_tools/webUrls/words_not_found.bin",strcheck);
 										}
 									}
                                 }
@@ -163,7 +163,7 @@ void expend_english_voc(const std::string& folder_path){
 								if(dic_j.check_word_onlineDictionary(
 								strcheck,
 								iniWordType,
-								"home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+								"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
 								"/home/ronnieji/lib/db_tools/log"
 								)==1){
 									words_checked.push_back(strcheck);
@@ -172,13 +172,13 @@ void expend_english_voc(const std::string& folder_path){
 									if(dic_j.check_word_onMerriamWebsterDictionary(
 										strcheck,
 										iniWordType,
-										"home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+										"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
 										"/home/ronnieji/lib/db_tools/log"
 									)==1){
 										words_checked.push_back(strcheck);
 									}
 									else{//this word can not be found online
-										add_missed_words("home/ronnieji/lib/db_tools/webUrls/words_not_found.bin",strcheck);
+										add_missed_words("/home/ronnieji/lib/db_tools/webUrls/words_not_found.bin",strcheck);
 									}
 								}
 							}
@@ -228,7 +228,7 @@ int main(int argc, char* argv[]) {
 	expend_english_voc(folder_name);//->add_pass_terms_to_words_db()->check_missed_words_pass()
 	SysLogLib syslog_j;
 	libdict dic_j;
-	dic_j.look_for_past_participle_of_word("home/ronnieji/lib/db_tools/webUrls/english_voc.bin","/home/ronnieji/lib/db_tools/log");
+	dic_j.look_for_past_participle_of_word("/home/ronnieji/lib/db_tools/webUrls/english_voc.bin","/home/ronnieji/lib/db_tools/log");
 	syslog_j.writeLog("/home/ronnieji/lib/db_tools/log","All jobs are done!");
     return 0;
 }
