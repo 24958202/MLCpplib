@@ -1297,9 +1297,9 @@ std::chrono::milliseconds ProcessTimeSpent::time_end() {
     read vocabulary from db and write into a binary file
 */
 void nlp_lib::writeBinaryFile(const std::vector<Mdatatype>& data, const std::string& filename){
-    std::ofstream file(filename, std::ios::binary);
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
     if (!file.is_open()) {
-        file.open(filename, std::ios::binary);
+        file.open(filename, std::ios::out | std::ios::binary);
     }
     uint32_t size = static_cast<uint32_t>(data.size());
     file.write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
@@ -1320,6 +1320,7 @@ void nlp_lib::writeBinaryFile(const std::vector<Mdatatype>& data, const std::str
         file.write(reinterpret_cast<const char*>(&meaningZhSize), sizeof(uint32_t));
         file.write(dt.meaning_zh.c_str(), meaningZhSize);
     }
+    file.flush();
     file.close();
     std::cout << "Successfully created the binary file: " + filename;
 }
@@ -1498,9 +1499,9 @@ void nlp_lib::writeBinaryFileForNLP(const std::string& txt_list_path){
     /*
         start creating binary file and output
     */
-    std::ofstream file(output_file_path, std::ios::binary);
+    std::ofstream file(output_file_path, std::ios::out | std::ios::binary);
     if (!file.is_open()) {
-        file.open(output_file_path,std::ios::binary);
+        file.open(output_file_path,std::ios::out | std::ios::binary);
     }
     uint32_t total_size = static_cast<uint32_t>(str_exp.size());
     file.write(reinterpret_cast<const char*>(&total_size), sizeof(uint32_t));
@@ -1515,6 +1516,7 @@ void nlp_lib::writeBinaryFileForNLP(const std::string& txt_list_path){
         file.write(dt.exp_value.c_str(), exp_valueSize);
 
     }
+    file.flush();
     file.close();
     std::cout << "Successfully created the binary file in: " + output_file_path << '\n';
 }
@@ -1571,9 +1573,9 @@ void nlp_lib::WriteBinaryOne_from_txt(const std::string& str_txt_file_path){
     */
     std::string output_file_path = str_txt_file_path;
     output_file_path.append("_.bin");
-    std::ofstream outfile(output_file_path, std::ios::binary);
+    std::ofstream outfile(output_file_path, std::ios::out | std::ios::binary);
     if (!outfile.is_open()) {
-        outfile.open(output_file_path,std::ios::binary);
+        outfile.open(output_file_path,std::ios::out | std::ios::binary);
     }
     uint32_t total_size = static_cast<uint32_t>(getTxtLines.size());
     outfile.write(reinterpret_cast<const char*>(&total_size), sizeof(uint32_t));
@@ -1582,6 +1584,7 @@ void nlp_lib::WriteBinaryOne_from_txt(const std::string& str_txt_file_path){
         outfile.write(reinterpret_cast<const char*>(&exp_valueSize), sizeof(uint32_t));
         outfile.write(dt.c_str(), exp_valueSize);
     }
+    outfile.flush();
     outfile.close();
     std::cout << "Successfully created the binary file in: " + output_file_path << '\n';
 }
@@ -1596,9 +1599,9 @@ void nlp_lib::WriteBinaryOne_from_std(const std::vector<std::string>& dataList, 
     /*
         start creating binary file and output
     */
-    std::ofstream outfile(output_file_path, std::ios::binary);
+    std::ofstream outfile(output_file_path, std::ios::out | std::ios::binary);
     if (!outfile.is_open()) {
-        outfile.open(output_file_path,std::ios::binary);
+        outfile.open(output_file_path, std::ios::out | std::ios::binary);
     }
     uint32_t total_size = static_cast<uint32_t>(dataList.size());
     outfile.write(reinterpret_cast<const char*>(&total_size), sizeof(uint32_t));
@@ -1607,6 +1610,7 @@ void nlp_lib::WriteBinaryOne_from_std(const std::vector<std::string>& dataList, 
         outfile.write(reinterpret_cast<const char*>(&exp_valueSize), sizeof(uint32_t));
         outfile.write(dt.c_str(), exp_valueSize);
     }
+    outfile.flush();
     outfile.close();
     std::cout << "Successfully created the binary file in: " + output_file_path << '\n';
 }
