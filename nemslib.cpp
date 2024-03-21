@@ -1065,7 +1065,7 @@ void SysLogLib::writeLog(const std::string& logpath, const std::string& log_mess
         return;
     }
     std::string strLog = logpath;
-    if(strLog.back() != '\n'){
+    if(strLog.back() != '/'){
         strLog.append("/");
     }
     if (!std::filesystem::exists(strLog)) {
