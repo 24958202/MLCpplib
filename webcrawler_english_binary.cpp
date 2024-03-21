@@ -38,6 +38,64 @@ std::vector<std::string> get_missed_words(const std::string& word_missed_file_pa
 	missed_words = nl_j.ReadBinaryOne(word_missed_file_path);
 	return missed_words;
 }
+void check_missed_words(const std::vector<std::string>& miss_words, const std::vector<std::string>& words_checked, const std::unordered_map<std::string,std::string>& wordtypes, 
+const std::string& english_voc_path, const std::string& log_folder_path){
+	SysLogLib syslog_j;
+	libdict dic_j;
+	if(!miss_words.empty()){
+		for(const auto& mword : miss_words){
+			if(!words_checked.empty()){
+				auto it = std::find(words_checked.begin(), words_checked.end(), mword);
+				if (it == words_checked.end()) {
+					std::string strUrl = "https://dictionary.cambridge.org/dictionary/essential-american-english/";
+					strUrl.append(mword);
+					if(dic_j.check_word_onlineDictionary(
+					mword,
+					wordtypes,
+					english_voc_path,
+					log_folder_path
+					)==1){
+						syslog_j.writeLog(log_folder_path,"Successfully found the word: " + mword);
+					}
+					else{//try to look it up at the "https://www.merriam-webster.com/"
+						if(dic_j.check_word_onMerriamWebsterDictionary(
+							mword,
+							wordtypes,
+							english_voc_path,
+							log_folder_path
+						)==1){
+							syslog_j.writeLog(log_folder_path,"Successfully found the word: " + mword);
+						}
+					}
+				}
+			}
+			else{
+				std::string strUrl = "https://dictionary.cambridge.org/dictionary/essential-american-english/";
+				strUrl.append(mword);
+				if(dic_j.check_word_onlineDictionary(
+				mword,
+				wordtypes,
+				english_voc_path,
+				log_folder_path
+				)==1){
+					syslog_j.writeLog(log_folder_path,"Successfully found the word: " + mword);
+				}
+				else{//try to look it up at the "https://www.merriam-webster.com/"
+					if(dic_j.check_word_onMerriamWebsterDictionary(
+						mword,
+						wordtypes,
+						english_voc_path,
+						log_folder_path
+					)==1){
+						syslog_j.writeLog(log_folder_path,"Successfully found the word: " + mword);
+					}
+				}
+			}
+			//dic_j.look_for_past_participle_of_word("/home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
+			std::this_thread::sleep_for(std::chrono::seconds(3));//seconds 
+		}
+	}
+}
 void expend_english_voc(const std::string& folder_path){
 	/*
 		open the english txt folder
@@ -56,22 +114,21 @@ void expend_english_voc(const std::string& folder_path){
 		return;
 	}
 	/*
-		ini 
+		ini s
 		put the word checked in the checked list
 	*/
-	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/webUrls/english_voc.bin")){
-		words_checked = dic_j.get_english_voc_already_checked_in_db("/home/ronnieji/lib/db_tools/webUrls/english_voc.bin");
+	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/web/english_voc.bin")){
+		words_checked = dic_j.get_english_voc_already_checked_in_db("/home/ronnieji/lib/db_tools/web/english_voc.bin");
 	}
-	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/webUrls/missed_words.bin")){
-		words_missed = get_missed_words("/home/ronnieji/lib/db_tools/webUrls/missed_words.bin");
+	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/web/missed_words.bin")){
+		words_missed = get_missed_words("/home/ronnieji/lib/db_tools/web/missed_words.bin");
 	}
-	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/webUrls/words_not_found.bin")){
-		words_not_found = get_missed_words("/home/ronnieji/lib/db_tools/webUrls/words_not_found.bin");
+	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/web/words_not_found.bin")){
+		words_not_found = get_missed_words("/home/ronnieji/lib/db_tools/web/words_not_found.bin");
 	}
 	/*
 		put the word missed during the disconnection of the network
 	*/
-
 	//words_story_checked = get_non_ant_already_checked_in_db();
 	std::unordered_map<std::string,std::string> iniWordType;
 	if(std::filesystem::exists("/home/ronnieji/lib/lib/res/type_table.bin")){
@@ -84,6 +141,12 @@ void expend_english_voc(const std::string& folder_path){
 				}
 			}
 		}
+	}
+	/*
+		check missed words
+	*/
+	if(!words_missed.empty() && !words_checked.empty() && !iniWordType.empty()){
+		check_missed_words(words_missed,words_checked,iniWordType,"/home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
 	}
 	/*
 		read e-books from harddisk
@@ -137,7 +200,7 @@ void expend_english_voc(const std::string& folder_path){
 									if(dic_j.check_word_onlineDictionary(
 									strcheck,
 									iniWordType,
-									"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+									"/home/ronnieji/lib/db_tools/web/english_voc.bin",
 									"/home/ronnieji/lib/db_tools/log"
 									)==1){
 										words_checked.push_back(strcheck);
@@ -146,13 +209,13 @@ void expend_english_voc(const std::string& folder_path){
 										if(dic_j.check_word_onMerriamWebsterDictionary(
 											strcheck,
 											iniWordType,
-											"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+											"/home/ronnieji/lib/db_tools/web/english_voc.bin",
 											"/home/ronnieji/lib/db_tools/log"
 										)==1){
 											words_checked.push_back(strcheck);
 										}
 										else{//this word can not be found online
-											add_missed_words("/home/ronnieji/lib/db_tools/webUrls/words_not_found.bin",strcheck);
+											add_missed_words("/home/ronnieji/lib/db_tools/web/words_not_found.bin",strcheck);
 										}
 									}
                                 }
@@ -163,7 +226,7 @@ void expend_english_voc(const std::string& folder_path){
 								if(dic_j.check_word_onlineDictionary(
 								strcheck,
 								iniWordType,
-								"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+								"/home/ronnieji/lib/db_tools/web/english_voc.bin",
 								"/home/ronnieji/lib/db_tools/log"
 								)==1){
 									words_checked.push_back(strcheck);
@@ -172,17 +235,17 @@ void expend_english_voc(const std::string& folder_path){
 									if(dic_j.check_word_onMerriamWebsterDictionary(
 										strcheck,
 										iniWordType,
-										"/home/ronnieji/lib/db_tools/webUrls/english_voc.bin",
+										"/home/ronnieji/lib/db_tools/web/english_voc.bin",
 										"/home/ronnieji/lib/db_tools/log"
 									)==1){
 										words_checked.push_back(strcheck);
 									}
 									else{//this word can not be found online
-										add_missed_words("/home/ronnieji/lib/db_tools/webUrls/words_not_found.bin",strcheck);
+										add_missed_words("/home/ronnieji/lib/db_tools/web/words_not_found.bin",strcheck);
 									}
 								}
 							}
-							//dic_j.look_for_past_participle_of_word("home/ronnieji/lib/db_tools/webUrls/english_voc.bin","/home/ronnieji/lib/db_tools/log");
+							//dic_j.look_for_past_participle_of_word("/home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
 							std::this_thread::sleep_for(std::chrono::seconds(3));//seconds 
                         }
                         
@@ -228,7 +291,7 @@ int main(int argc, char* argv[]) {
 	expend_english_voc(folder_name);//->add_pass_terms_to_words_db()->check_missed_words_pass()
 	SysLogLib syslog_j;
 	libdict dic_j;
-	dic_j.look_for_past_participle_of_word("/home/ronnieji/lib/db_tools/webUrls/english_voc.bin","/home/ronnieji/lib/db_tools/log");
+	dic_j.look_for_past_participle_of_word("/home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
 	syslog_j.writeLog("/home/ronnieji/lib/db_tools/log","All jobs are done!");
     return 0;
 }
