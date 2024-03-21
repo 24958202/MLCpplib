@@ -12,11 +12,6 @@ class libdict{
         */
         std::vector<std::string> get_english_voc_already_checked_in_db(const std::string&);
         /*
-            para1:english_voc words,
-            para2: the word to look up
-        */
-        size_t if_already_checked(const std::vector<std::string>&, const std::string&);
-        /*
             callback function
         */
         using CallbackFunction = std::function<void(const std::vector<std::string>&, const std::unordered_map<std::string,std::string>&,const std::string&,const std::string&)>;

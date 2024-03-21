@@ -16,17 +16,7 @@ std::vector<std::string> libdict::get_english_voc_already_checked_in_db(const st
 			words.push_back(rev.word);
 		}
 	}
-	else{
-		std::cerr << "Could not find the english_voc.bin file!" << '\n';
-	}
 	return words;
-}
-size_t libdict::if_already_checked(const std::vector<std::string>& words_checked, const std::string& word_to_find){
-    auto it = std::find(words_checked.begin(), words_checked.end(), word_to_find);
-    if (it != words_checked.end()) {
-        return 1;
-    }
-    return 0;
 }
 void libdict::callback_Function(const std::vector<std::string>& result, const std::unordered_map<std::string,std::string>& word_types,const std::string& english_voc_path, const std::string& log_folder_path){
     SysLogLib sys_j;
@@ -38,28 +28,23 @@ void libdict::callback_Function(const std::vector<std::string>& result, const st
         sys_j.writeLog(log_folder_path,"English: " + result[2]);
         sys_j.writeLog(log_folder_path,"Chinese: " + result[3]);
         sys_j.writeLog(log_folder_path,"-------------------------------------------------------------");
-        std::string word_type_abv;
-        if(!word_types.empty()){
-			for(const auto& wt : word_types){
-				if(wt.first == result[1]){
-					word_type_abv = wt.second;
-				}
-			}
-			if(word_type_abv.empty()){
-				sys_j.writeLog(log_folder_path,"Word type: " + result[1] + " did not find in type_table db." );
-            	word_type_abv = "NF";
-			}
-        }
-        else{
-            sys_j.writeLog(log_folder_path,"Word type: " + result[1] + " did not find in type_table db." );
-            word_type_abv = "NF";
-        }
-		
+
 		Mdatatype mt;
 		mt.word = result[0];
-		mt.word_type = word_type_abv;
-		mt.meaning_en = result[2];
-		mt.meaning_zh = result[3];
+		mt.word_type = result[1];
+		if(!result[2].empty()){
+			mt.meaning_en = result[2];
+		}
+		else{
+			mt.meaning_en = "NF";
+		}
+		if(!result[3].empty()){
+			mt.meaning_zh = result[3];
+		}
+		else{
+			mt.meaning_zh = "NF";
+		}
+		
 		/*
 			overwrite the word
 		*/
@@ -75,7 +60,6 @@ void libdict::callback_Function(const std::vector<std::string>& result, const st
 				}
 			}
 		}
-		
 		/*
 			add the new one
 		*/
@@ -204,7 +188,7 @@ size_t libdict::check_word_onMerriamWebsterDictionary(const std::string& inputSt
 	if(!split_the_whole_page_by_the_word.empty()){
 		for(const auto& split_word : split_the_whole_page_by_the_word){
 			/*
-				fetch the dictionary return from every split html
+				fetch the dictionary return from every split html "<a class=\"important-blue-link\" href=\"/dictionary/[^>]*\">(.*?)</a>"
 			*/
 			std::vector<std::string> word_types = weblib_j.findAllWordsBehindSpans(split_word,"<a class=\"important-blue-link\" href=\"/dictionary/[^>]*\">(.*?)</a>");
 			std::vector<std::string> english_meanings =  weblib_j.findAllWordsBehindSpans(split_word,"<span class=\"dtText\">(.*?)</span>");
