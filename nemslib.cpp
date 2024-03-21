@@ -1065,7 +1065,7 @@ void SysLogLib::writeLog(const std::string& logpath, const std::string& log_mess
         return;
     }
     std::string strLog = logpath;
-    if(strLog.back() != '/'){
+    if(strLog.back() != '\n'){
         strLog.append("/");
     }
     if (!std::filesystem::exists(strLog)) {
@@ -1573,9 +1573,9 @@ void nlp_lib::WriteBinaryOne_from_txt(const std::string& str_txt_file_path){
     */
     std::string output_file_path = str_txt_file_path;
     output_file_path.append("_.bin");
-    std::ofstream outfile(output_file_path, std::ios::out | std::ios::binary);
+    std::ofstream outfile(output_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!outfile.is_open()) {
-        outfile.open(output_file_path,std::ios::out | std::ios::binary);
+        outfile.open(output_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
     }
     uint32_t total_size = static_cast<uint32_t>(getTxtLines.size());
     outfile.write(reinterpret_cast<const char*>(&total_size), sizeof(uint32_t));
@@ -1599,9 +1599,9 @@ void nlp_lib::WriteBinaryOne_from_std(const std::vector<std::string>& dataList, 
     /*
         start creating binary file and output
     */
-    std::ofstream outfile(output_file_path, std::ios::out | std::ios::binary);
+    std::ofstream outfile(output_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!outfile.is_open()) {
-        outfile.open(output_file_path, std::ios::out | std::ios::binary);
+        outfile.open(output_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
     }
     uint32_t total_size = static_cast<uint32_t>(dataList.size());
     outfile.write(reinterpret_cast<const char*>(&total_size), sizeof(uint32_t));
