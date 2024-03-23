@@ -12,8 +12,7 @@
 #include <thread>
 #include <chrono>
 #include "../lib/lib/nemslib.h"
-//#include <SDL2/SDL.h>
-//#include <SDL2/SDL_mixer.h>
+
 // Function to extract the file name from a path
 struct CurrentDateTime{
     std::string current_date;
@@ -55,14 +54,19 @@ void logEvent(const std::string& event, const std::string& folder) {
     nl_j.AppendBinaryOne(strLog,strMsg);
 }
 
-// void playSound() {
-//     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
-//     Mix_Music *sound = Mix_LoadMUS("sound.mp3");
-//     Mix_PlayMusic(sound, 1);
-// }
+void playSound() {
+    std::string filePath = "/home/ronnieji/watchdog/alam.mp3";
+    // Construct the command by appending the file path
+    std::string command = "mpg123 " + filePath;
+    // Execute the command
+    int result = system(command.c_str());
+    if (result != 0) {
+        std::cerr << "Failed to play the file with mpg123." << std::endl;
+        // Handle the error accordingly
+    }
+}
 
 int main() {
-    //SDL_Init(SDL_INIT_AUDIO);
     std::vector<std::string> log_events_binary;
     int fd = inotify_init();
     if (fd < 0) {
@@ -99,20 +103,18 @@ int main() {
 
             if (event->mask & IN_MODIFY) {
                 logEvent("File modified", fullPath + " >> "  + std::string(event->name));
-                //playSound();
+                playSound();
             }
             if (event->mask & IN_CREATE) {
                 logEvent("File created", fullPath + " >> "  + std::string(event->name));
-                //playSound();
+                playSound();
             }
             if (event->mask & IN_DELETE) {
                 logEvent("File deleted", fullPath + " >> "  + std::string(event->name));
-                //playSound();
+                playSound();
             }
         }
         close(fd);
     }
-    //Mix_Quit();
-    //SDL_Quit();
     return 0;
 }
