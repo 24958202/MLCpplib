@@ -3,7 +3,10 @@
 #include <fstream>
 #include <sstream>
 #include <sys/inotify.h>
+#include <cstdlib> // For std::system
+#include <limits.h> // For PATH_MAX
 #include <unistd.h>
+#include <libgen.h>
 #include <ctime>
 #include <filesystem>
 #include <thread>
@@ -11,6 +14,7 @@
 #include "../lib/lib/nemslib.h"
 //#include <SDL2/SDL.h>
 //#include <SDL2/SDL_mixer.h>
+// Function to extract the file name from a path
 struct CurrentDateTime{
     std::string current_date;
     std::string current_time;
@@ -32,7 +36,8 @@ void logEvent(const std::string& event, const std::string& folder) {
     time_t now = time(0);
     tm *ltm = localtime(&now);
     ss << "[" << ltm->tm_hour << ":" << ltm->tm_min << ":" << ltm->tm_sec << "] " << event << " in folder: " << folder << '\n';
-    syslog_j.writeLog(strLog,ss.str());
+    std::string strMsg = ss.str();
+    syslog_j.writeLog(strLog,strMsg);
     if(strLog.back() != '/'){
         strLog.append("/");
     }
@@ -40,14 +45,14 @@ void logEvent(const std::string& event, const std::string& folder) {
         try {
             std::filesystem::create_directory(strLog);
         } catch (const std::exception& e) {
-            std::cout << "Error creating log folder: " << e.what() << std::endl;
+            std::cout << "Error creating log folder: " << e.what() << '\n';
             return;
         }
     }
     CurrentDateTime currentDateTime = getCurrentDateTime();
     strLog.append(currentDateTime.current_date);
     strLog.append(".bin");
-    nl_j.AppendBinaryOne(strLog,ss.str());
+    nl_j.AppendBinaryOne(strLog,strMsg);
 }
 
 // void playSound() {
@@ -66,41 +71,47 @@ int main() {
     }
     nlp_lib nl_j;
     std::vector<std::string> watch_folders = nl_j.ReadBinaryOne("/home/ronnieji/watchdog/watchfolder.bin");
+    std::map<unsigned int, std::string> wdToFolderPath;
+    // Setting up watches and storing wd and folder path in the map
     if(!watch_folders.empty()){
-        for(const auto& wf : watch_folders){
-            int wd = inotify_add_watch(fd, wf.c_str(), IN_MODIFY | IN_CREATE | IN_DELETE);
-            if (wd == -1) {
-                std::cerr << "Error adding watch for folder: " << wf << std::endl;
+        std::cout << "Watchdog is running..." << '\n';
+        for (const auto& folderPath : watch_folders) {
+            int wd = inotify_add_watch(fd, folderPath.c_str(), IN_MODIFY | IN_CREATE | IN_DELETE);
+            if (wd >= 0) {
+                wdToFolderPath[wd] = folderPath;
             }
         }
-    }
-    else{
-        std::cerr << "Watch_folders is empty!" << '\n';
-    }
+        char buf[4096];
+        ssize_t len;
+        struct inotify_event *event;
+        while (true) {
+            len = read(fd, buf, sizeof(buf));
+            event = reinterpret_cast<struct inotify_event *>(buf);
+            std::string folderPath;
+            if(wdToFolderPath.find(event->wd) != wdToFolderPath.end()){
+                folderPath = wdToFolderPath[event->wd];
+            }
+            else{
+                folderPath = "Unknown_folder";
+            }
+            std::string eventName = (event->len > 0) ? std::string(event->name) : "Unknown";
+            std::string fullPath = folderPath + "/" + eventName;
 
-    char buf[4096];
-    ssize_t len;
-    struct inotify_event *event;
-
-    while (true) {
-        len = read(fd, buf, sizeof(buf));
-        event = reinterpret_cast<struct inotify_event *>(buf);
-
-        if (event->mask & IN_MODIFY) {
-            logEvent("File modified", event->name);
-            //playSound();
+            if (event->mask & IN_MODIFY) {
+                logEvent("File modified", fullPath + " >> "  + std::string(event->name));
+                //playSound();
+            }
+            if (event->mask & IN_CREATE) {
+                logEvent("File created", fullPath + " >> "  + std::string(event->name));
+                //playSound();
+            }
+            if (event->mask & IN_DELETE) {
+                logEvent("File deleted", fullPath + " >> "  + std::string(event->name));
+                //playSound();
+            }
         }
-        if (event->mask & IN_CREATE) {
-            logEvent("File created", event->name);
-            //playSound();
-        }
-        if (event->mask & IN_DELETE) {
-            logEvent("File deleted", event->name);
-            //playSound();
-        }
+        close(fd);
     }
-
-    close(fd);
     //Mix_Quit();
     //SDL_Quit();
     return 0;
