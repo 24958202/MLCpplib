@@ -234,7 +234,7 @@ void get_one_page_urls(const std::string& url){
             strReturn = match[0].str();
             strReturn = std::string(wSpider_j.str_trim(strReturn));
             if(!strReturn.empty()){
-                indexedNames.push_back({match.position(1), strReturn});
+                indexedNames.push_back({match.position(0), strReturn});
                 searchStart = match.suffix().first;
             }
             else{
