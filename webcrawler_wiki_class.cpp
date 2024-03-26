@@ -314,7 +314,8 @@ void start_crawlling(const std::string& strurl){
 		if(!getContent.empty()){
 			std::vector<std::string> content_tokenized_by_sentences = jsl_j.split_sentences(getContent);
 			if(!content_tokenized_by_sentences.empty()){
-				std::string get_title = content_tokenized_by_sentences[0];
+				std::string get_title = content_tokenized_by_sentences[1];
+				get_title = jsl_j.trim(get_title);
 				std::string get_page_title = get_title_content(htmlContent);
 				std::vector<std::string> get_page_title_split; 
 				if(!get_page_title.empty()){
