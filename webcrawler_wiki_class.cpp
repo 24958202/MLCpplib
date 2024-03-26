@@ -352,7 +352,8 @@ void start_crawlling(const std::string& strurl){
 						}
 						std::string str_file_saved = str_folder_path;
 						str_file_saved.append("/");
-						str_file_saved.append(get_page_title_split[0]);
+						get_title = = nem_j.removeEnglishPunctuation_training(get_title);
+						str_file_saved.append(get_title);
 						str_file_saved.append(".txt");
 						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Saveing the file >> ");
 						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", str_file_saved);
@@ -362,8 +363,6 @@ void start_crawlling(const std::string& strurl){
 						}
 						file << getContent << '\n';
 						file.close();
-						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Content saved: ");
-						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", getContent);
 						std::string str_txt = ".txt";
 						str_file_saved = jsl_j.str_replace(str_file_saved,str_txt,".bin");
 						nl_j.AppendBinaryOne(str_file_saved,getContent);
