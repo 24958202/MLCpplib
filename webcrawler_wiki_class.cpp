@@ -265,9 +265,13 @@ void get_one_page_urls(const std::string& url){
 	}
 }
 void start_crawlling(const std::string& strurl){
-	std::cout << "Start getting the whole sites urls..." << '\n';
+	SysLogLib syslog_j;
+	Jsonlib jsl_j;
+	nlp_lib nl_j;
+	nemslib nem_j;
+	syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Start getting the whole sites urls...");
 	get_one_page_urls(strurl);
-	std::cout << "Finished getting the site's urls and saved the urls to the file." << '\n';
+	syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Finished getting the site's urls and saved the urls to the file.");
 	/*
 		start crawlling using the whole site's url list
 	*/
@@ -307,51 +311,74 @@ void start_crawlling(const std::string& strurl){
 		std::cout << "Start getting the content of " << gpr << std::endl;
 		std::string htmlContent = getRawHtml(gpr);
 		std::string getContent = get_content_updated(htmlContent);
-		Jsonlib jsl_j;
 		if(!getContent.empty()){
 			std::vector<std::string> content_tokenized_by_sentences = jsl_j.split_sentences(getContent);
 			if(!content_tokenized_by_sentences.empty()){
 				std::string get_title = content_tokenized_by_sentences[0];
 				std::string get_page_title = get_title_content(htmlContent);
-				std::vector<std::string> get_page_title_split = jsl_j.splitString(get_page_title,'|'); //"<title>Hinduism | Origin, History, Beliefs, Gods, & Facts | Britannica</title>"
+				std::vector<std::string> get_page_title_split; 
+				if(!get_page_title.empty()){
+					get_page_title_split = jsl_j.splitString(get_page_title,'|'); //"<title>Hinduism | Origin, History, Beliefs, Gods, & Facts | Britannica</title>"
+				}
 				std::string str_folder_path; 
-				for(auto& gpts : get_page_title_split){
-					gpts = jsl_j.trim(gpts);
-					auto it = std::find(str_catalogs_wiki.begin(),str_catalogs_wiki.end(),gpts);
-					/*
-						if the catalog does not exists in the list
-					*/
-					if(it == str_catalogs_wiki.end()){ 
-						str_catalogs_wiki.push_back(gpts);//add to the list
+				str_folder_path = "/home/ronnieji/corpus/wiki_catag/";
+				if(!get_page_title_split.empty()){
+					for(auto& gpts : get_page_title_split){
+						gpts = jsl_j.trim(gpts);
+						gpts = nem_j.removeEnglishPunctuation_training(gpts);
+						auto it = std::find(str_catalogs_wiki.begin(),str_catalogs_wiki.end(),gpts);
 						/*
-							if the folder does not exist, create the folder
+							if the catalog does not exists in the list
 						*/
-						str_folder_path = "/home/ronnieji/corpus/wiki_catag/";
-						str_folder_path.append(gpts);
-						if(!std::filesystem::exists(str_folder_path)){
-							std::filesystem::create_directory(str_folder_path);
-							// Get the permissions of the directory
-							std::filesystem::perms permissions = std::filesystem::status(str_folder_path).permissions();
-							// Add write and execute permissions for all users
-							permissions |= std::filesystem::perms::owner_write | std::filesystem::perms::owner_exec;
-							permissions |= std::filesystem::perms::group_write | std::filesystem::perms::group_exec;
-							permissions |= std::filesystem::perms::others_write | std::filesystem::perms::others_exec;
-							// Set the new permissions
-							std::filesystem::permissions(str_folder_path, permissions);
+						if(it == str_catalogs_wiki.end()){ 
+							str_catalogs_wiki.push_back(gpts);//add to the list
+							/*
+								if the folder does not exist, create the folder
+							*/
+							str_folder_path.append(gpts);
+							if(!std::filesystem::exists(str_folder_path)){
+								syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Creating folder: >>");
+								syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", str_folder_path);
+								std::filesystem::create_directory(str_folder_path);
+								// Get the permissions of the directory
+								std::filesystem::perms permissions = std::filesystem::status(str_folder_path).permissions();
+								// Add write and execute permissions for all users
+								permissions |= std::filesystem::perms::owner_write | std::filesystem::perms::owner_exec;
+								permissions |= std::filesystem::perms::group_write | std::filesystem::perms::group_exec;
+								permissions |= std::filesystem::perms::others_write | std::filesystem::perms::others_exec;
+								// Set the new permissions
+								std::filesystem::permissions(str_folder_path, permissions);
+							}
 						}
+						std::string str_file_saved = str_folder_path;
+						str_file_saved.append("/");
+						str_file_saved.append(get_page_title_split[0]);
+						str_file_saved.append(".txt");
+						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Saveing the file >> ");
+						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", str_file_saved);
+						std::ofstream file(str_file_saved,std::ios::out);
+						if (!file.is_open()) {
+							file.open(str_file_saved,std::ios::out);
+						}
+						file << getContent << '\n';
+						file.close();
+						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Content saved: ");
+						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", getContent);
+						std::string str_txt = ".txt";
+						str_file_saved = jsl_j.str_replace(str_file_saved,str_txt,".bin");
+						nl_j.AppendBinaryOne(str_file_saved,getContent);
+						syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Successfully saved the file!");
 					}
-					std::string str_file_saved = str_folder_path.append(get_title);
-					str_file_saved.append(".txt");
-					std::ofstream file(str_file_saved,std::ios::out);
-					if (!file.is_open()) {
-						file.open(str_file_saved,std::ios::out);
-					}
-					file << getContent << '\n';
-					file.close();
-					str_file_saved.append("_.bin");
-					nlp_lib nl_j;
-					nl_j.AppendBinaryOne(str_file_saved,getContent);
-
+				}
+				else{
+					/*
+						write the whole title as the folder name
+					*/
+					str_folder_path.append("Britannica/");
+					get_title = nem_j.removeEnglishPunctuation_training(get_title);
+					str_folder_path.append(get_title);
+					str_folder_path.append(".txt");
+					nl_j.AppendBinaryOne(str_folder_path,getContent);
 				}
 			}
 			/*
