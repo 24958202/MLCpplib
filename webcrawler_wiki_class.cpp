@@ -323,8 +323,8 @@ void start_crawlling(const std::string& strurl){
 				}
 				std::string str_folder_path; 
 				str_folder_path = "/home/ronnieji/corpus/wiki_catag/";
-				if(!get_page_title_split.empty() && get_page_title_split.size()>=2){
-					std::string str_folder_name = get_page_title_split[1];
+				if(!get_page_title_split.empty()){
+					std::string str_folder_name = get_page_title_split[0];
 					str_folder_name = jsl_j.trim(str_folder_name);
 					jsl_j.toLower(str_folder_name);
 					str_folder_name = nem_j.removeEnglishPunctuation_training(str_folder_name);
