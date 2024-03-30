@@ -278,13 +278,20 @@ class nlp_lib{
         /*
             language pre-processing tools
         */
-        /*
+	/*
+            std::vector<std::string> vocA, std::vector<std::string> vocB;
+            Remove vocA from vocB
+            para1: vocA
+            para2: vocB
+        */
+        void remove_vocA_from_vocB(std::vector<std::string>&, std::vector<std::string>&);
+        void writeBinaryFile(const std::vector<Mdatatype>&, const std::string&);// write the binaryfile
+        std::optional<Mdatatype> readValueFromBinaryFile(const std::string&, const std::string&);//read the binary file-(key-value)
+	/*
 			get_english_voc_and_create_bin : input parameter sqlite3 db file path
             binary file creater can use: exp_input.cpp
         */
         void get_english_voc_and_create_bin(const std::string&);//put the db data into binary file
-        void writeBinaryFile(const std::vector<Mdatatype>&, const std::string&);// write the binaryfile
-        std::optional<Mdatatype> readValueFromBinaryFile(const std::string&, const std::string&);//read the binary file-(key-value)
         std::vector<Mdatatype> readBinaryFile(const std::string&);
         void writeBinaryFileForNLP(const std::string&);
         std::unordered_map<std::string,std::string> get_binary_file_for_nlp(const std::string&);
