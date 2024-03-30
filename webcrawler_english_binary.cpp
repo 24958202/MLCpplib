@@ -60,7 +60,7 @@ void expend_english_voc(const std::string& folder_path){
 		put the word checked in the checked list
 	*/
 	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/web/english_voc.bin")){
-		words_checked = dic_j.get_english_voc_already_checked_in_db("home/ronnieji/lib/db_tools/web/english_voc.bin");
+		words_checked = dic_j.get_english_voc_already_checked_in_db("/home/ronnieji/lib/db_tools/web/english_voc.bin");
 	}
 	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/web/missed_words.bin")){
 		words_missed = get_missed_words("/home/ronnieji/lib/db_tools/web/missed_words.bin");
@@ -163,7 +163,7 @@ void expend_english_voc(const std::string& folder_path){
 								if(dic_j.check_word_onlineDictionary(
 								strcheck,
 								iniWordType,
-								"home/ronnieji/lib/db_tools/web/english_voc.bin",
+								"/home/ronnieji/lib/db_tools/web/english_voc.bin",
 								"/home/ronnieji/lib/db_tools/log"
 								)==1){
 									words_checked.push_back(strcheck);
@@ -182,7 +182,7 @@ void expend_english_voc(const std::string& folder_path){
 									}
 								}
 							}
-							//dic_j.look_for_past_participle_of_word("home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
+							//dic_j.look_for_past_participle_of_word("/home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
 							std::this_thread::sleep_for(std::chrono::seconds(3));//seconds 
                         }
                         
