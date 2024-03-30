@@ -1293,6 +1293,11 @@ std::chrono::milliseconds ProcessTimeSpent::time_end() {
 /*
     nlp_lib--start
 */
+void nlp_lib::remove_vocA_from_vocB(std::vector<std::string>& vocA, std::vector<std::string>& vocB){
+    vocB.erase(std::remove_if(vocB.begin(), vocB.end(), [&](const std::string& item) {
+        return std::find(vocA.begin(), vocA.end(), item) != vocA.end();
+    }), vocB.end());
+}
 /*
     read vocabulary from db and write into a binary file
 */
