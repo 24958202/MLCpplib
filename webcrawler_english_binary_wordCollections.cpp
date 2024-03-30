@@ -119,7 +119,7 @@ void expend_english_voc(const std::string& folder_path){
 				words_checked.push_back(av);
 			}
 			else{//this word can not be found online
-				add_missed_words("/home/ronnieji/lib/db_tools/web/words_not_found.bin",av);
+				add_missed_words("/home/ronnieji/lib/db_tools/web/missed_words.bin",av);
 			}
 		}
 		//dic_j.look_for_past_participle_of_word("home/ronnieji/lib/db_tools/web/english_voc.bin","/home/ronnieji/lib/db_tools/log");
@@ -148,8 +148,8 @@ void get_all_voc(const std::string& str_folder_path){
                 while (std::getline(file, line)) {
 					if(!line.empty()){
 						line = jsl_j.trim(line);
-						line = nem_j.removeEnglishPunctuation_training(line);
 						jsl_j.toLower(line);
+						line = nem_j.removeEnglishPunctuation_training(line);
 						std::vector<std::string> line_split = nem_j.tokenize_en(line);
 						if(!line_split.empty()){
 							for(auto& ls : line_split){
