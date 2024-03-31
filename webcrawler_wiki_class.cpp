@@ -386,9 +386,9 @@ void start_crawlling(const std::string& strurl){
 						// Set the new permissions
 						std::filesystem::permissions(str_folder_path, permissions);
 					}
-					get_title = nem_j.removeEnglishPunctuation_training(get_title);
 					get_title = jsl_j.trim(get_title);
 					jsl_j.toLower(get_title);
+					get_title = nem_j.removeEnglishPunctuation_training(get_title);
 					str_folder_path.append(get_title);
 					str_folder_path.append(".txt");
 					std::ofstream file_out(str_folder_path,std::ios::out);{
