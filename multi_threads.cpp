@@ -167,3 +167,79 @@ int main() {
 
     return 0;
 }
+
+/*
+    multi-thread threading pool
+*/
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <thread>
+#include <atomic>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+
+std::atomic<bool> foundResult(false);
+std::queue<std::string> filesQueue;
+std::mutex queueMutex;
+std::condition_variable cv;
+
+void searchInFile(const std::string& filename, const std::string& searchTerm) {
+    std::ifstream inputFile(filename);
+    std::string line;
+
+    while (std::getline(inputFile, line)) {
+        if (line.find(searchTerm) != std::string::npos) {
+            std::cout << "Search term found in file " << filename << ": " << line << std::endl;
+            foundResult = true;
+            break;
+        }
+    }
+
+    inputFile.close();
+}
+
+void workerThread(const std::string& searchTerm) {
+    while (true) {
+        std::string filename;
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            if (filesQueue.empty()) {
+                break;
+            }
+            filename = filesQueue.front();
+            filesQueue.pop();
+        }
+        
+        searchInFile(filename, searchTerm);
+        
+        if (foundResult) {
+            break; // Terminate all threads if result is found
+        }
+    }
+}
+
+int main() {
+    const std::vector<std::string> files = {"file1.txt", "file2.txt", "file3.txt", "file4.txt", "file5.txt",
+                                            "file6.txt", "file7.txt", "file8.txt", "file9.txt", "file10.txt"};
+    const std::string searchTerm = "search_term";
+    
+    for (const auto& file : files) {
+        filesQueue.push(file);
+    }
+
+    const int numThreads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+
+    for (int i = 0; i < numThreads; ++i) {
+        threads.emplace_back(workerThread, searchTerm);
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    return 0;
+}
