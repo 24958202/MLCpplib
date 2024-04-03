@@ -141,7 +141,7 @@ void get_all_voc(const std::string& str_folder_path){
 	*/
 	std::string str_all_voc_path = "/home/ronnieji/lib/db_tools/web/all_voc.bin";
 	if(std::filesystem::exists(str_all_voc_path)){
-		all_voc = nl_j.ReadBinaryOne("/home/ronnieji/lib/db_tools/web/all_voc.bin");
+		all_voc = nl_j.ReadBinaryOne(str_all_voc_path);
 	}
 	for (const auto& entry : std::filesystem::directory_iterator(str_folder_path)) {
         if (entry.is_regular_file() && entry.path().extension() == ".txt") {
