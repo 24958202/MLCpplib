@@ -156,11 +156,6 @@ void get_one_page_urls(const std::string& url){
 				erase from str_stored_urls
 			*/
 			remove_str_stored_urls(url);
-			/*
-				update the binary file
-			*/
-			nl_j.WriteBinaryOne_from_std(str_stored_urls,"/home/ronnieji/lib/db_tools/webUrls/crawlled_urls.bin");
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Updating the binary file crawlled_urls.bin...");
 			if(!str_stored_urls.empty()){
 				get_one_page_urls(str_stored_urls[0]);
 				return;
@@ -294,6 +289,11 @@ void start_crawlling(const std::string& strurl){
 		if(it != str_crawelled_urls.end()){
 			//if already crawelled, remove from the list and move next
 			remove_str_stored_urls(gpr);
+			/*
+				update the binary file
+			*/
+			nl_j.WriteBinaryOne_from_std(str_stored_urls,"/home/ronnieji/lib/db_tools/webUrls/crawlled_urls.bin");
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Updating the binary file crawlled_urls.bin...");
 			if(!str_stored_urls.empty()){
 				start_crawlling(str_stored_urls[0]);
 				return;
@@ -308,6 +308,11 @@ void start_crawlling(const std::string& strurl){
 		if(it_b != str_broken_urls.end()){
 			//if already crawelled, remove from the list and move next
 			remove_str_stored_urls(gpr);
+			/*
+				update the binary file
+			*/
+			nl_j.WriteBinaryOne_from_std(str_stored_urls,"/home/ronnieji/lib/db_tools/webUrls/broken_urls.bin");
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Updating the binary file broken.bin...");
 			if(!str_stored_urls.empty()){
 				start_crawlling(str_stored_urls[0]);
 				return;
