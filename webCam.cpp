@@ -24,6 +24,8 @@ int main() {
     }
 
     cv::Mat frame;
+    cv::namedWindow("Face Detection", cv::WINDOW_NORMAL); // Create a resizable window
+    cv::resizeWindow("Face Detection", 2560, 1440); // Set window size to match screen resolution
     while (true) {
         cap >> frame; // Capture frame from webcam
 
