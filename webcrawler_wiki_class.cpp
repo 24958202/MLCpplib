@@ -156,6 +156,11 @@ void get_one_page_urls(const std::string& url){
 				erase from str_stored_urls
 			*/
 			remove_str_stored_urls(url);
+			/*
+				update the binary file
+			*/
+			nl_j.WriteBinaryOne_from_std(str_stored_urls,"/home/ronnieji/lib/db_tools/webUrls/crawlled_urls.bin");
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Updating the binary file crawlled_urls.bin...");
 			if(!str_stored_urls.empty()){
 				get_one_page_urls(str_stored_urls[0]);
 				return;
