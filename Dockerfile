@@ -78,11 +78,6 @@ RUN cd ./lib/cpp-httplib-master && \
 #COPY . /app
 
 #install opencv
-
-
-# Install minimal prerequisites
-RUN apt update && apt install -y cmake g++ wget unzip
-
 RUN cd ./lib/opencv && \
 # Download and unpack OpenCV sources
 # Note: It's better to do this in one RUN command to reduce image layers
