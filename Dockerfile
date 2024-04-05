@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential \
     g++ \
+    cmake \
     autoconf \
     pkg-config \
     ca-certificates \
@@ -41,16 +42,6 @@ RUN apt-get update && apt-get install -y \
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
-
-# Install CMake
-RUN cd /tmp && \
-    wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz && \
-    tar xzf cmake-${CMAKE_VERSION}.tar.gz && \
-    cd cmake-${CMAKE_VERSION} && \
-    ./bootstrap && \
-    make -j${NUM_JOBS} && \
-    make install && \
-    rm -rf /tmp/*
 
 # Install Boost
 # https://www.boost.org/doc/libs/1_80_0/more/getting_started/unix-variants.html
