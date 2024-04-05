@@ -43,33 +43,37 @@ ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 
-# Install Boost
-# https://www.boost.org/doc/libs/1_80_0/more/getting_started/unix-variants.html
-RUN cd /tmp && \
-    BOOST_VERSION_MOD=$(echo $BOOST_VERSION | tr . _) && \
-    wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_MOD}.tar.bz2 && \
-    tar --bzip2 -xf boost_${BOOST_VERSION_MOD}.tar.bz2 && \
-    cd boost_${BOOST_VERSION_MOD} && \
+# Download and unpack Boost
+RUN wget -O boost_1_84_0.zip https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.zip && \
+    unzip boost_1_84_0.zip && \
+    rm boost_1_84_0.zip
+
+# Build and install Boost
+RUN cd boost_1_84_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 install && \
     rm -rf /tmp/*
- 
+
 # Install Eigen
-RUN cd ./lib/eigen-3.4.0 && \
+# Copy the Eigen library source code into the Docker image
+COPY ./libs/eigen-3.4.0 /libs/eigen-3.4.0
+RUN cd ./libs/eigen-3.4.0 && \
     mkdir -p build && cd build && \
     cmake .. && \
     make && \
     make install .. 
 
 # Install Google Gumbo Parser
-RUN cd ./lib/google-gumbo-parser-3973c58 && \
+COPY ./libs/google-gumbo-parser-3973c58 /libs/google-gumbo-parser-3973c58
+RUN cd ./libs/google-gumbo-parser-3973c58 && \
     ./autogen.sh && \
     ./configure && \
     make && \
     make install ..
 
 # Install cpp-httplib
-RUN cd ./lib/cpp-httplib-master && \
+COPY ./libs/cpp-httplib-master /libs/cpp-httplib-master
+RUN cd ./libs/cpp-httplib-master && \
     mkdir -p build && cd build && \
     cmake .. && \
     make && \
@@ -78,10 +82,11 @@ RUN cd ./lib/cpp-httplib-master && \
 #COPY . /app
 
 #install opencv
-RUN cd ./lib/opencv && \
+COPY ./libs/opencv /libs/opencv
+RUN cd ./libs/opencv && \
 # Download and unpack OpenCV sources
 # Note: It's better to do this in one RUN command to reduce image layers
-RUN wget -O /opencv.zip https://github.com/opencv/opencv/archive/4.x.zip && \
+    wget -O /opencv.zip https://github.com/opencv/opencv/archive/4.x.zip && \
     unzip /opencv.zip -d / && \
     mkdir -p /build-opencv && cd /build-opencv && \
     cmake /opencv-4.x && \
