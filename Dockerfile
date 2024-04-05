@@ -94,22 +94,23 @@ RUN cd ./libs/opencv && \
     cd /
 
 #build foilders in dbtools
-RUN mkdir -p /home/ronnieji/lib/db_tools/log && \
-    /home/ronnieji/lib/db_tools/res && \
-    /home/ronnieji/lib/db_tools/web && \
-    /home/ronnieji/lib/db_tools/webUrls && \
-    /home/ronnieji/lib/db_tools/wikiLog && \
-    /home/ronnieji/corpus/wiki_catag && \
-    /home/ronnieji/lib/lib/res
+RUN mkdir -p /home/ronnieji/lib/db_tools/log \
+             /home/ronnieji/lib/db_tools/res \
+             /home/ronnieji/lib/db_tools/web \
+             /home/ronnieji/lib/db_tools/webUrls \
+             /home/ronnieji/lib/db_tools/wikiLog \
+             /home/ronnieji/corpus/wiki_catag \
+             /home/ronnieji/lib/lib/res
 
 #lock these folders
-RUN chmod u-w /home/ronnieji/lib/db_tools/log && \
-    /home/ronnieji/lib/db_tools/res && \
-    /home/ronnieji/lib/db_tools/web && \
-    /home/ronnieji/lib/db_tools/webUrls && \
-    /home/ronnieji/lib/db_tools/wikiLog && \
-    /home/ronnieji/corpus/wiki_catag && \
-    /home/ronnieji/lib/lib/res
+RUN chmod u-w /home/ronnieji/lib/db_tools/log \
+              /home/ronnieji/lib/db_tools/res \
+              /home/ronnieji/lib/db_tools/web \
+              /home/ronnieji/lib/db_tools/webUrls \
+              /home/ronnieji/lib/db_tools/wikiLog \
+              /home/ronnieji/corpus/wiki_catag \
+              /home/ronnieji/lib/lib/res
+
 # Set the working directory to /home/ronnieji/lib/db_tools
 # Note: If this directory depends on content from the host, ensure it's copied into the image
 WORKDIR /home/ronnieji/lib/db_tools
