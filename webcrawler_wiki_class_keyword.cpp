@@ -354,6 +354,7 @@ void start_crawlling(const std::string& strurl){
 							/*
 								if the folder does not exist, create the folder
 							*/
+							str_folder_path = "/home/ronnieji/corpus/wiki_catag/";
 							str_folder_path.append(str_folder_name);
 							if(!std::filesystem::exists(str_folder_path)){
 								syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", "Creating folder: >>");
