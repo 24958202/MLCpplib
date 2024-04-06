@@ -1,5 +1,5 @@
 #!/bin/bash
-# run chmod +x reinstall.sh before running the script
+#run chmod +x reinstall.sh before running the script
 # Avoid prompts from apt
 export DEBIAN_FRONTEND=noninteractive
 
@@ -102,4 +102,3 @@ chmod u-w /home/$USER/lib/db_tools/log \
           /home/$USER/lib/lib/res
 
 echo "Setup complete."
-
