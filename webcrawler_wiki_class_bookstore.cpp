@@ -191,16 +191,22 @@ void get_one_page_urls(const std::string& url){
             strReturn = match.str(1);
             strReturn = std::string(wSpider_j.str_trim(strReturn));
             if(!strReturn.empty()){
-				std::string str_booklink = "https://www.gutenberg.org";
-				if(strReturn.substr(0,1) != "/"){
-					strReturn = "/" + strReturn;
+				std::string str_booklink;
+				if(strReturn.find("http") == std::string::npos){
+					str_booklink = "https://www.gutenberg.org";
+					if(strReturn.substr(0,1) != "/"){
+						strReturn = "/" + strReturn;
+					}
+					str_booklink.append(strReturn);
 				}
-				str_booklink.append(strReturn);
+				else{
+					str_booklink = strReturn;
+				}
                 indexedNames.push_back({match.position(0), str_booklink});
                 searchStart = match.suffix().first;
             }
             else{
-            	std::cout << "strReturn is empty!" << std::endl;
+            	std::cout << "strReturn is empty! Looking for next link..." << std::endl;
             }
         }
         if(!indexedNames.empty()){
