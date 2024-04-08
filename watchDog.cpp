@@ -11,8 +11,33 @@
 #include <filesystem>
 #include <thread>
 #include <chrono>
+#include <array>
+#include <cstdio>
+#include <memory>
+#include <stdexcept>
 #include "../lib/lib/nemslib.h"
 
+std::string execCommand(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+void checkListerning(){
+    try {
+        // Note: You might need to adjust the command to include 'sudo' depending on your system setup
+        std::string output = execCommand("ss -tulnp");
+        std::cout << "Output:\n" << output << std::endl;
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+}
 // Function to extract the file name from a path
 struct CurrentDateTime{
     std::string current_date;
@@ -73,6 +98,7 @@ int main() {
         std::cerr << "Error initializing inotify" << std::endl;
         return 1;
     }
+    checkListerning();
     nlp_lib nl_j;
     std::vector<std::string> watch_folders = nl_j.ReadBinaryOne("/home/ronnieji/watchdog/watchfolder.bin");
     std::map<unsigned int, std::string> wdToFolderPath;
