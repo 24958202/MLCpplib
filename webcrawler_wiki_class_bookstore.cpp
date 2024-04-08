@@ -145,7 +145,7 @@ void get_one_page_urls(const std::string& url){
 	SysLogLib syslog_j;
 	std::vector<std::string> urls;
 	std::string htmlContent = getRawHtml(url);
-	std::this_thread::sleep_for(std::chrono::seconds(2));//seconds
+	std::this_thread::sleep_for(std::chrono::seconds(5));//seconds
 	/*
 		if it's from outer wikipedia, move next
 	*/
@@ -169,8 +169,8 @@ void get_one_page_urls(const std::string& url){
 		if(htmlContent.empty() || htmlContent.find("txt.utf-8") == std::string::npos){
 			str_broken_urls.push_back(url);
 			write_url_to_file("/home/ronnieji/lib/db_tools/eBooks/webUrls/broken_urls.bin",url);
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", url + " >> The page was empty!");
 			if(!str_stored_urls.empty()){
-				syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", url + " >> The page was empty!");
 				remove_str_stored_urls(url);
 				get_one_page_urls(str_stored_urls[0]);
 				return;
@@ -327,7 +327,7 @@ void start_crawlling(const std::string& strurl){
 		std::string htmlContent = getRawHtml(gpr);
 		std::this_thread::sleep_for(std::chrono::seconds(2));//seconds
 		std::string str_url_to_download;
-		if(htmlContent.empty() || htmlContent.find("txt.utf-8") == std::string::npos){
+		if(htmlContent.empty() || htmlContent.find("txt.utf-8") == std::string::npos || htmlContent.find("<td>English</td>") == std::string::npos){
 			remove_str_stored_urls(gpr);
 			if(!str_stored_urls.empty()){
 				start_crawlling(str_stored_urls[0]);
@@ -340,44 +340,17 @@ void start_crawlling(const std::string& strurl){
 		if(!str_url_to_download.empty()){
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> ");
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_url_to_download);
-			std::string str_book_content = getRawHtml(str_url_to_download);
-			std::this_thread::sleep_for(std::chrono::seconds(5));//seconds
-			if(!str_book_content.empty()){
-				std::cout << str_book_content << '\n';
-				auto title_pos_last = str_book_content.find("This ebook is for the use of anyone anywhere");
-				std::string str_title = str_book_content.substr(0,title_pos_last);
-				std::cout << "The book title is: >> " << str_title << '\n';
-				if(str_book_content.find("Language: English") != std::string::npos){
-					auto it = str_book_content.find("*** START OF THE PROJECT GUTENBERG EBOOK MOBY DICK; OR, THE WHALE ***");
-					std::string final_book_content = str_book_content.substr(it);
-					if(!str_title.empty() && !final_book_content.empty()){
-						std::string str_file_path = "/home/ronnieji/corpus/ebooks_new/";
-						str_file_path.append(str_title);
-						str_file_path.append(".txt");
-						/*
-							save *.txt file
-						*/
-						std::ofstream file(str_file_path,std::ios::out);
-						if(!file.is_open()){
-							file.open(str_file_path,std::ios::out);
-						}
-						file << final_book_content << '\n';
-						file.close();
-						/*
-							save *.bin file
-						*/
-						std::string str_txt = ".txt";
-						str_file_path = jsl_j.str_replace(str_file_path,str_txt,".bin");
-						nl_j.AppendBinaryOne(str_file_path,final_book_content);
-						syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Successfully saved the file!");
-						/*
-							update the binary file 
-						*/
-						write_url_to_file("/home/ronnieji/lib/db_tools/eBooks/webUrls/crawlled_urls.bin",gpr);
-						str_crawelled_urls.push_back(gpr);
-					}
-				}
-			}
+			std::string str_file_path = "/home/ronnieji/corpus/ebooks_new/";
+			std::string str_title = get_title_content(htmlContent);
+			str_file_path.append(str_title);
+			str_file_path.append(".txt");
+			saveTxt(str_url_to_download,str_file_path);
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Successfully saved the file!");
+			/*
+				update the binary file 
+			*/
+			write_url_to_file("/home/ronnieji/lib/db_tools/eBooks/webUrls/crawlled_urls.bin",gpr);
+			str_crawelled_urls.push_back(gpr);
 		}
 		remove_str_stored_urls(gpr);
 		if(!str_stored_urls.empty()){
