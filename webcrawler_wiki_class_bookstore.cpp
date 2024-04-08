@@ -29,6 +29,37 @@ std::vector<std::string> str_crawelled_urls;
 std::vector<std::string> str_stored_urls;//under processing urls
 std::vector<std::string> str_catalogs_wiki;
 
+size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    size_t written = fwrite(ptr, size, nmemb, stream);
+    return written;
+}
+void saveTxt(const std::string& str_input,const std::string& str_output){
+	CURL *curl;
+    FILE *fp;
+    CURLcode res;
+
+    const char *url = str_input.c_str();
+    const char *output_filename = str_output.c_str();
+
+    curl = curl_easy_init();
+    if (curl) {
+        fp = fopen(output_filename, "wb");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+        res = curl_easy_perform(curl);
+
+        if (res != CURLE_OK) {
+            std::cerr << "Error downloading file: " << curl_easy_strerror(res) << std::endl;
+        }
+
+        curl_easy_cleanup(curl);
+        fclose(fp);
+    } else {
+        std::cerr << "Error initializing cURL." << std::endl;
+    }
+}
 void remove_str_stored_urls(const std::string& strurl){
 	if(!strurl.empty()){
 		str_stored_urls.erase(std::remove(str_stored_urls.begin(),str_stored_urls.end(), strurl),str_stored_urls.end());
@@ -166,6 +197,9 @@ void get_one_page_urls(const std::string& url){
 				else{
 					str_booklink = strReturn;
 				}
+				if(str_booklink.back() == '.'){
+					str_booklink = str_booklink.substr(0,str_booklink.size()-1);
+				}
                 indexedNames.push_back({match.position(0), str_booklink});
                 searchStart = match.suffix().first;
 				syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_booklink);
@@ -291,7 +325,7 @@ void start_crawlling(const std::string& strurl){
 		}
 		std::cout << "Start getting the content of " << gpr << std::endl;
 		std::string htmlContent = getRawHtml(gpr);
-		std::this_thread::sleep_for(std::chrono::seconds(7));//seconds
+		std::this_thread::sleep_for(std::chrono::seconds(2));//seconds
 		std::string str_url_to_download;
 		if(htmlContent.empty() || htmlContent.find("txt.utf-8") == std::string::npos){
 			remove_str_stored_urls(gpr);
@@ -304,9 +338,12 @@ void start_crawlling(const std::string& strurl){
 			str_url_to_download = get_download_link_from_webpage(htmlContent);
 		}
 		if(!str_url_to_download.empty()){
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> " + str_url_to_download);
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> ");
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_url_to_download);
 			std::string str_book_content = getRawHtml(str_url_to_download);
+			std::this_thread::sleep_for(std::chrono::seconds(5));//seconds
 			if(!str_book_content.empty()){
+				std::cout << str_book_content << '\n';
 				auto title_pos_last = str_book_content.find("This ebook is for the use of anyone anywhere");
 				std::string str_title = str_book_content.substr(0,title_pos_last);
 				std::cout << "The book title is: >> " << str_title << '\n';
