@@ -118,11 +118,21 @@ void get_one_page_urls(const std::string& url){
 	/*
 		if it's from outer wikipedia, move next
 	*/
+	if(url.find("copy.pglaf") != std::string::npos){
+		/*
+			erase from str_stored_urls
+		*/
+		remove_str_stored_urls(url);
+		if(!str_stored_urls.empty()){
+			get_one_page_urls(str_stored_urls[0]);
+			return;
+		}
+	}
 	if(!htmlContent.empty()){
 		std::string ss_title = get_title_content(htmlContent); //wSpider_j.findWordBehindSpan(htmlContent,"<title>(.*?)</title>");
 		std::cout << "The web page title: " << ss_title << '\n';
-		if(ss_title.find("Gutenberg") == std::string::npos){
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","This site does not belong to britannica.");
+		if(!ss_title.empty() && ss_title.find("Gutenberg") == std::string::npos && ss_title.find("Gutenberg Copyright Clearance") != std::string::npos){
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","This site does not belong to Gutenberg.");
 			/*
 				erase from str_stored_urls
 			*/
