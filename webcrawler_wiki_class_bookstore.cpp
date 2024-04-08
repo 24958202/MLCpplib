@@ -34,30 +34,40 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     return written;
 }
 void saveTxt(const std::string& str_input,const std::string& str_output){
-	CURL *curl;
-    FILE *fp;
-    CURLcode res;
+    // CURL *curl;
+    // FILE *fp;
+    // CURLcode res;
 
-    const char *url = str_input.c_str();
-    const char *output_filename = str_output.c_str();
+    // const char *url = str_input.c_str();
+    // const char *output_filename = str_output.c_str();
 
-    curl = curl_easy_init();
-    if (curl) {
-        fp = fopen(output_filename, "wb");
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    // curl = curl_easy_init();
+    // if (curl) {
+    //     fp = fopen(output_filename, "wb");
+    //     curl_easy_setopt(curl, CURLOPT_URL, url);
+    //     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+    //     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-        res = curl_easy_perform(curl);
+    //     res = curl_easy_perform(curl);
 
-        if (res != CURLE_OK) {
-            std::cerr << "Error downloading file: " << curl_easy_strerror(res) << std::endl;
-        }
+    //     if (res != CURLE_OK) {
+    //         std::cerr << "Error downloading file: " << curl_easy_strerror(res) << std::endl;
+    //     }
 
-        curl_easy_cleanup(curl);
-        fclose(fp);
+    //     curl_easy_cleanup(curl);
+    //     fclose(fp);
+    // } else {
+    //     std::cerr << "Error initializing cURL." << std::endl;
+    // }
+    std::string str_curl = "curl -o " + str_output + " " + str_input;
+    const char* command = str_curl.c_str();
+    int result = system(command);
+    if (result == 0) {
+        // Command executed successfully
+        std::cout << "File downloaded successfully using curl." << std::endl;
     } else {
-        std::cerr << "Error initializing cURL." << std::endl;
+        // Command execution failed
+        std::cerr << "Error downloading file using curl." << std::endl;
     }
 }
 void remove_str_stored_urls(const std::string& strurl){
