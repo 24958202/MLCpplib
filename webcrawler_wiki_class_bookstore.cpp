@@ -80,44 +80,7 @@ std::string get_title_content(std::string& raw_str){
 	WebSpiderLib wSpider_j;
 	return wSpider_j.findWordBehindSpan(raw_str,"<title>(.*?)</title>");
 }
-std::vector<std::string> get_key_words(std::string& raw_str){
-	std::vector<std::string> keywords;
-	Jsonlib nem_j;
-	if(raw_str.empty()){
-		std::cout << "get_key_words: input empty!" << '\n';
-		return keywords;
-	}
-	WebSpiderLib wSpider_j;
-	std::string str_keyword = wSpider_j.findWordBehindSpan(raw_str,"<meta name=\"keywords\" content=\"(.*?)\" />");
-	if(!str_keyword.empty()){
-		keywords = nem_j.splitString(str_keyword,',');
-	}
-	return keywords;
-}
-std::string get_topic_content(std::string& raw_str){
-	size_t pos_start = 0;
-    size_t pos_end = 0;
-    std::string str_phrased_content;
-    std::string str_start = "<!--[BP]--><p class=\"topic-paragraph\">"; //"<!--[BEFORE-ARTICLE]--><span class=\"marker before-article\"></span><section id=\"ref\" data-level=\"\"><p class=\"topic-paragraph\"><strong><span id=\"ref883486\"></span>";
-    std::string str_end = "</p><!--[P9]-->"; //"</p><!--[P0]--><span class=\"marker p0\"></span><!--[AM0]--><span class=\"marker AM0 am-inline\"></span>";
-    pos_start = raw_str.find(str_start);
-    if (pos_start != std::string::npos) {
-        pos_end = raw_str.find(str_end, pos_start);
-        if (pos_end != std::string::npos) {
-            size_t content_length = pos_end - pos_start + str_end.length(); // Calculate the length of the content
-            str_phrased_content = raw_str.substr(pos_start, content_length);
-        } else {
-            std::cout << "End marker not found!" << std::endl;
-        }
-    } else {
-        std::cout << "Start marker not found!" << std::endl;
-		return "";
-    }
-	std::this_thread::sleep_for(std::chrono::milliseconds(3));
-	WebSpiderLib wSpider_j;
-	str_phrased_content = wSpider_j.removeHtmlTags(str_phrased_content);
-	return str_phrased_content;
-}
+
 std::string get_download_link_from_webpage(std::string& raw_str){
 	//<p class="topic-paragraph"></p>
 	if(raw_str.empty()){
@@ -159,7 +122,7 @@ void get_one_page_urls(const std::string& url){
 		std::string ss_title = get_title_content(htmlContent); //wSpider_j.findWordBehindSpan(htmlContent,"<title>(.*?)</title>");
 		std::cout << "The web page title: " << ss_title << '\n';
 		if(ss_title.find("Gutenberg") == std::string::npos){
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog","This site does not belong to britannica.");
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","This site does not belong to britannica.");
 			/*
 				erase from str_stored_urls
 			*/
@@ -171,12 +134,12 @@ void get_one_page_urls(const std::string& url){
 		}
 	}
 	try{
-    	syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog","Start clawlering >> " + url);
+    	syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","Start clawlering >> " + url);
 		if(htmlContent.empty()){
 			str_broken_urls.push_back(url);
-			write_url_to_file("/home/ronnieji/lib/db_tools/webUrls/broken_urls.bin",url);
+			write_url_to_file("/home/ronnieji/lib/db_tools/eBooks/webUrls/broken_urls.bin",url);
 			if(!str_stored_urls.empty()){
-				syslog_j.writeLog("/home/ronnieji/lib/db_tools/wikiLog", url + " >> The page was empty!");
+				syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", url + " >> The page was empty!");
 				get_one_page_urls(str_stored_urls[0]);
 				return;
 			}
@@ -204,9 +167,7 @@ void get_one_page_urls(const std::string& url){
 				}
                 indexedNames.push_back({match.position(0), str_booklink});
                 searchStart = match.suffix().first;
-            }
-            else{
-            	std::cout << "strReturn is empty! Looking for next link..." << std::endl;
+				syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_booklink);
             }
         }
         if(!indexedNames.empty()){
@@ -333,8 +294,8 @@ void start_crawlling(const std::string& strurl){
 		if(!htmlContent.empty()){
 			str_url_to_download = get_download_link_from_webpage(htmlContent);
 		}
-		syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> " + str_url_to_download);
 		if(!str_url_to_download.empty()){
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> " + str_url_to_download);
 			std::string str_book_content = getRawHtml(str_url_to_download);
 			if(!str_book_content.empty()){
 				auto title_pos_last = str_book_content.find("This ebook is for the use of anyone anywhere");
