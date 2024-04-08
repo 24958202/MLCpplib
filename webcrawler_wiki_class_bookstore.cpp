@@ -121,7 +121,7 @@ void get_one_page_urls(const std::string& url){
 	if(!htmlContent.empty()){
 		std::string ss_title = get_title_content(htmlContent); //wSpider_j.findWordBehindSpan(htmlContent,"<title>(.*?)</title>");
 		std::cout << "The web page title: " << ss_title << '\n';
-		if(!ss_title.empty() || ss_title.find("Gutenberg") == std::string::npos || ss_title.find("Gutenberg Copyright Clearance") != std::string::npos){
+		if(ss_title.find("Gutenberg Copyright Clearance") != std::string::npos || url.find(".images") != std::string::npos){
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","This site does not belong to Gutenberg.");
 			/*
 				erase from str_stored_urls
@@ -140,6 +140,7 @@ void get_one_page_urls(const std::string& url){
 			write_url_to_file("/home/ronnieji/lib/db_tools/eBooks/webUrls/broken_urls.bin",url);
 			if(!str_stored_urls.empty()){
 				syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", url + " >> The page was empty!");
+				remove_str_stored_urls(url);
 				get_one_page_urls(str_stored_urls[0]);
 				return;
 			}
@@ -380,7 +381,7 @@ int main() {
 	if(std::filesystem::exists(str_file_path)){
 		str_crawelled_urls = get_url_list(str_file_path);
 	}
-	start_crawlling("https://www.gutenberg.org/");
+	start_crawlling("https://www.gutenberg.org/ebooks/bookshelf/");
 	std::cout << "All jobs are done!" << std::endl;
     return 0;
 }
