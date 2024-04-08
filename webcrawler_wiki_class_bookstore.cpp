@@ -20,6 +20,7 @@
 #include <thread>
 #include <chrono>
 #include <filesystem>
+#include <cstdlib>
 //#include <boost/algorithm/string.hpp>
 #include "../lib/nemslib.h"
 
@@ -34,7 +35,7 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     return written;
 }
 void saveTxt(const std::string& str_input,const std::string& str_output){
-    // CURL *curl;
+	// CURL *curl;
     // FILE *fp;
     // CURLcode res;
 
@@ -59,8 +60,8 @@ void saveTxt(const std::string& str_input,const std::string& str_output){
     // } else {
     //     std::cerr << "Error initializing cURL." << std::endl;
     // }
-    std::string str_curl = "curl -o " + str_output + " " + str_input;
-    const char* command = str_curl.c_str();
+	std::string str_curl = "curl -o " + str_output + " " + str_input;
+	const char* command = str_curl.c_str();
     int result = system(command);
     if (result == 0) {
         // Command executed successfully
@@ -69,12 +70,6 @@ void saveTxt(const std::string& str_input,const std::string& str_output){
         // Command execution failed
         std::cerr << "Error downloading file using curl." << std::endl;
     }
-}
-void remove_str_stored_urls(const std::string& strurl){
-	if(!strurl.empty()){
-		str_stored_urls.erase(std::remove(str_stored_urls.begin(),str_stored_urls.end(), strurl),str_stored_urls.end());
-		std::cout << "Successfully removed crawlled url:" << strurl << '\n';
-	}
 }
 std::vector<std::string> get_url_list(const std::string& file_path){
 	std::vector<std::string> url_list;
@@ -147,6 +142,13 @@ void save_main_url_list(const std::string&file_path,const std::vector<std::strin
 	}
 	nlp_lib nl_j;
 	nl_j.WriteBinaryOne_from_std(urls,file_path);
+}
+void remove_str_stored_urls(const std::string& strurl){
+	if(!strurl.empty()){
+		str_stored_urls.erase(std::remove(str_stored_urls.begin(),str_stored_urls.end(), strurl),str_stored_urls.end());
+		std::cout << "Successfully removed crawlled url:" << strurl << '\n';
+	}
+	save_main_url_list("/home/ronnieji/lib/db_tools/eBooks/webUrls/str_stored_urls.bin",str_stored_urls);
 }
 void get_one_page_urls(const std::string& url){
 	//get all urls of the site
