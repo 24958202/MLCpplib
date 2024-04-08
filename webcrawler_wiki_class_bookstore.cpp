@@ -291,7 +291,15 @@ void start_crawlling(const std::string& strurl){
 		}
 		std::cout << "Start getting the content of " << gpr << std::endl;
 		std::string htmlContent = getRawHtml(gpr);
+		std::this_thread::sleep_for(std::chrono::seconds(7));//seconds
 		std::string str_url_to_download;
+		if(htmlContent.empty() || htmlContent.find("txt.utf-8") == std::string::npos){
+			remove_str_stored_urls(gpr);
+			if(!str_stored_urls.empty()){
+				start_crawlling(str_stored_urls[0]);
+				return;
+			}
+		}
 		if(!htmlContent.empty()){
 			str_url_to_download = get_download_link_from_webpage(htmlContent);
 		}
