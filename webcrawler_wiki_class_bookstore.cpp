@@ -231,6 +231,9 @@ void get_one_page_urls(const std::string& url){
         std::string strReturn;
         while (std::regex_search(searchStart, htmlContent.cend(), match, pattern)) {
             strReturn = match.str(1);
+	    if(strReturn.find(".images") != std::string::npos || strReturn.find("copy.pglaf")!=std::string::npos){
+	    	continue;
+	    }
             strReturn = std::string(wSpider_j.str_trim(strReturn));
             if(!strReturn.empty()){
 				std::string str_booklink;
