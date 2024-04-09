@@ -184,8 +184,15 @@ void get_one_page_urls(const std::string& url){
 	WebSpiderLib wSpider_j;
 	SysLogLib syslog_j;
 	std::vector<std::string> urls;
+	if(url.find(".images") != std::string::npos || url.find("copy.pglaf")!=std::string::npos){
+		remove_str_stored_urls(url);
+		if(!str_stored_urls.empty()){
+			get_one_page_urls(str_stored_urls[0]);
+			return;
+		}
+	}
 	std::string htmlContent = getRawHtml(url);
-	std::this_thread::sleep_for(std::chrono::seconds(5));//seconds
+	std::this_thread::sleep_for(std::chrono::seconds(2));//seconds
 	/*
 		if it's from outer wikipedia, move next
 	*/
