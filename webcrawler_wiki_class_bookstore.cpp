@@ -35,41 +35,42 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     return written;
 }
 void saveTxt(const std::string& str_input,const std::string& str_output){
-	// CURL *curl;
-    // FILE *fp;
-    // CURLcode res;
+	CURL *curl;
+    FILE *fp;
+    CURLcode res;
 
-    // const char *url = str_input.c_str();
-    // const char *output_filename = str_output.c_str();
+    const char *url = str_input.c_str();
+    const char *output_filename = str_output.c_str();
 
-    // curl = curl_easy_init();
-    // if (curl) {
-    //     fp = fopen(output_filename, "wb");
-    //     curl_easy_setopt(curl, CURLOPT_URL, url);
-    //     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-    //     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl = curl_easy_init();
+    if (curl) {
+        fp = fopen(output_filename, "wb");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-    //     res = curl_easy_perform(curl);
+        res = curl_easy_perform(curl);
 
-    //     if (res != CURLE_OK) {
-    //         std::cerr << "Error downloading file: " << curl_easy_strerror(res) << std::endl;
-    //     }
+        if (res != CURLE_OK) {
+            std::cerr << "Error downloading file: " << curl_easy_strerror(res) << std::endl;
+        }
 
-    //     curl_easy_cleanup(curl);
-    //     fclose(fp);
-    // } else {
-    //     std::cerr << "Error initializing cURL." << std::endl;
-    // }
-	std::string str_curl = "curl -o " + str_output + " " + str_input;
-	const char* command = str_curl.c_str();
-    int result = system(command);
-    if (result == 0) {
-        // Command executed successfully
-        std::cout << "File downloaded successfully using curl." << std::endl;
+        curl_easy_cleanup(curl);
+        fclose(fp);
     } else {
-        // Command execution failed
-        std::cerr << "Error downloading file using curl." << std::endl;
+        std::cerr << "Error initializing cURL." << std::endl;
     }
+
+	// std::string str_curl = "curl -o " + str_output + " " + str_input;
+	// const char* command = str_curl.c_str();
+    // int result = system(command);
+    // if (result == 0) {
+    //     // Command executed successfully
+    //     std::cout << "File downloaded successfully using curl." << std::endl;
+    // } else {
+    //     // Command execution failed
+    //     std::cerr << "Error downloading file using curl." << std::endl;
+    // }
 }
 std::vector<std::string> get_url_list(const std::string& file_path){
 	std::vector<std::string> url_list;
@@ -125,11 +126,38 @@ std::string get_download_link_from_webpage(std::string& raw_str){
 	}
 	Jsonlib jsl_j;
 	WebSpiderLib weblib_j;
-	std::string main_content = weblib_j.findWordBehindSpan(raw_str,"<tr class=\"even\" about=\"(.*?)\" typeof=\"pgterms:file\">");//"<td class=\"noscreen\">(.*?)</td>");
-	std::string str_to_replace = ".utf-8";
-	main_content = jsl_j.str_replace(main_content,str_to_replace,"");
-	main_content = std::string(weblib_j.str_trim(main_content));
-	return main_content;
+	std::vector<std::string> main_content = weblib_j.findAllWordsBehindSpans(raw_str,"href=\"(.*?)\"");//"<tr class=\"even\" about=\"(.*?)\" typeof=\"pgterms:file\">");//"<td class=\"noscreen\">(.*?)</td>");
+	std::string str_booklink = "https://www.gutenberg.org";
+	std::string str_link_from_webpage;
+	if(!main_content.empty()){
+		for(const auto& mc : main_content){
+			if(mc.find(".txt.utf-8") != std::string::npos){
+				str_link_from_webpage = mc;
+				break;
+			}
+			else{
+				continue;
+			}
+		}
+	}
+	if(!str_link_from_webpage.empty()){
+		if(str_link_from_webpage.find("http")==std::string::npos){
+			if(str_link_from_webpage.substr(0,1) != "/"){
+				str_link_from_webpage = "/" + str_link_from_webpage;
+			}
+			str_booklink.append(str_link_from_webpage);
+		}
+		else{
+			str_booklink = str_link_from_webpage;
+		}
+		std::string str_to_replace = ".utf-8";
+		str_booklink = jsl_j.str_replace(str_booklink,str_to_replace,"");
+		str_booklink = std::string(weblib_j.str_trim(str_booklink));
+		return str_booklink;
+	}
+	else{
+		return "";
+	}
 }
 void write_url_to_file(const std::string& file_path, const std::string& url){
 	nlp_lib nl_j;
@@ -164,8 +192,8 @@ void get_one_page_urls(const std::string& url){
 	if(!htmlContent.empty()){
 		std::string ss_title = get_title_content(htmlContent); //wSpider_j.findWordBehindSpan(htmlContent,"<title>(.*?)</title>");
 		std::cout << "The web page title: " << ss_title << '\n';
-		if(ss_title.find("Gutenberg Copyright Clearance") != std::string::npos || url.find(".images") != std::string::npos){
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","This site does not belong to Gutenberg.");
+		if(ss_title.find("Gutenberg Copyright Clearance") != std::string::npos || url.find(".images") != std::string::npos || url.find("copy.pglaf")!=std::string::npos){
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","Wrong content...");
 			/*
 				erase from str_stored_urls
 			*/
@@ -178,10 +206,10 @@ void get_one_page_urls(const std::string& url){
 	}
 	try{
     	syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog","Start clawlering >> " + url);
-		if(htmlContent.empty() || htmlContent.find("txt.utf-8") == std::string::npos){
+		if(htmlContent.empty()){
 			str_broken_urls.push_back(url);
 			write_url_to_file("/home/ronnieji/lib/db_tools/eBooks/webUrls/broken_urls.bin",url);
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", url + " >> The page was empty!");
+			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", url + " >> The page is emtpy or it's an index");
 			if(!str_stored_urls.empty()){
 				remove_str_stored_urls(url);
 				get_one_page_urls(str_stored_urls[0]);
@@ -350,6 +378,7 @@ void start_crawlling(const std::string& strurl){
 			str_url_to_download = get_download_link_from_webpage(htmlContent);
 		}
 		if(!str_url_to_download.empty()){
+			std::cout << "Download link: " << str_url_to_download << '\n';
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> ");
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_url_to_download);
 			std::string str_file_path = "/home/ronnieji/corpus/ebooks_new/";
