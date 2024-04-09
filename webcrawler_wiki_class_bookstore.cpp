@@ -2,7 +2,6 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <curl/curl.h>
 #include <regex>
 #include <sqlite3.h>
 #include <vector>
@@ -30,48 +29,6 @@ std::vector<std::string> str_crawelled_urls;
 std::vector<std::string> str_stored_urls;//under processing urls
 std::vector<std::string> str_catalogs_wiki;
 
-size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-    size_t written = fwrite(ptr, size, nmemb, stream);
-    return written;
-}
-void saveTxt(const std::string& str_input,const std::string& str_output){
-	CURL *curl;
-    FILE *fp;
-    CURLcode res;
-
-    const char *url = str_input.c_str();
-    const char *output_filename = str_output.c_str();
-
-    curl = curl_easy_init();
-    if (curl) {
-        fp = fopen(output_filename, "wb");
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-
-        res = curl_easy_perform(curl);
-
-        if (res != CURLE_OK) {
-            std::cerr << "Error downloading file: " << curl_easy_strerror(res) << std::endl;
-        }
-
-        curl_easy_cleanup(curl);
-        fclose(fp);
-    } else {
-        std::cerr << "Error initializing cURL." << std::endl;
-    }
-
-	// std::string str_curl = "curl -o " + str_output + " " + str_input;
-	// const char* command = str_curl.c_str();
-    // int result = system(command);
-    // if (result == 0) {
-    //     // Command executed successfully
-    //     std::cout << "File downloaded successfully using curl." << std::endl;
-    // } else {
-    //     // Command execution failed
-    //     std::cerr << "Error downloading file using curl." << std::endl;
-    // }
-}
 std::vector<std::string> get_url_list(const std::string& file_path){
 	std::vector<std::string> url_list;
 	if(file_path.empty()){
@@ -150,8 +107,8 @@ std::string get_download_link_from_webpage(std::string& raw_str){
 		else{
 			str_booklink = str_link_from_webpage;
 		}
-		std::string str_to_replace = ".utf-8";
-		str_booklink = jsl_j.str_replace(str_booklink,str_to_replace,"");
+		// std::string str_to_replace = ".utf-8";
+		// str_booklink = jsl_j.str_replace(str_booklink,str_to_replace,"");
 		str_booklink = std::string(weblib_j.str_trim(str_booklink));
 		return str_booklink;
 	}
@@ -326,7 +283,6 @@ void get_one_page_urls(const std::string& url){
 			saved str_stored_urls
 		*/
 		save_main_url_list("/home/ronnieji/lib/db_tools/eBooks/webUrls/str_stored_urls.bin",str_stored_urls);
-		
 	}
 	catch(const std::exception& e){
 		std::cerr << e.what() << '\n';
@@ -337,6 +293,7 @@ void start_crawlling(const std::string& strurl){
 	Jsonlib jsl_j;
 	nlp_lib nl_j;
 	nemslib nem_j;
+	WebSpiderLib web_j;
 	if(strurl.find(".images") != std::string::npos || strurl.find("copy.pglaf")!=std::string::npos){
 		remove_str_stored_urls(strurl);
 		if(!str_stored_urls.empty()){
@@ -394,9 +351,7 @@ void start_crawlling(const std::string& strurl){
 				return;
 			}
 		}
-		if(!htmlContent.empty()){
-			str_url_to_download = get_download_link_from_webpage(htmlContent);
-		}
+		str_url_to_download = get_download_link_from_webpage(htmlContent);
 		if(!str_url_to_download.empty()){
 			std::cout << "Download link: " << str_url_to_download << '\n';
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> ");
@@ -405,7 +360,37 @@ void start_crawlling(const std::string& strurl){
 			std::string str_title = get_title_content(htmlContent);
 			str_file_path.append(str_title);
 			str_file_path.append(".txt");
-			saveTxt(str_url_to_download,str_file_path);
+			std::string strBook = web_j.GetURLContent(str_url_to_download);
+			std::this_thread::sleep_for(std::chrono::seconds(3));//seconds
+			try{
+				if(strBook.find("Language: English")==std::string::npos){
+					remove_str_stored_urls(gpr);
+					if(!str_stored_urls.empty()){
+						start_crawlling(str_stored_urls[0]);
+						return;
+					}
+				}
+				if(!strBook.empty()){
+					auto it = strBook.find("* START");
+					if(it != std::string::npos){
+						strBook = strBook.substr(it);
+						auto start_pos = strBook.find("***");
+						if(start_pos != std::string::npos){
+							strBook = strBook.substr(start_pos + 1);
+						}
+					}
+				}
+			}
+			catch(std::exception& e){
+				std::cerr << e.what() << '\n';
+			}
+			std::ofstream file(str_file_path,std::ios::out);
+			if(!file.is_open()){
+				file.open(str_file_path,std::ios::out);
+			}
+			file << strBook << '\n';
+			file.close();
+			nl_j.AppendBinaryOne(str_file_path,strBook);
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Successfully saved the file!");
 			/*
 				update the binary file 
