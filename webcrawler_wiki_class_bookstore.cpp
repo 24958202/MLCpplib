@@ -331,6 +331,13 @@ void start_crawlling(const std::string& strurl){
 	Jsonlib jsl_j;
 	nlp_lib nl_j;
 	nemslib nem_j;
+	if(strurl.find(".images") != std::string::npos || strurl.find("copy.pglaf")!=std::string::npos){
+		remove_str_stored_urls(strurl);
+		if(!str_stored_urls.empty()){
+			start_crawlling(str_stored_urls[0]);
+			return;
+		}
+	}
 	syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Start getting the whole sites urls...");
 	get_one_page_urls(strurl);
 	syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Finished getting the site's urls and saved the urls to the file.");
