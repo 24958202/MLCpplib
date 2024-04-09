@@ -184,7 +184,12 @@ void get_one_page_urls(const std::string& url){
 	WebSpiderLib wSpider_j;
 	SysLogLib syslog_j;
 	std::vector<std::string> urls;
-	if(url.find(".images") != std::string::npos || url.find("copy.pglaf")!=std::string::npos){
+	if(url.find(".images") != std::string::npos || url.find("copy.pglaf")!=std::string::npos 
+			|| url.find("facebook") != std::string::npos || url.find("twitter") != std::string::npos 
+			|| url.find("mastodon") != std::string::npos || url.find("policy") != std::string::npos 
+			|| url.find("about") != std::string::npos || url.find("help") != std::string::npos
+			|| url.find("donate") != std::string::npos || url.find("aka") != std::string::npos
+			|| url.find("attic") != std::string::npos || url.find("copyleft") != std::string::npos){
 		remove_str_stored_urls(url);
 		if(!str_stored_urls.empty()){
 			get_one_page_urls(str_stored_urls[0]);
@@ -231,11 +236,9 @@ void get_one_page_urls(const std::string& url){
         std::string strReturn;
         while (std::regex_search(searchStart, htmlContent.cend(), match, pattern)) {
             strReturn = match.str(1);
-	    if(strReturn.find(".images") != std::string::npos || strReturn.find("copy.pglaf")!=std::string::npos){
-	    	continue;
-	    }
-            strReturn = std::string(wSpider_j.str_trim(strReturn));
-            if(!strReturn.empty()){
+			std::cout << strReturn << '\n';
+			strReturn = std::string(wSpider_j.str_trim(strReturn));
+			if(!strReturn.empty()){
 				std::string str_booklink;
 				if(strReturn.find("http") == std::string::npos){
 					str_booklink = "https://www.gutenberg.org";
@@ -250,10 +253,10 @@ void get_one_page_urls(const std::string& url){
 				if(str_booklink.back() == '.'){
 					str_booklink = str_booklink.substr(0,str_booklink.size()-1);
 				}
-                indexedNames.push_back({match.position(0), str_booklink});
-                searchStart = match.suffix().first;
+				indexedNames.push_back({match.position(0), str_booklink});
+				searchStart = match.suffix().first;
 				syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_booklink);
-            }
+			}
         }
         if(!indexedNames.empty()){
         	 // Sort names by their index of appearance
