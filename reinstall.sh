@@ -1,5 +1,5 @@
 #!/bin/bash
-#run chmod +x reinstall.sh before running the script
+# run chmod +x reinstall.sh before running the script
 # Avoid prompts from apt
 export DEBIAN_FRONTEND=noninteractive
 
@@ -39,7 +39,6 @@ sudo apt-get update && sudo apt-get install -y \
     gdb \
     valgrind
 
-
 # Update the linker cache
 sudo ldconfig
 
@@ -67,7 +66,7 @@ cd ../eigen-3.4.0 && \
 mkdir -p build && cd build && \
 cmake .. && \
 make && \
-sudo make install
+sudo make install ..
 
 # Install Google Gumbo Parser
 # Assuming the Google Gumbo Parser source code is already available in ./libs/google-gumbo-parser-3973c58
@@ -75,7 +74,7 @@ cd ../../google-gumbo-parser-3973c58 && \
 ./autogen.sh && \
 ./configure && \
 make && \
-sudo make install
+sudo make install ..
 
 # Install cpp-httplib
 # Assuming the cpp-httplib source code is already available in ./libs/cpp-httplib-master
@@ -83,7 +82,7 @@ cd ../../cpp-httplib-master && \
 mkdir -p build && cd build && \
 cmake .. && \
 make && \
-sudo make install
+sudo make install ..
 
 # Install OpenCV
 # Assuming the OpenCV source code needs to be downloaded
@@ -92,7 +91,9 @@ wget -O /opencv.zip https://github.com/opencv/opencv/archive/4.x.zip && \
 unzip /opencv.zip -d / && \
 mkdir -p /build-opencv && cd /build-opencv && \
 cmake /opencv-4.x && \
-cmake --build .
+cmake --build . && \
+sudo cmake install ..
+
 
 # Create directories for dbtools
 mkdir -p /home/$USER/lib/db_tools/log \
