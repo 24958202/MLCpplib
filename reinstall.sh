@@ -31,6 +31,7 @@ sudo apt-get update && sudo apt-get install -y \
     libicu-dev \
     libcpprest-dev \
     libmysqlclient-dev \
+    libopencv-highgui4.5 \
     vim \
     gdb \
     valgrind
