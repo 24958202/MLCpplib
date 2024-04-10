@@ -36,6 +36,13 @@ sudo apt-get update && sudo apt-get install -y \
     gdb \
     valgrind
 
+
+# Update the linker cache
+sudo ldconfig
+
+# Set the library path
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
 # Clean apt cache to free up space
 sudo apt-get clean
 
