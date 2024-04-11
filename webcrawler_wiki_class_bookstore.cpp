@@ -27,6 +27,7 @@ std::vector<std::string> str_urls;
 std::vector<std::string> str_crawelled_urls;
 std::vector<std::string> str_stored_urls;//under processing urls
 std::vector<std::string> str_catalogs_wiki;
+std::vector<std::string> str_books_txt;
 
 std::string getCurrentDateTimeForTitle() {
     auto now = std::chrono::system_clock::now();
@@ -365,44 +366,57 @@ void start_crawlling(const std::string& strurl){
 		}
 		str_url_to_download = get_download_link_from_webpage(htmlContent);
 		if(!str_url_to_download.empty()){
+			/*
+				add to str_books_txt
+			*/
 			std::cout << "Download link: " << str_url_to_download << '\n';
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> ");
-			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_url_to_download);
-			std::string str_file_path = "/home/ronnieji/corpus/ebooks_new/";
-			std::string str_title = get_title_content(htmlContent);
-			str_file_path.append(str_title);
-			str_file_path.append(".txt");
-			std::string strBook = web_j.GetURLContent(str_url_to_download);
-			std::this_thread::sleep_for(std::chrono::seconds(3));//seconds
-			try{
-				if(strBook.empty() || strBook.find("Language: English")==std::string::npos){
-					remove_str_stored_urls(gpr);
-					if(!str_stored_urls.empty()){
-						start_crawlling(str_stored_urls[0]);
-						return;
-					}
-				}
-				if(!strBook.empty()){
-					auto it = strBook.find("* START");
-					if(it != std::string::npos){
-						strBook = strBook.substr(it);
-						auto start_pos = strBook.find("***");
-						if(start_pos != std::string::npos){
-							strBook = strBook.substr(start_pos + 1);
-						}
-					}
-				}
+			str_books_txt.push_back(str_url_to_download);
+			std::ofstream txtOut("/home/ronnieji/lib/db_tools/eBooks/booklist.txt",std::ios::app);
+			if(!txtOut.is_open()){
+				txtOut.open("/home/ronnieji/lib/db_tools/eBooks/booklist.txt",std::ios::app);
 			}
-			catch(std::exception& e){
-				std::cerr << e.what() << '\n';
-			}
-			std::ofstream file(str_file_path,std::ios::out);
-			if(!file.is_open()){
-				file.open(str_file_path,std::ios::out);
-			}
-			file << strBook << '\n';
-			file.close();
-			nl_j.AppendBinaryOne(str_file_path,strBook);
+			txtOut << str_url_to_download << '\n';
+			txtOut.close();
+			nl_j.AppendBinaryOne("/home/ronnieji/lib/db_tools/eBooks/booklist.bin",str_url_to_download);
+
+			
+			// syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Downloading >> ");
+			// syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", str_url_to_download);
+			// std::string str_file_path = "/home/ronnieji/corpus/ebooks_new/";
+			// std::string str_title = get_title_content(htmlContent);
+			// str_file_path.append(str_title);
+			// str_file_path.append(".txt");
+			// std::string strBook = web_j.GetURLContent(str_url_to_download);
+			// std::this_thread::sleep_for(std::chrono::seconds(3));//seconds
+			// try{
+			// 	if(strBook.empty() || strBook.find("Language: English")==std::string::npos){
+			// 		remove_str_stored_urls(gpr);
+			// 		if(!str_stored_urls.empty()){
+			// 			start_crawlling(str_stored_urls[0]);
+			// 			return;
+			// 		}
+			// 	}
+			// 	if(!strBook.empty()){
+			// 		auto it = strBook.find("* START");
+			// 		if(it != std::string::npos){
+			// 			strBook = strBook.substr(it);
+			// 			auto start_pos = strBook.find("***");
+			// 			if(start_pos != std::string::npos){
+			// 				strBook = strBook.substr(start_pos + 1);
+			// 			}
+			// 		}
+			// 	}
+			// }
+			// catch(std::exception& e){
+			// 	std::cerr << e.what() << '\n';
+			// }
+			// std::ofstream file(str_file_path,std::ios::out);
+			// if(!file.is_open()){
+			// 	file.open(str_file_path,std::ios::out);
+			// }
+			// file << strBook << '\n';
+			// file.close();
+			// nl_j.AppendBinaryOne(str_file_path,strBook);
 			syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Successfully saved the file!");
 			/*
 				update the binary file 
