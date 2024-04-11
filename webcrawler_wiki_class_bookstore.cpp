@@ -3,7 +3,6 @@
 #include <string>
 #include <fstream>
 #include <regex>
-#include <sqlite3.h>
 #include <vector>
 #include <fstream>
 #include <chrono>
@@ -29,6 +28,13 @@ std::vector<std::string> str_crawelled_urls;
 std::vector<std::string> str_stored_urls;//under processing urls
 std::vector<std::string> str_catalogs_wiki;
 
+std::string getCurrentDateTimeForTitle() {
+    auto now = std::chrono::system_clock::now();
+    auto now_time_t = std::chrono::system_clock::to_time_t(now);
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&now_time_t), "%Y%m%d_%H%M%S");
+    return ss.str();
+}
 std::vector<std::string> get_url_list(const std::string& file_path){
 	std::vector<std::string> url_list;
 	if(file_path.empty()){
@@ -72,7 +78,12 @@ std::string get_title_content(std::string& raw_str){
 		return "";
 	}
 	WebSpiderLib wSpider_j;
-	return wSpider_j.findWordBehindSpan(raw_str,"<title>(.*?)</title>");
+	if(raw_str.find("<title>")!=std::string::npos){
+		return wSpider_j.findWordBehindSpan(raw_str,"<title>(.*?)</title>");
+	}
+	else{
+		return "No title " + getCurrentDateTimeForTitle();
+	}
 }
 
 std::string get_download_link_from_webpage(std::string& raw_str){
@@ -146,7 +157,8 @@ void get_one_page_urls(const std::string& url){
 			|| url.find("mastodon") != std::string::npos || url.find("policy") != std::string::npos 
 			|| url.find("about") != std::string::npos || url.find("help") != std::string::npos
 			|| url.find("donate") != std::string::npos || url.find("aka") != std::string::npos
-			|| url.find("attic") != std::string::npos || url.find("copyleft") != std::string::npos){
+			|| url.find("attic") != std::string::npos || url.find("copyleft") != std::string::npos
+			|| url.find("wikipedia") != std::string::npos){
 		remove_str_stored_urls(url);
 		if(!str_stored_urls.empty()){
 			get_one_page_urls(str_stored_urls[0]);
@@ -363,7 +375,7 @@ void start_crawlling(const std::string& strurl){
 			std::string strBook = web_j.GetURLContent(str_url_to_download);
 			std::this_thread::sleep_for(std::chrono::seconds(3));//seconds
 			try{
-				if(strBook.find("Language: English")==std::string::npos){
+				if(strBook.empty() || strBook.find("Language: English")==std::string::npos){
 					remove_str_stored_urls(gpr);
 					if(!str_stored_urls.empty()){
 						start_crawlling(str_stored_urls[0]);
@@ -406,6 +418,7 @@ void start_crawlling(const std::string& strurl){
 			save_main_url_list("/home/ronnieji/lib/db_tools/eBooks/webUrls/str_stored_urls.bin",str_stored_urls);
 			start_crawlling(str_stored_urls[0]);
 		}
+		//std::this_thread::sleep_for(std::chrono::seconds(3));//seconds
 	}
 }
 int main() {
