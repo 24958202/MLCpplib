@@ -25,6 +25,8 @@ void download_files(const std::string& strUrl,const std::string& out_filename){
                     strBook = strBook.substr(start_pos + 1);
                 }
             }
+            auto end_pos = strBook.find("*** END OF THE PROJECT");
+            strBook = strBook.substr(0,end_pos);
         }
     }
     catch(std::exception& e){
