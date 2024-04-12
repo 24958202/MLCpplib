@@ -90,7 +90,7 @@ cd ../../opencv && \
 wget -O /opencv.zip https://github.com/opencv/opencv/archive/4.x.zip && \
 unzip /opencv.zip -d / && \
 mkdir -p /build-opencv && cd /build-opencv && \
-cmake /opencv-4.x && \
+cmake .. && \
 cmake --build . && \
 sudo cmake install ..
 
