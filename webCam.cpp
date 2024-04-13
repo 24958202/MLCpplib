@@ -1,6 +1,8 @@
-#include <opencv2/opencv.hpp>
 #include <chrono>
 #include <iomanip>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/logger.hpp>
+
 
 std::string getCurrentDateTime() {
     auto now = std::chrono::system_clock::now();
@@ -11,47 +13,39 @@ std::string getCurrentDateTime() {
 }
 
 int main() {
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
     cv::VideoCapture cap(0); // Open the default camera
     if (!cap.isOpened()) {
         std::cerr << "Error opening the webcam" << std::endl;
         return -1;
     }
-
     cv::CascadeClassifier face_cascade;
     if (!face_cascade.load("/home/ronnieji/lib/webcam/haarcascade_frontalface_default.xml")) {
         std::cerr << "Error loading face cascade file" << std::endl;
         return -1;
     }
-
     cv::Mat frame;
     cv::namedWindow("Face Detection", cv::WINDOW_NORMAL); // Create a resizable window
     cv::resizeWindow("Face Detection", 2560, 1440); // Set window size to match screen resolution
     while (true) {
         cap >> frame; // Capture frame from webcam
-
         std::vector<cv::Rect> faces;
         //face_cascade.detectMultiScale(frame, faces, 1.1, 2, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(30, 30));
         face_cascade.detectMultiScale(frame, faces, 1.3, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(30, 30));
-
         for (const auto& face : faces) {
             cv::rectangle(frame, face, cv::Scalar(255, 0, 0), 2); // Draw rectangle around detected face
         }
-
         cv::imshow("Face Detection", frame);
-
         if (cv::waitKey(1) == 27) { // Press 'Esc' key to exit
             break;
         }
-
         if (!faces.empty()) {
             std::string filename = "/home/ronnieji/lib/webcam/capture/" + getCurrentDateTime() + ".jpg";
             cv::imwrite(filename, frame);
             std::cout << "Alert: Human face detected! Full image saved as " << filename << std::endl;
         }
     }
-
     cap.release();
     cv::destroyAllWindows();
-
     return 0;
 }
