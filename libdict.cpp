@@ -249,6 +249,7 @@ void libdict::look_for_past_participle_of_word(const std::string& english_voc_pa
     SysLogLib sys_j;
 	Jsonlib jsonl_j;
 	nlp_lib nl_j;
+    nemslib nem_j;
 	std::vector<std::vector<std::string>> dbresult;
 	size_t td = 2000;
     if(english_voc_path.empty() || log_folder_path.empty()){
@@ -270,23 +271,68 @@ void libdict::look_for_past_participle_of_word(const std::string& english_voc_pa
 			*/
 			std::string str_word_type = jsonl_j.trim(re.word_type);
 			if(str_word_type=="VB"){
-				std::string strWord = std::string(jsonl_j.trim(re.word));
-				std::string strUrl_past_participle = "https://www.merriam-webster.com/dictionary/" + strWord;
+                
+				std::string strWord = jsonl_j.trim(re.word);
+				std::string strUrl_past_participle;
 				/*
-					get past participle
+					word net's vacabulary has more than one words
 				*/
-				std::vector<std::string> get_result_past_participle = this->getPastParticiple(strUrl_past_participle,log_folder_path);
-				sys_j.sys_timedelay(td);
-				if(!get_result_past_participle.empty()){
-					for(const auto& gr : get_result_past_participle){
-						Mdatatype new_word;
-						new_word.word = gr;
-						new_word.word_type="VB";
-						new_word.meaning_en = re.meaning_en;
-						new_word.meaning_zh = re.meaning_zh;
-						read_english_voc.push_back(new_word);
+				int wordCount = nem_j.en_string_word_count(strWord);
+				if(wordCount > 1){
+					/*
+						There are more than one words
+					*/
+					std::vector<std::string> strWord_split = nem_j.tokenize_en(strWord);
+					if(!strWord_split.empty()){
+						std::string str_word_lookup = strWord_split[0];
+						std::string str_rest_words;
+						if(strWord_split.size() >2){
+							for(unsigned int i =1; i < strWord_split.size(); i++){
+								str_rest_words += strWord_split[i] + " ";
+							}
+							str_rest_words = jsonl_j.trim(str_rest_words);
+						}
+						else{
+							str_rest_words = strWord_split[1];
+						}
+						strUrl_past_participle = "https://www.merriam-webster.com/dictionary/" + str_word_lookup;
+						/*
+							get past participle
+						*/
+						std::vector<std::string> get_result_past_participle = this->getPastParticiple(strUrl_past_participle,log_folder_path);
+						sys_j.sys_timedelay(td);
+						if(!get_result_past_participle.empty()){
+							for(const auto& gr : get_result_past_participle){
+								Mdatatype new_word;
+								new_word.word = gr + " " + str_rest_words;
+								new_word.word_type="VB";
+								new_word.meaning_en = re.meaning_en + " ";
+								new_word.meaning_zh = re.meaning_zh + " ";
+								read_english_voc.push_back(new_word);
+							}
+							nl_j.writeBinaryFile(read_english_voc,english_voc_path);//"home/ronnieji/lib/db_tools/webUrls/english_voc.bin");
+						}
 					}
-					nl_j.writeBinaryFile(read_english_voc,english_voc_path);//"home/ronnieji/lib/db_tools/webUrls/english_voc.bin");
+					
+				}
+				else{
+					strUrl_past_participle = "https://www.merriam-webster.com/dictionary/" + strWord;
+					/*
+						get past participle
+					*/
+					std::vector<std::string> get_result_past_participle = this->getPastParticiple(strUrl_past_participle,log_folder_path);
+					sys_j.sys_timedelay(td);
+					if(!get_result_past_participle.empty()){
+						for(const auto& gr : get_result_past_participle){
+							Mdatatype new_word;
+							new_word.word = gr;
+							new_word.word_type="VB";
+							new_word.meaning_en = re.meaning_en + " ";
+							new_word.meaning_zh = re.meaning_zh + " ";
+							read_english_voc.push_back(new_word);
+						}
+						nl_j.writeBinaryFile(read_english_voc,english_voc_path);//"home/ronnieji/lib/db_tools/webUrls/english_voc.bin");
+					}
 				}
 			}
 		}
