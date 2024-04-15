@@ -10,15 +10,21 @@ set -x
 
 # Read the url.txt file line by line
 while IFS= read -r url; do
-    # Download the txt file using curl with timeout, user-agent, and other options
-    curl --connect-timeout $timeout --max-time $timeout -A "$user_agent" -o "$(basename $url)" -Lk $url
+    filename=$(basename $url)
+    
+    # Check if the file exists before downloading
+    if [ -f "$filename" ]; then
+        echo "File $filename already exists. Skipping download."
+    else
+        # Download the txt file using curl with timeout, user-agent, and other options
+        curl --connect-timeout $timeout --max-time $timeout -A "$user_agent" -o "$filename" -Lk $url
 
-    # Check if the download was successful
-    if [ $? -ne 0 ]; then
-        echo "Error downloading $url"
+        # Check if the download was successful
+        if [ $? -ne 0 ]; then
+            echo "Error downloading $url"
+        fi
+         # Add a time delay between downloads
+         sleep $delay
     fi
 
-    # Add a time delay between downloads
-    sleep $delay
 done < u_booklist.txt
-
