@@ -28,3 +28,5 @@ while IFS= read -r url; do
     fi
 
 done < u_booklist.txt
+
+echo "Done!"
