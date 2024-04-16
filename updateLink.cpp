@@ -43,7 +43,7 @@ void download_files(const std::string& strUrl,const std::string& out_filename){
     syslog_j.writeLog("/home/ronnieji/lib/db_tools/eBooks/wikiLog", "Successfully saved the file!");
 }
 void u_link(){
-    nlp_lib nl_j;
+    nemslib nem_j;
     Jsonlib jsl_j;
     std::vector<std::string> links;
     //std::vector<std::string> getAllLinks = nl_j.ReadBinaryOne("/home/ronnieji/lib/db_tools/updateLink/booklist.bin");
