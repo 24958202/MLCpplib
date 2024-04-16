@@ -46,7 +46,8 @@ void u_link(){
     nlp_lib nl_j;
     Jsonlib jsl_j;
     std::vector<std::string> links;
-    std::vector<std::string> getAllLinks = nl_j.ReadBinaryOne("/home/ronnieji/lib/db_tools/updateLink/booklist.bin");
+    //std::vector<std::string> getAllLinks = nl_j.ReadBinaryOne("/home/ronnieji/lib/db_tools/updateLink/booklist.bin");
+    std::vector<std::string> getAllLinks = nem_j.readTextFile("/home/ronnieji/lib/db_tools/updateLink/booklist.txt");
     if(!getAllLinks.empty()){
         for(const auto& ga : getAllLinks){
             //https://www.gutenberg.org/ebooks/32292.txt.utf-8
