@@ -9,6 +9,8 @@
 #include <map>
 #include <unordered_map>
 #include <sqlite3.h>
+#include <unicode/unistr.h>  // ICU
+#include <unicode/uchar.h>
 #include <string_view>
 #include <curl/curl.h>
 #include <gumbo.h>
