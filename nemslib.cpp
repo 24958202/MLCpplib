@@ -399,6 +399,32 @@ std::string nemslib::removeChinesePunctuation_training(const std::string& input)
     output.toUTF8String(result);
     return result;
 }
+bool nemslib::isHyphenBetweenWords(const icu::UnicodeString& input, int32_t index) {
+    if (index > 0 && index < input.length() - 1) {
+        UChar32 prevChar = input.char32At(index - 1);
+        UChar32 nextChar = input.char32At(index + 1);
+        if (u_isalnum(prevChar) && u_isalnum(nextChar)) {
+            return true;
+        }
+    }
+    return false;
+}
+std::string nemslib::removeChinesePunctuation_excluseHyphen(const std::string& input){
+    icu::UnicodeString unicodeInput = icu::UnicodeString::fromUTF8(input);
+    icu::UnicodeString output;
+    for (int32_t i = 0; i < unicodeInput.length(); ++i) {
+        UChar32 character = unicodeInput.char32At(i);
+        if ((!u_ispunct(character) || character == '-') && !isHyphenBetweenWords(unicodeInput, i)) {
+            output.append(character);
+        }
+        if (U_IS_SUPPLEMENTARY(character)) {
+            i++; // Skip the next code unit of a supplementary character
+        }
+    }
+    std::string result;
+    output.toUTF8String(result);
+    return result;
+}
 /*
     old code
 */
