@@ -92,6 +92,8 @@ class nemslib{
         std::string remove_chars_from_str(const std::string&, const std::vector<std::string>&);
         std::string removeEnglishPunctuation_training(const std::string&);
         std::string removeChinesePunctuation_training(const std::string&);
+	bool isHyphenBetweenWords(const icu::UnicodeString& input, int32_t index);//to check if a Hyphen is between words  like "Brand-new"; We should keep the hyphen.
+	std::string removeChinesePunctuation_excluseHyphen(const std::string&);//remove all punctuations (unicode) but not '-' between words
         std::vector<std::string> tokenize_en(const std::string&);
         std::vector<std::string> tokenize_zh(const std::string&);//tokenize a string and extract Chinese characters as separate tokens.
         std::vector<std::string> tokenize_zh_unicode(const std::string&);//tokenize a string and extract individual Unicode characters as separate tokens.
