@@ -6,10 +6,11 @@
 #include <thread>
 #include <cstdlib>
 #include <expect.h>
+#include <expect_comm.h>
 
 int main() {
-    std::string processListFile = "process_list.txt"; // replace with your file name
-    std::string sudoPwd = "your_sudo_password"; // replace with your sudo password
+    std::string processListFile = "apps_running.txt"; // replace with your file name
+    std::string sudoPwd = "1234"; // replace with your sudo password
 
     std::vector<std::string> processList;
     {
@@ -31,7 +32,12 @@ int main() {
             int ret = system(cmd.c_str());
             if (ret != 0) {
                 std::cout << "Process " << process << " is not running. Starting it..." << std::endl;
-                cmd = "sudo " + process; // assume the process needs sudo privileges
+                if(process == "webcrawler_english_binary_wordCollections"){
+                    cmd = "sudo /home/ronnieji/lib/db_tools/" + process + " /home/ronnieji/corpus/english_ebooks"; // assume the process needs sudo privileges
+                }
+                else{
+                    cmd = "sudo /home/ronnieji/lib/db_tools/" + process; // assume the process needs sudo privileges
+                }
                 FILE *fp = popen(cmd.c_str(), "w"); // open a pipe to the command
                 if (fp == nullptr) {
                     std::cerr << "Failed to open pipe." << std::endl;
