@@ -158,6 +158,9 @@ void get_all_voc(const std::string& str_folder_path){
 						if(!line_split.empty()){
 							for(auto& ls : line_split){
 								ls = jsl_j.trim(ls);
+								if(nem_j.isNumeric(ls) || nem_j.isNonAlphabetic(ls)){
+									continue;
+								}
 								std::cout << "Checking the existance of : " << ls << '\n';
 								if(!all_voc.empty()){
 									auto it = std::find_if(all_voc.begin(),all_voc.end(),[&ls](const std::string& s){
