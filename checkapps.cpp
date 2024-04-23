@@ -68,8 +68,19 @@ void startProcessInNewTerminal(const std::string& process) {
     std::string strCMD;
     int ret = system(cmd.c_str());
     if (ret != 0) {
+        /*
+            delay 5 seconds and check again, to avoid closing the Concurrency function
+        */
+        std::this_thread::sleep_for(std::chrono::seconds(5)); // wait 5 seconds
+        /*
+            check again
+        */
+        int ret = system(cmd.c_str());
+        if(ret == 0){
+            return;
+        }
         std::cout << "Process " << process << " is not running. Starting it in a new terminal..." << std::endl;
-        if (process == "webcrawler_wiki_class_keyword") {
+        if (process == "webcrawler_english_binary_wordCollections_books") {
             // Add your custom logic here for starting the specific process
             std::string filePath = "/home/ronnieji/lib/db_tools/webUrls/str_stored_urls.bin";
             if (std::filesystem::exists(filePath)) {
