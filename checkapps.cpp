@@ -13,8 +13,6 @@
 #include <iterator>
 #include <cstdio>
 #include <memory>
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/replace.hpp>
 #include "../lib/nemslib.h"
 
 std::string encrypt(const std::string& str, int key) {
@@ -57,7 +55,7 @@ std::string get_pass(){
     std::string line;
     if(file){
         std::getline(file,line);
-        line = decrypt(line,128);
+        line = decrypt(line,7122);
     }
     return line;
     file.close();
@@ -99,6 +97,7 @@ void startProcessInNewTerminal(const std::string& process) {
     }
 }
 void startWorking(){
+    Jsonlib jsl_j;
     std::string processListFile = "/home/ronnieji/lib/db_tools/apps_running.txt"; // replace with your file name
     std::string sudoPwd = get_pass(); // replace with your sudo password
     std::vector<std::string> processList;
@@ -110,7 +109,10 @@ void startWorking(){
         }
         std::string line;
         while (std::getline(file, line)) {
-            processList.push_back(line);
+            if(!line.empty()){
+                line = jsl_j.trim(line);
+                processList.push_back(line);
+            }
         }
         file.close();
     }
