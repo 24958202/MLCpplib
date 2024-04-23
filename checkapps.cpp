@@ -79,6 +79,9 @@ void startProcessInNewTerminal(const std::string& process) {
         if(ret == 0){
             return;
         }
+        /*
+            ------------------------------------------------------------------------
+        */
         std::cout << "Process " << process << " is not running. Starting it in a new terminal..." << std::endl;
         if (process == "webcrawler_english_binary_wordCollections_books") {
             // Add your custom logic here for starting the specific process
