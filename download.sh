@@ -13,7 +13,7 @@ while IFS= read -r url; do
     filename=$(basename $url)
     
     # Check if the file exists before downloading
-    if [ -f "$filename" ]; then
+    if [ -f "/home/ronnieji/lib/db_tools/updateLink/$filename" ]; then
         echo "File $filename already exists. Skipping download."
     else
         # Download the txt file using curl with timeout, user-agent, and other options
