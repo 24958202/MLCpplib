@@ -43,10 +43,11 @@ std::string exec(const char* cmd) {
 }
 void exeCMD(const std::string& strCMD, const std::string& strPass){
     // Construct the full command with echo to provide the password
-    //std::string fullCmd = "echo '" + strCMD + "' | " + strPass;
     std::string fullCmd = "echo '" + strPass + "' | sudo -S " + strCMD;
-    // Execute the command with sudo and password
-    std::string output = exec(fullCmd.c_str());
+
+    // Open a new terminal window and run the command
+    std::string openTerminalCmd = "gnome-terminal -- /bin/bash -c '" + fullCmd + "; exec bash'";
+    system(openTerminalCmd.c_str());
 }
 std::string get_pass(){
     std::ifstream file("/home/ronnieji/lib/db_tools/pas.cpp_.bin");
