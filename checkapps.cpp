@@ -55,7 +55,7 @@ std::string get_pass(){
     std::string line;
     if(file){
         std::getline(file,line);
-        line = decrypt(line,7122);
+        line = decrypt(line,128);
     }
     return line;
     file.close();
