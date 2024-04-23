@@ -43,8 +43,8 @@ std::string exec(const char* cmd) {
 }
 void exeCMD(const std::string& strCMD, const std::string& strPass){
     // Construct the full command with echo to provide the password
-    std::string fullCmd = "echo '" + strCMD + "' | " + strPass;
-
+    //std::string fullCmd = "echo '" + strCMD + "' | " + strPass;
+    std::string fullCmd = "echo '" + strPass + "' | sudo -S " + strCMD;
     // Execute the command with sudo and password
     std::string output = exec(fullCmd.c_str());
 }
@@ -82,10 +82,20 @@ int main() {
             if (ret != 0) {
                 std::cout << "Process " << process << " is not running. Starting it..." << std::endl;
                 if(process == "webcrawler_english_binary_wordCollections"){
+                     /*
+                        delete the current link list
+                     */
+                    std::string filePath = "/home/ronnieji/lib/db_tools/webUrls/str_stored_urls.bin";
+                    if (std::filesystem::exists(filePath)) {
+                        // Delete the file
+                        std::filesystem::remove(filePath);
+                    } else {
+                        std::cout << "str_stored_urls does not exist or cannot be deleted." << std::endl;
+                    }
                      cmd = "sudo /home/ronnieji/lib/db_tools/" + process + " /home/ronnieji/corpus/english_ebooks"; // assume the process needs sudo privileges
                 }
                 else{
-                    cmd = "sudo /home/ronnieji/lib/MLCpplib-main/" + process; // assume the process needs sudo privileges
+                    cmd = "sudo /home/ronnieji/lib/db_tools/" + process; // assume the process needs sudo privileges
                 }
                 
             }
