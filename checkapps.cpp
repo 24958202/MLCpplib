@@ -41,25 +41,64 @@ std::string exec(const char* cmd) {
     }
     return result;
 }
-void exeCMD(const std::string& strCMD, const std::string& strPass){
+void exeCMD(const std::string& strCMD, const std::string& strPass) {
     // Construct the full command with echo to provide the password
+    if(strCMD.empty() || strPass.empty()){
+        return;
+    }
     std::string fullCmd = "echo '" + strPass + "' | sudo -S " + strCMD;
-
     // Open a new terminal window and run the command
     std::string openTerminalCmd = "gnome-terminal -- /bin/bash -c '" + fullCmd + "; exec bash'";
-    system(openTerminalCmd.c_str());
+    //system(openTerminalCmd.c_str());
+    exec(openTerminalCmd.c_str());
 }
 std::string get_pass(){
     std::ifstream file("/home/ronnieji/lib/db_tools/pas.cpp_.bin");
     std::string line;
     if(file){
         std::getline(file,line);
-        line = decrypt(line,1234);
+        line = decrypt(line,128);
     }
     return line;
     file.close();
 }
-int main() {
+void startProcessInNewTerminal(const std::string& process) {
+    if(process.empty()){
+        return;
+    }
+    std::string cmd = "pidof " + process;
+    std::string strCMD;
+    int ret = system(cmd.c_str());
+    if (ret != 0) {
+        std::cout << "Process " << process << " is not running. Starting it in a new terminal..." << std::endl;
+        if (process == "webcrawler_wiki_class_keyword") {
+            // Add your custom logic here for starting the specific process
+            std::string filePath = "/home/ronnieji/lib/db_tools/webUrls/str_stored_urls.bin";
+            if (std::filesystem::exists(filePath)) {
+                std::filesystem::remove(filePath);
+            } else {
+                std::cout << "str_stored_urls does not exist or cannot be deleted." << std::endl;
+            }
+            strCMD = "sudo /home/ronnieji/lib/db_tools/" + process + " /home/ronnieji/corpus/english_ebooks";
+        } else if(process == "webcrawler_wiki_class_bookstore") {
+            std::string filePath = "/home/ronnieji/lib/db_tools/eBooks/webUrls/str_stored_urls.bin";
+            if (std::filesystem::exists(filePath)) {
+                std::filesystem::remove(filePath);
+            } else {
+                std::cout << "str_stored_urls does not exist or cannot be deleted." << std::endl;
+            }
+            strCMD = "sudo /home/ronnieji/lib/db_tools/" + process;
+        }
+        else{
+            strCMD = "sudo /home/ronnieji/lib/db_tools/" + process;
+        }
+        // Open a new terminal window and run the command
+        std::string openTerminalCmd = "gnome-terminal -- /bin/bash -c '" + strCMD + "; exec bash'";
+        system(openTerminalCmd.c_str());
+        std::this_thread::sleep_for(std::chrono::seconds(2)); // wait 5 seconds
+    }
+}
+void startWorking(){
     std::string processListFile = "/home/ronnieji/lib/db_tools/apps_running.txt"; // replace with your file name
     std::string sudoPwd = get_pass(); // replace with your sudo password
     std::vector<std::string> processList;
@@ -67,9 +106,8 @@ int main() {
         std::ifstream file(processListFile);
         if (!file) {
             std::cerr << "Failed to open process list file." << std::endl;
-            return 1;
+            return;
         }
-
         std::string line;
         while (std::getline(file, line)) {
             processList.push_back(line);
@@ -78,32 +116,13 @@ int main() {
     }
     while (true) {
         for (const auto& process : processList) {
-            std::string cmd = "pidof " + process;
-            int ret = system(cmd.c_str());
-            if (ret != 0) {
-                std::cout << "Process " << process << " is not running. Starting it..." << std::endl;
-                if(process == "webcrawler_english_binary_wordCollections"){
-                     /*
-                        delete the current link list
-                     */
-                    std::string filePath = "/home/ronnieji/lib/db_tools/webUrls/str_stored_urls.bin";
-                    if (std::filesystem::exists(filePath)) {
-                        // Delete the file
-                        std::filesystem::remove(filePath);
-                    } else {
-                        std::cout << "str_stored_urls does not exist or cannot be deleted." << std::endl;
-                    }
-                     cmd = "sudo /home/ronnieji/lib/db_tools/" + process + " /home/ronnieji/corpus/english_ebooks"; // assume the process needs sudo privileges
-                }
-                else{
-                    cmd = "sudo /home/ronnieji/lib/db_tools/" + process; // assume the process needs sudo privileges
-                }
-                
-            }
-            exeCMD(cmd,sudoPwd);
+            startProcessInNewTerminal(process);
         }
         std::this_thread::sleep_for(std::chrono::seconds(5)); // wait 5 seconds
     }
+}
+int main() {
+    startWorking();
     return 0;
 }
 /*
