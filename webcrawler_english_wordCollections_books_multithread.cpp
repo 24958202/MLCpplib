@@ -142,7 +142,6 @@ void get_all_voc(const std::string& str_folder_path){
 	if(str_folder_path.empty()){
 		std::cerr << "get_all_voc input empty!" << '\n';
 	}
-    std::lock_guard<std::mutex> lock(mtx);
 	/*
 		get the existing all_voc.bin file
 	*/
@@ -154,6 +153,7 @@ void get_all_voc(const std::string& str_folder_path){
         if (entry.is_regular_file() && entry.path().extension() == ".txt") {
             std::ifstream file(entry.path());
             if (file.is_open()) {
+                std::lock_guard<std::mutex> lock(mtx);
                 std::string line;
                 while (std::getline(file, line)) {
 					if(!line.empty()){
@@ -166,6 +166,7 @@ void get_all_voc(const std::string& str_folder_path){
 								ls = jsl_j.trim(ls);
 								if(nem_j.isNumeric(ls) || nem_j.isNonAlphabetic(ls)){
 									continue;
+                                    cv.notify_one();
 								}
 								std::cout << "Checking the existance of : " << ls << '\n';
 								if(!all_voc.empty()){
@@ -175,6 +176,7 @@ void get_all_voc(const std::string& str_folder_path){
 									if(it != all_voc.end()){
 										syslog_j.writeLog("/home/ronnieji/lib/db_tools/log","The word's already in the binary file,look for the next...");
 										continue;
+                                        cv.notify_one();
 									}
 								}
 								all_voc.push_back(ls);
@@ -182,6 +184,7 @@ void get_all_voc(const std::string& str_folder_path){
 								strMsg = "Adding the word: ";
 								strMsg.append(ls);
 								syslog_j.writeLog("/home/ronnieji/lib/db_tools/log",strMsg);
+                                cv.notify_one();                
 							}
 						}
 					}
@@ -194,7 +197,6 @@ void get_all_voc(const std::string& str_folder_path){
 	 }
 	 strMsg = "All words in the binary file! start checking ...";
 	 syslog_j.writeLog("/home/ronnieji/lib/db_tools/log",strMsg);
-     cv.notify_one();
 }
 void add_wordnet(){
 	nlp_lib nem_j;
