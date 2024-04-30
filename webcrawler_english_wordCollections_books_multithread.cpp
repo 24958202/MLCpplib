@@ -165,8 +165,8 @@ void get_all_voc(const std::string& str_folder_path){
 							for(auto& ls : line_split){
 								ls = jsl_j.trim(ls);
 								if(nem_j.isNumeric(ls) || nem_j.isNonAlphabetic(ls)){
-									continue;
                                     cv.notify_one();
+									continue;
 								}
 								std::cout << "Checking the existance of : " << ls << '\n';
 								if(!all_voc.empty()){
@@ -175,8 +175,8 @@ void get_all_voc(const std::string& str_folder_path){
 									});
 									if(it != all_voc.end()){
 										syslog_j.writeLog("/home/ronnieji/lib/db_tools/log","The word's already in the binary file,look for the next...");
-										continue;
                                         cv.notify_one();
+										continue;
 									}
 								}
 								all_voc.push_back(ls);
