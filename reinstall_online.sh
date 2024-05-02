@@ -49,7 +49,6 @@ sudo apt update && sudo apt-get install -y \
      curl \
      libcurlpp-dev \
      libcurlpp0 \
-     libeigen3-dev \
      expect \
      expect-lite \
      libexpected-dev \
