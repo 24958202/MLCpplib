@@ -13,6 +13,33 @@ const int EMBEDDING_SIZE = 50; // Size of the word embeddings
 const double LEARNING_RATE = 0.01; // Learning rate for gradient descent
 const int NUM_EPOCHS = 10; // Number of epochs to train for
 
+// Function to copy embeddings from source map to target map
+void copyEmbeddings(const std::map<std::string, Eigen::VectorXd>& source, std::map<std::string, Eigen::VectorXd>& target) {
+    for (const auto& entry : source) {
+        target[entry.first] = entry.second;
+    }
+}
+// Function to output embeddings to a file
+void outputEmbeddingsToFile(const std::string& filePath, const std::map<std::string, Eigen::VectorXd>& embeddings, const std::map<std::string, Eigen::VectorXd>& embeddings_context) {
+    std::ofstream outFile(filePath, std::ios::out);
+    if (!outFile.is_open()) {
+        std::cerr << "Error: Unable to open output file." << std::endl;
+        return;
+    }
+    // Output embeddings for each word and its context words
+    for (const auto& entry : embeddings) {
+        outFile << "Word: " << entry.first << std::endl;
+        // Output the embedding vector for the target word
+        outFile << "Embedding: " << entry.second.transpose() << std::endl;
+        // Output the context words and their embeddings
+        for (const auto& contextWord : embeddings_context) {
+            outFile << "Context Word: " << contextWord.first << std::endl;
+            outFile << "Context Embedding: " << contextWord.second.transpose() << std::endl;
+        }
+        outFile << std::endl;
+    }
+    outFile.close();
+}
 // Function to convert Eigen::VectorXd to std::vector<double>
 std::vector<double> eigenToStdVector(const Eigen::VectorXd& eigenVector) {
     return std::vector<double>(eigenVector.data(), eigenVector.data() + eigenVector.size());
@@ -89,11 +116,11 @@ void process_input(const std::string& input_folder_path){
         }
     }
     std::map<std::string,Eigen::VectorXd> embeddings = initializeEmbeddings(vocab);
+    std::map<std::string,Eigen::VectorXd> embeddings_context;
     for (const auto& pair : embeddings) {
         const std::string& key = pair.first;
         const Eigen::VectorXd& value = pair.second;
         Eigen::VectorXd eigenValue = Eigen::VectorXd::Map(value.data(), value.size());
-
         embeddings[key] = eigenValue;
     }
     for(int epoch = 1; epoch <= NUM_EPOCHS; epoch++){
@@ -118,24 +145,39 @@ void process_input(const std::string& input_folder_path){
                 Eigen::VectorXd hiddenGradient = outputGradient * outputWeights;
                 Eigen::VectorXd inputGradient = computeInputGradient(hiddenGradient,outputWeights);
                 updateEmbeddings(embeddings[targetWord],inputGradient,LEARNING_RATE);
-                i += EMBEDDING_SIZE;
+                // Copy embeddings to embeddings_context
+                copyEmbeddings(embeddings, embeddings_context);
+                int inputIndex = 0;
+                // Update embeddings in embeddings_context for each context word
+                for (const std::string& contextWord : contextWords) {
+                    // Check if inputIndex is within the bounds of inputGradient
+                    if (inputIndex + EMBEDDING_SIZE <= inputGradient.size()) {
+                        Eigen::Map<Eigen::VectorXd> subInputGradient(&inputGradient[inputIndex], EMBEDDING_SIZE);
+                        updateEmbeddings(embeddings_context[contextWord], subInputGradient, LEARNING_RATE);
+                        inputIndex += EMBEDDING_SIZE;
+                    } else {
+                        // Handle the case where inputIndex exceeds inputGradient size
+                        std::cerr << "Error: Input index out of range." << std::endl;
+                        // Optionally break out of the loop or add error handling logic
+                        break;
+                    }
+                }
                 epochLoss += loss;
             }
             std::cout << "Epoch " << epoch << " loss: " << epochLoss << std::endl;
+            /*
+                print
+            */
+            for (const auto& contextWord : embeddings_context) {
+                std::cout << "Context Word: " << contextWord.first << std::endl;
+                std::cout << "Context Embedding: " << contextWord.second.transpose() << std::endl;
+            }
         }
     }
-    std::ofstream outFile("/home/ronnieji/lib/MLCpplib-main/output/embeddings.txt", std::ios::out);
-    if(!outFile.is_open()){
-        outFile.open("/home/ronnieji/lib/MLCpplib-main/output/embeddings.txt", std::ios::out);
+    // outFile.close();
+    if(!embeddings.empty() && !embeddings_context.empty()){
+        outputEmbeddingsToFile("/home/ronnieji/lib/MLCpplib-main/output/embeddings.txt", embeddings,embeddings_context);
     }
-    for(const auto& it : embeddings){
-        outFile << it.first << " ";
-        for(double xi : it.second){
-            outFile << xi << " ";
-        }
-        outFile << std::endl;
-    }
-    outFile.close();
 }
 int main(){
     process_input("/home/ronnieji/lib/MLCpplib-main/citizen.txt");
