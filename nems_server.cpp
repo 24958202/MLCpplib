@@ -1,8 +1,5 @@
 #include "nems_server.h"
 
-std::mutex mtx;
-std::condition_variable cv;
-
 void handleClientConnectionSSL(SSL* ssl) {
     char buffer[1024];
     int bytesRead;
@@ -13,15 +10,16 @@ void handleClientConnectionSSL(SSL* ssl) {
         std::cout << "Received data from client: " << buffer << std::endl;
         // Send a response back to the client
         SSL_write(ssl, "Server received your message", strlen("Server received your message"));
-        std::lock_guard<std::mutex> lock(mtx); // Block the thread
         /*
             process buffer 
         */
-       
+        // Notify listeners that data has been received
+        if (onDataReceived) {
+            onDataReceived(buffer);
+        }
         /*
             end processing
         */
-        cv.notify_one(); // Inform other threads
     }
     // Handle SSL_read errors or client disconnection
     if (bytesRead < 0) {
