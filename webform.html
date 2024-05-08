@@ -1,0 +1,33 @@
+
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT-like Bot</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">ChatGPT-like Bot</div>
+        <nav>
+            <ul>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Help</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <form action = "/cgi-bin/mycgi" method = "post">
+            First Name: <input type = "text" name = "first_name"><br />
+            Last Name: <input type = "text" name = "last_name" />
+            <input type = "submit" value = "Submit" />
+        </form>
+    </main>
+    <footer>
+        <p>&copy; 2023 ChatGPT-like Bot</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
