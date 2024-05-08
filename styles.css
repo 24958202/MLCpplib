@@ -75,3 +75,31 @@ body {
     background-color: #d1e7dd; /* Light green */
     text-align: right;
   }
+
+  .chat-log {
+    height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #f4f4f4;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.message, .user-message {
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+}
+
+.user-message {
+    background-color: #d1e7dd; /* Light green background for user messages */
+    align-self: flex-end; /* Aligns the user messages to the right */
+}
+
+.right-align {
+    display: flex;
+    justify-content: flex-end;
+}
