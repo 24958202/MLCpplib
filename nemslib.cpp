@@ -1111,7 +1111,7 @@ void SysLogLib::writeLog(const std::string& logpath, const std::string& log_mess
     }
     file << currentDateTime.current_time + " : " + log_message << std::endl;
     file.close();
-    std::cout << currentDateTime.current_date << " " << currentDateTime.current_time << " : " << log_message << std::endl;
+    //std::cout << currentDateTime.current_date << " " << currentDateTime.current_time << " : " << log_message << std::endl;
 }
 void SysLogLib::chatCout(const std::string& chatTxt){
     size_t t_delay = 23;
