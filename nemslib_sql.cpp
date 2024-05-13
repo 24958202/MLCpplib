@@ -2077,11 +2077,11 @@ void nlp_lib::write_books_mysql(const std::string& input_folder_path,const std::
                                     mysql_free_result(result);
                                 }
                                 else{
-                                    unsigned int t_id = 0;
                                     unsigned int rscount = 0;
+                                    unsigned int t_id = 0;
                                     rscount = this->check_all_voc_nums(conn);
                                     if(rscount != -1){
-                                        t_id = rscount + 1;
+                                        t_id = rscount+ 1;
                                     }
                                     else{
                                         return;
@@ -2169,6 +2169,7 @@ std::vector<std::string> nlp_lib::read_books_mysql(const mydb_connection& conn){
             	for (const auto& row : data) {
 					//std::cout << "row[1]: " << row[1] << " row[2]: " << row[2] << " row[3]: " << row[3] << '\n';
                     str_book = row[3];
+                    std::cout << str_book << '\n';
                     break;
 				}
             }
@@ -2182,9 +2183,9 @@ std::vector<std::string> nlp_lib::read_books_mysql(const mydb_connection& conn){
     print_book = nem_j.splitString(str_book,',');
     for(const auto& pb : print_book){
         std::stringstream select_sql;
-        unsigned int id = std::stoi(pb);
-        select_sql << "SELECT * FROM nlp_db.all_voc WHERE t_id=" << id;
+        select_sql << "SELECT t_x FROM nlp_db.all_voc WHERE t_id=" << pb;
         std::string str_q = select_sql.str();
+        std::cout << str_q << '\n';
         const char* query = str_q.c_str();
         if (db.executeQuery(query)) {
             MYSQL_RES* result = db.fetchResult();
@@ -2200,7 +2201,8 @@ std::vector<std::string> nlp_lib::read_books_mysql(const mydb_connection& conn){
                     /*
                         save the dt into all_voc
                     */
-                    book_token_xy.push_back(rowData[2]);
+                    std::cout << rowData[0] << '\n';
+                    book_token_xy.push_back(rowData[0]);
                     /*
                         -----------------------------------
                     */
