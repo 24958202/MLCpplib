@@ -1956,6 +1956,32 @@ int nlp_lib::check_all_voc_nums(const mydb_connection& conn){
     db.closeConnection();
     return rscount;
 }
+int nlp_lib::check_learned_voc_nums(const mydb_connection& conn){
+    MySQLDatabase db;   
+    const char* host = conn.serverip.c_str(); //"localhost";
+    const char* user = conn.usr.c_str();//"24958202@qq.com";
+    const char* passwd = conn.pass.c_str();//"7122759";
+    const char* dbname = conn.dbname.c_str();//"nlp_db";    
+    if (!db.connect(host, user, passwd, dbname)) {
+        std::cout << "Error mysql connection" << '\n';
+        return -1;
+    }  
+    unsigned int rscount = 0;
+    std::string count_query = "SELECT COUNT(*) AS rscount FROM nlp_db.learned_voc";
+    if (db.executeQuery(count_query.c_str())) {
+        MYSQL_RES* count_result = db.fetchResult();
+        if (count_result) {
+            MYSQL_ROW count_row = mysql_fetch_row(count_result);
+            if (count_row) {
+                std::string total_records = count_row[0] ? count_row[0] : "0";
+                rscount = std::stoi(total_records);
+            }
+        }
+        mysql_free_result(count_result);
+    }
+    db.closeConnection();
+    return rscount;
+}
 void nlp_lib::write_books_mysql(const std::string& input_folder_path,const std::string& stopwordListPath,const std::string& output_log_path,const mydb_connection& conn){
     if(input_folder_path.empty() || stopwordListPath.empty() || output_log_path.empty()){
         std::cerr << "read_books input empty!" << '\n';
@@ -2107,9 +2133,12 @@ void nlp_lib::write_books_mysql(const std::string& input_folder_path,const std::
                         std::cout << book_y << '\n';
                     }
                 }
+                unsigned int get_max_learned_voc = 0;
+                get_max_learned_voc = this-> check_learned_voc_nums(conn);
+                get_max_learned_voc = get_max_learned_voc + 1;
                 std::stringstream str_insert;
                 if(!str_topics_without_freq.empty() && !str_topics_with_freq.empty() && !book_y.empty()){
-                    str_insert << "INSERT into nlp_db.learned_voc(t_topic,t_topic_with_freq,coordinate)values('" << str_topics_without_freq << "','" << str_topics_with_freq << "','" << book_y << "')";
+                    str_insert << "INSERT into nlp_db.learned_voc(t_topic_id,t_topic,t_topic_with_freq,coordinate)values(" << std::to_string(get_max_learned_voc) << ",'"  << str_topics_without_freq << "','" << str_topics_with_freq << "','" << book_y << "')";
                 }
                 std::string str_q = str_insert.str();
                 db.executeQuery(str_q.c_str());
@@ -2151,7 +2180,7 @@ std::vector<std::string> nlp_lib::read_books_mysql(const mydb_connection& conn){
     	std::cout << "Mysql connection error!" << '\n';
         return book_token_xy;
     }  
-    const char* query = "SELECT * FROM nlp_db.learned_voc";   
+    const char* query = "SELECT coordinate FROM nlp_db.learned_voc";   
     if (db.executeQuery(query)) {
         MYSQL_RES *result = db.fetchResult();
         if (result) {
@@ -2168,7 +2197,7 @@ std::vector<std::string> nlp_lib::read_books_mysql(const mydb_connection& conn){
             if(!data.empty()){
             	for (const auto& row : data) {
 					//std::cout << "row[1]: " << row[1] << " row[2]: " << row[2] << " row[3]: " << row[3] << '\n';
-                    str_book = row[3];
+                    str_book = row[0];
                     std::cout << str_book << '\n';
                     break;
 				}

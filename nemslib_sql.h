@@ -366,6 +366,7 @@ class nlp_lib{
             }
         */
         int check_all_voc_nums(const mydb_connection&);
+        int check_learned_voc_nums(const mydb_connection&);
         void write_books_mysql(const std::string&,const std::string&,const std::string&,const mydb_connection&);
         std::vector<std::string> read_books_mysql(const mydb_connection&);
 };
