@@ -226,6 +226,32 @@ void Jsonlib::removeDuplicates(std::vector<std::string>& vec){
 std::string Jsonlib::remove_last_char_in_a_string(const std::string& str){
     return str.substr(0,str.size()-1);
 }
+std::string Jsonlib::escape_mysql_string(const std::string& input) {
+    // Mapping of special characters to their escaped equivalents
+    static const std::unordered_map<char, std::string> escape_map = {
+        {'\'', "\\'"},
+        {'\"', "\\\""},
+        {'\\', "\\\\"},
+        {'\n', "\\n"},
+        {'\r', "\\r"},
+        {'\t', "\\t"},
+        {'\b', "\\b"},
+        {'\0', "\\0"},
+        {'\x1a', "\\Z"} // ASCII 26 (EOF)
+    };
+
+    std::ostringstream escaped;
+    for (char ch : input) {
+        auto it = escape_map.find(ch);
+        if (it != escape_map.end()) {
+            escaped << it->second;
+        } else {
+            escaped << ch;
+        }
+    }
+
+    return escaped.str();
+}
 /*-End Json Library-*/
 /*-start Sqlite3 Library-*/
 SQLite3Library::SQLite3Library(const std::string& db_file) : db_file(db_file), connection(nullptr) {}

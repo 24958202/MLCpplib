@@ -57,6 +57,11 @@ class Jsonlib{
             remove last char in a string
         */
         std::string remove_last_char_in_a_string(const std::string&);
+        /*
+            Escaping special characters in SQL queries is crucial to prevent SQL injection attacks and ensure that the queries are executed correctly.
+            para: input original string, will return an escaped string
+        */
+        std::string escape_mysql_string(const std::string&);
 };
 /*-Begin SQLite3 library*/
 class SQLite3Library {
@@ -169,6 +174,7 @@ class nemslib{
         std::vector<std::vector<std::string>> check_sql_return_result(const std::string&,const std::string&);
         void process_user_multiple_input(const std::unordered_map<std::string, std::string>&, const std::string&, const std::vector<std::string>&);
         std::string get_random_answer_if_exists(const std::string&);
+        
 };
 /*
     start SysLogLib
