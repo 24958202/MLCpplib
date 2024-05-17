@@ -133,7 +133,16 @@ std::vector<std::string> Jsonlib::splitString_bystring(const std::string& input,
 }
 bool Jsonlib::isDomainExtension(const std::string& word){
 	static const std::vector<std::string> domainExtensions = {
-		".com", ".net", ".org", ".edu", ".gov", ".io", ".co", // Add more as needed
+        //Generic Top-Level Domains (gTLDs):
+		".com", ".net", ".org", ".edu", ".gov", ".io", ".co", ".mil", ".int", ".info", ".biz", ".name", ".pro", ".aero", ".coop", ".museum",
+        //Country Code Top-Level Domains (ccTLDs):
+        ".us", ".uk", ".ca", ".de", ".fr", "jp", ".cn", ".in", ".au", ".br" , ".ru", ".za", ".mx", "es", ".it", ".nl",
+        //New gTLDs:
+        ".app", ".blog", ".shop", ".online", ".site", ".tech", ".xyz", ".club", ".design", ".news", ".store", ".website",
+        //Sponsored Top-Level Domains (sTLDs):
+        ".asia", ".cat", ".jobs", ".mobi", ".tel", ".travel",
+        //Infrastructure Top-Level Domain:
+        ".arpa"
 	};
 	for (const auto& ext : domainExtensions) {
 		if (word.size() >= ext.size() && word.substr(word.size() - ext.size()) == ext) {
@@ -142,33 +151,42 @@ bool Jsonlib::isDomainExtension(const std::string& word){
 	}
 	return false;
 }
+bool Jsonlib::isAbbreviation(const std::string& word){
+    const std::unordered_set<std::string> common_abbreviations = {
+        "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Sr.", "Jr.", "Inc.", "Ltd.", "Co.", "St.", "Ave.", "Blvd.", "Rd.", "Mt.", "Ft."
+    };
+    return common_abbreviations.find(word) != common_abbreviations.end();
+}
 std::vector<std::string> Jsonlib::split_sentences(const std::string& text){
 	std::vector<std::string> sentences;
-	std::istringstream iss(text);
-	std::string token;
-	std::string sentence;
-	while (iss >> token) {
-		sentence += token + " ";
-		// Check if the token ends with a sentence terminator
-		char lastChar = token.back();
-		if (lastChar == '.' || lastChar == '?' || lastChar == '!' || lastChar == ';') {
-			// Check if the token is a domain extension
-			if (this->isDomainExtension(token)) {
-				continue;
-			}
-			// Trim the sentence and add it to the list if it's not empty
-			sentence = sentence.substr(0, sentence.size() - 1); // Remove trailing space
-			if (!sentence.empty()) {
-				sentences.push_back(sentence);
-				sentence.clear();
-			}
-		}
-	}
-	// Add any remaining text as the last sentence
-	if (!sentence.empty()) {
-		sentences.push_back(sentence);
-	}
-	return sentences;
+    std::regex sentence_regex(R"(([^.!?;]*[.!?;])|([^\.!?;]*$))"); // match sentence boundaries
+    std::sregex_iterator it(text.begin(), text.end(), sentence_regex);
+    std::sregex_iterator end;
+    std::string current_sentence;
+    for (; it != end; ++it) {
+        std::smatch match = *it;
+        std::string sentence = match.str();
+        std::istringstream iss(sentence);
+        std::string token;
+        while (iss >> token) {
+            current_sentence += token + " ";
+            if (token.back() == '.' || token.back() == '?' || token.back() == '!' || token.back() == ';') {
+                if (this->isDomainExtension(token) || this->isAbbreviation(token)) {
+                    continue;
+                }
+                current_sentence = std::regex_replace(current_sentence, std::regex(R"(\s+$)"), ""); // trim trailing spaces
+                if (!current_sentence.empty()) {
+                    sentences.push_back(current_sentence);
+                    current_sentence.clear();
+                }
+            }
+        }
+    }
+    if (!current_sentence.empty()) {
+        current_sentence = std::regex_replace(current_sentence, std::regex(R"(\s+$)"), ""); // trim trailing spaces
+        sentences.push_back(current_sentence);
+    }
+    return sentences;
 }
 void Jsonlib::toLower(std::string& str){
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c){ return std::tolower(c); });

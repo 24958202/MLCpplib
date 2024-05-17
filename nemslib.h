@@ -46,6 +46,7 @@ class Jsonlib{
         std::vector<std::string> splitString(const std::string&, char);//split a string by a delimiter
         std::vector<std::string> splitString_bystring(const std::string&, const std::string&);//split a string by a string
 		bool isDomainExtension(const std::string&);
+        bool isAbbreviation(const std::string&);
 		std::vector<std::string> split_sentences(const std::string&);
         void toLower(std::string&);
 		void toUpper(std::string&);
