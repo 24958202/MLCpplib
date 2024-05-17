@@ -91,7 +91,7 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                 std::string book_x_y;
                 while (std::getline(in_file, line)) {
                     line = std::string(jsl_j.str_trim(line));
-                    str_book += line + '\n';
+                    str_book += line + " ";
                 }
                 syslog_j.writeLog(output_log_path,"Getting the book's topic...");
                 /*
