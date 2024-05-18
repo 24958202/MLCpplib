@@ -72,11 +72,13 @@ public:
     void disconnect();
     template<typename T>
     void executeQuery(const std::string&, T&);
-    template<typename T>
-	int callback(void*, int, char**, char**);
+    //template<typename T>
+	//int callback(void*, int, char**, char**);
 private:
     sqlite3* connection;
     std::string db_file;
+    template<typename T>
+    static int callback(void* data, int argc, char** argv, char** columnNames);
 };
 /*-End SQLite3 library*/
 /*

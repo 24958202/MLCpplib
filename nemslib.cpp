@@ -294,8 +294,23 @@ void SQLite3Library::executeQuery(const std::string& query, T& returnValue) {
         std::vector<std::string> row;
         int numColumns = sqlite3_column_count(statement);
         for (int i = 0; i < numColumns; i++) {
-            const char* value = reinterpret_cast<const char*>(sqlite3_column_text(statement, i));
-            row.push_back(value ? value : "NULL");
+            switch (sqlite3_column_type(statement, i)) {
+                case SQLITE_INTEGER:
+                    row.push_back(std::to_string(sqlite3_column_int(statement, i)));
+                    break;
+                case SQLITE_FLOAT:
+                    row.push_back(std::to_string(sqlite3_column_double(statement, i)));
+                    break;
+                case SQLITE_TEXT:
+                    row.push_back(reinterpret_cast<const char*>(sqlite3_column_text(statement, i)));
+                    break;
+                case SQLITE_NULL:
+                    row.push_back("NULL");
+                    break;
+                default:
+                    row.push_back("UNKNOWN");
+                    break;
+            }
         }
         returnValue.push_back(row);
     }
