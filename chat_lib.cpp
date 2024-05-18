@@ -74,13 +74,12 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
     }
     WebSpiderLib jsl_j;
     nemslib nems_j;/* initialize stop word*/
-    std::set<std::filesystem::path> ProcessFileNames;
     binary_file_lib bflib;
     SysLogLib syslog_j;
     syslog_j.writeLog(output_log_path,"Initialize stopword list...");
     nems_j.set_stop_word_file_path(stopwordListPath);
     for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".txt" && ProcessFileNames.find(entry.path()) == ProcessFileNames.end()) {
+        if (entry.is_regular_file() && entry.path().extension() == ".txt") {
             std::ifstream in_file(entry.path());
             syslog_j.writeLog(output_log_path,"Reading book: ");
             syslog_j.writeLog(output_log_path,entry.path());
@@ -98,7 +97,7 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                 std::string book_x_y;
                 while (std::getline(in_file, line)) {
                     line = std::string(jsl_j.str_trim(line));
-                    str_book += line + '\n';
+                    str_book += line + " ";
                 }
                 syslog_j.writeLog(output_log_path,"Getting the book's topic...");
                 /*
@@ -128,6 +127,7 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                 if(!book_token.empty()){
                     //syslog_j.writeLog(output_log_path,"Adding the book to the library...");
                     for(const auto& bt : book_token){
+                        std::cout << bt << '\n';
                         try{
                             /*
                                 check the existance of bt
@@ -160,22 +160,8 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                 std::stringstream ss;
                 ss << "Book: " << entry.path().filename().string() << " was successfully saved!" << '\n';
                 syslog_j.writeLog(output_log_path,ss.str());
-                /*
-                    add the file to Processed list
-                */
-                ProcessFileNames.insert(entry.path());
             }
             in_file.close();
-        }
-    }
-    /*
-        Check new files, and process the new file
-    */
-    for (const auto& entry : std::filesystem::directory_iterator(input_folder_path)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".txt" && ProcessFileNames.find(entry.path()) == ProcessFileNames.end()){
-            //const std::string& input_folder_path,const std::string& stopwordListPath,const std::string& output_log_path,const std::string& trained_all_voc, const std::string& all_voc, const std::string& book_x_y_path
-            this->write_books_mysql(input_folder_path,stopwordListPath,output_log_path,trained_all_voc,all_voc,book_x_y_path);
-            return;
         }
     }
     syslog_j.writeLog(output_log_path,"All jobs are done!");
