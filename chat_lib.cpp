@@ -17,11 +17,16 @@ size_t binary_file_lib::write_all_voc(const std::string& all_voc, const std::str
     }
     nemslib nem_j;
     size_t pos = -1;
-    std::vector<std::string> get_content_from_all_voc = nem_j.readTextFile(all_voc);
-    auto it = std::find(get_content_from_all_voc.begin(),get_content_from_all_voc.end(),str_to_write);
-    if(it != get_content_from_all_voc.end()){
-        pos = std::distance(get_content_from_all_voc.begin(), it);
-        return pos;
+    std::vector<std::string> get_content_from_all_voc;
+    if(std::filesystem::exists(all_voc)){
+        get_content_from_all_voc = nem_j.readTextFile(all_voc);
+        if(!get_content_from_all_voc.empty()){
+            auto it = std::find(get_content_from_all_voc.begin(),get_content_from_all_voc.end(),str_to_write);
+            if(it != get_content_from_all_voc.end()){
+                pos = std::distance(get_content_from_all_voc.begin(), it);
+                return pos;
+            }
+        }
     }
     get_content_from_all_voc.push_back(str_to_write);
     /*
@@ -31,9 +36,7 @@ size_t binary_file_lib::write_all_voc(const std::string& all_voc, const std::str
     if(!out_file.is_open()){
         out_file.open(all_voc,std::ios::app);
     }
-    for(const auto& av : get_content_from_all_voc){
-        out_file << av << '\n';
-    }
+    out_file << str_to_write << '\n';
     out_file.close();
     pos = get_content_from_all_voc.size();
     return pos;
@@ -46,10 +49,14 @@ void binary_file_lib::write_binary_file(const std::string& file_path, const std:
         check existance str_to_write
     */
     nemslib nem_j;
-    std::vector<std::string> get_content_from_all_voc = nem_j.readTextFile(file_path);
-    auto it = std::find(get_content_from_all_voc.begin(),get_content_from_all_voc.end(),str_to_write);
-    if(it != get_content_from_all_voc.end()){
-        return;
+    if(std::filesystem::exists(file_path)){
+       std::vector<std::string> get_content_from_all_voc = nem_j.readTextFile(file_path);
+       if(!get_content_from_all_voc.empty()){
+            auto it = std::find(get_content_from_all_voc.begin(),get_content_from_all_voc.end(),str_to_write);
+            if(it != get_content_from_all_voc.end()){
+                return;
+            }
+       }
     }
     std::ofstream out_file(file_path,std::ios::app);
     if(!out_file.is_open()){
@@ -91,7 +98,7 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                 std::string book_x_y;
                 while (std::getline(in_file, line)) {
                     line = std::string(jsl_j.str_trim(line));
-                    str_book += line + " ";
+                    str_book += line + '\n';
                 }
                 syslog_j.writeLog(output_log_path,"Getting the book's topic...");
                 /*
