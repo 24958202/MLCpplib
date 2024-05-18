@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <set>
+#include <sstream>
 #include "nemslib.h"
 #include "chat_lib.h"
 class binary_file_lib{
@@ -16,30 +17,49 @@ size_t binary_file_lib::write_all_voc(const std::string& all_voc, const std::str
         return -1;
     }
     nemslib nem_j;
-    size_t pos = -1;
-    std::vector<std::string> get_content_from_all_voc;
-    if(std::filesystem::exists(all_voc)){
-        get_content_from_all_voc = nem_j.readTextFile(all_voc);
-        if(!get_content_from_all_voc.empty()){
-            auto it = std::find(get_content_from_all_voc.begin(),get_content_from_all_voc.end(),str_to_write);
-            if(it != get_content_from_all_voc.end()){
-                pos = std::distance(get_content_from_all_voc.begin(), it);
-                return pos;
+    std::vector<std::vector<std::string>> dbresult;
+	SQLite3Library db(all_voc);
+	db.connect();
+	db.executeQuery("select * from english_all_voc where w='" + str_to_write + "'",dbresult);
+	size_t w_id = -1;
+	if(!dbresult.empty()){
+		for(const auto& rw : dbresult){
+			/*
+				rw[0]=id,
+				rw[1]=word,
+				rw[2]=word_type,
+				rw[3]=meaning_en,
+				rw[4]=meaning_zh
+				
+				check the word's past participle and past perfect participle
+			*/
+            std::cout << "rw: " << rw[1] << '\n';
+			w_id = std::stoi(rw[1]);
+            std::cout << "w_id: " << w_id << '\n';
+		}
+        db.disconnect();
+        return w_id;
+	}
+    else{
+        /*
+            select max id
+        */
+        std::vector<std::vector<std::string>> dbmax;
+        db.executeQuery("select max(w_id) as maxid from english_all_voc",dbmax);
+        if(!dbmax.empty()){
+            for(const auto& rw : dbmax){
+                w_id = std::stoi(rw[0]);
             }
         }
+        w_id = w_id + 1;
+        std::stringstream ss;
+        ss << "insert into english_all_voc(w_id,w)values(" << w_id << ",'" << str_to_write << "')";
+        std::string s_q = ss.str();
+        db.executeQuery(s_q.c_str(),dbmax);
+        db.disconnect();
+        return w_id;
     }
-    get_content_from_all_voc.push_back(str_to_write);
-    /*
-        write to file
-    */
-    std::ofstream out_file(all_voc,std::ios::app);
-    if(!out_file.is_open()){
-        out_file.open(all_voc,std::ios::app);
-    }
-    out_file << str_to_write << '\n';
-    out_file.close();
-    pos = get_content_from_all_voc.size();
-    return pos;
+    return w_id;
 }
 void binary_file_lib::write_binary_file(const std::string& file_path, const std::string& str_to_write){
     if(str_to_write.empty()){
@@ -48,28 +68,34 @@ void binary_file_lib::write_binary_file(const std::string& file_path, const std:
     /*
         check existance str_to_write
     */
-    nemslib nem_j;
-    if(std::filesystem::exists(file_path)){
-       std::vector<std::string> get_content_from_all_voc = nem_j.readTextFile(file_path);
-       if(!get_content_from_all_voc.empty()){
-            auto it = std::find(get_content_from_all_voc.begin(),get_content_from_all_voc.end(),str_to_write);
-            if(it != get_content_from_all_voc.end()){
-                return;
-            }
-       }
+    size_t t_id = -1;
+    std::vector<std::vector<std::string>> dbresult;
+    std::vector<std::vector<std::string>> dbmax;
+    Jsonlib jsl_j;
+	SQLite3Library db(file_path);
+	db.connect();
+    db.executeQuery("delete from trained_all_voc where topic='" + str_to_write + "'",dbresult);
+	db.executeQuery("select max(topic_id) as maxid from trained_all_voc",dbmax);
+	if(!dbmax.empty()){
+		for(const auto& rw : dbmax){
+			t_id = std::stoi(rw[0]);
+		}
+        t_id = t_id + 1;
+	}
+    std::vector<std::string> get_topics = jsl_j.splitString_bystring(str_to_write,"^~&");
+    if(!get_topics.empty()){
+        std::stringstream ss;
+        ss << "insert into trained_all_voc(topic_id,topic,str_book)values(" << t_id << ",'" << get_topics[0] << "','" << get_topics[1] << "')";
+        std::string s_query = ss.str();
+        db.executeQuery(s_query.c_str(),dbresult);
     }
-    std::ofstream out_file(file_path,std::ios::app);
-    if(!out_file.is_open()){
-        out_file.open(file_path,std::ios::app);
-    }
-    out_file << str_to_write << '\n';
-    out_file.close();
+    db.disconnect();
 }
 /*
     para1:input_folder_path, para2:stopwordListPath, para3:output_log_path,para4: trained_all_voc.bin path, para5:all_voc.bin path, para6:book_x_y.bin path
 */
-void chat_lib::write_books_mysql(const std::string& input_folder_path,const std::string& stopwordListPath,const std::string& output_log_path,const std::string& trained_all_voc, const std::string& all_voc, const std::string& book_x_y_path){
-    if(input_folder_path.empty() || stopwordListPath.empty() || output_log_path.empty() || trained_all_voc.empty() || all_voc.empty() || book_x_y_path.empty()){
+void chat_lib::write_books_mysql(const std::string& input_folder_path,const std::string& stopwordListPath,const std::string& output_log_path,const std::string& db_path){
+    if(input_folder_path.empty() || stopwordListPath.empty() || output_log_path.empty() || db_path.empty()){
         return;
     }
     WebSpiderLib jsl_j;
@@ -127,12 +153,11 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                 if(!book_token.empty()){
                     //syslog_j.writeLog(output_log_path,"Adding the book to the library...");
                     for(const auto& bt : book_token){
-                        std::cout << bt << '\n';
                         try{
                             /*
                                 check the existance of bt
                             */
-                            size_t b_pos = bflib.write_all_voc(all_voc,bt);
+                            size_t b_pos = bflib.write_all_voc(db_path,bt);
                             if(b_pos != -1){
                                 book_token_xy.push_back(std::to_string(b_pos));
                             }
@@ -141,22 +166,36 @@ void chat_lib::write_books_mysql(const std::string& input_folder_path,const std:
                             std::cerr << e.what() << '\n';
                         }
                     }
-                    book_x_y="";
                     book_y = "";
-                    unsigned int i = 0;
                     if(!book_token_xy.empty()){
                         for(const auto& bt : book_token_xy){
                             book_y += bt + ",";
-                            i++;
-                            int bt_y = std::stoi(bt) - i;
-                            book_x_y += bt + "," + std::to_string(bt_y) + "^~&";
                         }
                         book_y = book_y.substr(0,book_y.size()-1);
-                        book_x_y = book_x_y.substr(0,book_x_y.size()-3);
                     }
                 }
-                bflib.write_binary_file(trained_all_voc,str_topics_without_freq + "^~&" + book_y);
-                bflib.write_binary_file(book_x_y_path,book_x_y);
+                bflib.write_binary_file(db_path,str_topics_without_freq + "^~&" + book_y);
+                std::vector<std::vector<std::string>> dbresult;
+                SQLite3Library db(db_path);
+                db.connect();
+                db.executeQuery("select topic_id from trained_all_voc where topic='"+ str_topics_without_freq +"'",dbresult);
+                if(!dbresult.empty()){
+                    size_t t_id = -1;
+                    for(const auto& rw : dbresult){
+                        std::cout << "rw[0]: " << rw[0] << '\n';
+                        t_id = std::stoi(rw[0]);
+		            }
+                    if(!book_token_xy.empty()){
+                        for(unsigned int i=0; i < book_token_xy.size(); ++i){
+                            int bt_y = std::stoi(book_token_xy[i]) - i;
+                            std::stringstream ss;
+                            ss << "insert into CBow(topic_id,dt,dt_y)values(" << t_id << ",'" << book_token_xy[i] << "','" << std::to_string(bt_y) << "')";
+                            std::string ss_q = ss.str();
+                            db.executeQuery(ss_q.c_str(),dbresult);
+                        }
+                    }
+                }
+                db.disconnect();
                 std::stringstream ss;
                 ss << "Book: " << entry.path().filename().string() << " was successfully saved!" << '\n';
                 syslog_j.writeLog(output_log_path,ss.str());
