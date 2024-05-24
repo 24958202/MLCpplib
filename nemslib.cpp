@@ -157,6 +157,18 @@ bool Jsonlib::isAbbreviation(const std::string& word){
     };
     return common_abbreviations.find(word) != common_abbreviations.end();
 }
+bool Jsonlib::isDotinADigit(const std::string& word){
+    std::regex re(R"((?:\d+\.\d+)|\.)"); // matches '.' except in digits (e.g., 3.2)
+    std::sregex_iterator it(word.begin(), word.end(), re);
+    std::sregex_iterator end;
+    return it!= end; // return true if a match is found, false otherwise
+}
+bool Jsonlib::isDotinAList(const std::string& word){
+    std::regex re(R"(\.(?!\d|$)|(?<=\D)\.|\.(?=\D|$))"); // matches '.' except in digits (e.g., 3.2) and in lists (e.g., 1., 2.)
+    std::sregex_iterator it(word.begin(), word.end(), re);
+    std::sregex_iterator end;
+    return it!= end; // return true if a match is found, false otherwise
+}
 std::vector<std::string> Jsonlib::split_sentences(const std::string& text){
 	std::vector<std::string> sentences;
     std::regex sentence_regex(R"(([^.!?;]*[.!?;])|([^\.!?;]*$))"); // match sentence boundaries
@@ -171,7 +183,7 @@ std::vector<std::string> Jsonlib::split_sentences(const std::string& text){
         while (iss >> token) {
             current_sentence += token + " ";
             if (token.back() == '.' || token.back() == '?' || token.back() == '!' || token.back() == ';') {
-                if (this->isDomainExtension(token) || this->isAbbreviation(token)) {
+                if (this->isDomainExtension(token) || this->isAbbreviation(token) || this->isDotinADigit(token) || this->isDotinAList(token)) {
                     continue;
                 }
                 current_sentence = std::regex_replace(current_sentence, std::regex(R"(\s+$)"), ""); // trim trailing spaces
