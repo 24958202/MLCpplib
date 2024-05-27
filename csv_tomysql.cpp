@@ -69,11 +69,10 @@ std::vector<std::vector<std::string>> read_csv_file(const std::string& filename)
     }
     return data;
 }
-
 // Function to insert data into MySQL
 void insert_data_into_mysql(MYSQL* conn, const std::vector<std::vector<std::string>>& data) {
     for (size_t i = 1; i < data.size(); ++i) {  // Skip header row
-        if (data[i].size() < 4) {
+        if (data[i].size() < 3) {
             std::cerr << "Skipping row due to insufficient columns: ";
             for (const std::string& cell : data[i]) {
                 std::cerr << cell << " ";
@@ -81,26 +80,49 @@ void insert_data_into_mysql(MYSQL* conn, const std::vector<std::vector<std::stri
             std::cerr << std::endl;
             continue;
         }
-
         std::string word = data[i][0];
         std::string word_type = data[i][1];
         std::string english = data[i][2];
-        std::string zh = data[i][3];
-
+        std::string zh;
+        if (data[i].size() >= 4) {
+            zh = data[i][3];
+        } else {
+            zh = "";  // Set default value for 'meaning_zh' if it's empty
+        }
         word = escape_special_characters(word);
         word_type = escape_special_characters(word_type);
         english = escape_special_characters(english);
         zh = escape_special_characters(zh);
 
-        std::string query = "INSERT INTO english_voc (word, word_type, meaning_en, meaning_zh) VALUES ('" + word + "', '" + word_type + "', '" + english + "', '" + zh + "')";
-        if (mysql_query(conn, query.c_str())) {
-            std::cerr << "Error inserting data into MySQL database: " << mysql_error(conn) << std::endl;
+        std::string query = "SELECT 1 FROM english_voc WHERE word='" + word + "'";
+        if (mysql_query(conn, query.c_str()) != 0) {
+            std::cerr << "Error checking if word exists: " << mysql_error(conn) << std::endl;
+        } else {
+            MYSQL_RES* res;
+            res = mysql_store_result(conn);
+            if (res) {
+                int num_rows = mysql_num_rows(res);
+                if (num_rows > 0) {
+                    std::cout << "Word '" << word << "' already exists in the table." << std::endl;
+                    // You can choose to skip inserting the word or update the existing row
+                    continue;
+                } else {
+                    std::cout << "Word '" << word << "' does not exist in the table. Inserting..." << std::endl;
+                    // Insert the word into the table
+                    std::string insert_query = "INSERT INTO english_voc (word, word_type, meaning_en, meaning_zh) VALUES ('" + word + "', '" + word_type + "', '" + english + "', '" + zh + "')";
+                    if (mysql_query(conn, insert_query.c_str())) {
+                        std::cerr << "Error inserting data into MySQL database: " << mysql_error(conn) << std::endl;
+                    }
+                }
+                mysql_free_result(res);
+            } else {
+                std::cerr << "Error storing result: " << mysql_error(conn) << std::endl;
+            }
         }
     }
     mysql_close(conn);
     std::cout << "Data successfully inserted into MySQL database!" << std::endl;
 }
-
 int main() {
     std::string filename = "/home/ronnieji/watchdog/db/complete_db_export.csv";
     MYSQL conn;
