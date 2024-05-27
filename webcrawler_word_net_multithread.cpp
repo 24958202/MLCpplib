@@ -244,14 +244,17 @@ void get_all_voc(const std::string& str_folder_path){
 	 syslog_j.writeLog("/home/ronnieji/lib/db_tools/log",strMsg);
 }
 void add_wordnet(MYSQL* conn){
+	nemslib ns_j;
 	nlp_lib nem_j;
 	Jsonlib jsl_j;
 	std::cout << "Adding word net into database..." << '\n';
 	if(std::filesystem::exists("/home/ronnieji/lib/db_tools/webUrls/core-wordnet.bin")){
-		std::vector<Mdatatype> word_voc = nem_j.readBinaryFile("/home/ronnieji/lib/db_tools/webUrls/core-wordnet.bin");
+		std::vector<std::string> word_voc = nem_j.ReadBinaryOne("/home/ronnieji/lib/db_tools/webUrls/core-wordnet.bin");
 		if(!word_voc.empty()){
-			for(const auto it = word_voc.begin(); it != word_voc.end();){
-				std::string query = "SELECT 1 FROM english_voc WHERE word='" + it->word + "'";
+			for(const auto& wdv : word_voc){
+				std::vector<std::string> wdv_3 = ns_j.tokenize_en(wdv);
+				std::cout << wdv_3[0] << " " << wdv_3[1] << " " << wdv_3[2] << '\n';
+				std::string query = "SELECT 1 FROM english_voc WHERE word='" + wdv_3[0] + "'";
 				if (mysql_query(conn, query.c_str()) != 0) {
 					std::cerr << "Error checking if word exists: " << mysql_error(conn) << std::endl;
 				} else {
@@ -266,15 +269,12 @@ void add_wordnet(MYSQL* conn){
 						} else {
 							//std::cout << "Word '" << word << "' does not exist in the table. Inserting..." << std::endl;
 							// Insert the word into the table
-							std::string word = escape_special_characters(it->word);
-							std::string word_type = escape_special_characters(it->word_type);
-							std::string english = escape_special_characters(it->meaning_en);
-							std::string zh = escape_special_characters(it->meaning_zh);
-							zh = jsl_j.trim(zh);
-							if(zh.empty()){
-								zh = "";
-							}
-							std::string insert_query = "INSERT INTO english_voc(word, word_type, meaning_en, meaning_zh)VALUES('" + word + "', '" + word_type + "', '" + english + "', '" + zh + "')";
+							std::string word = escape_special_characters(wdv_3[0]);
+							std::string word_type = escape_special_characters(wdv_3[1]);
+							std::string english = escape_special_characters(wdv_3[2]);
+							//std::string zh = escape_special_characters(it->meaning_zh);
+							//zh = jsl_j.trim(zh);
+							std::string insert_query = "INSERT INTO english_voc(word, word_type, meaning_en, meaning_zh)VALUES('" + word + "', '" + word_type + "', '" + english + "', '')";
 							if (mysql_query(conn, insert_query.c_str())) {
 								std::cerr << "Error inserting data into MySQL database: " << mysql_error(conn) << std::endl;
 							}
