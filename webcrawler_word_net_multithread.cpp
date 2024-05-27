@@ -278,6 +278,7 @@ void add_wordnet(MYSQL* conn){
 							if (mysql_query(conn, insert_query.c_str())) {
 								std::cerr << "Error inserting data into MySQL database: " << mysql_error(conn) << std::endl;
 							}
+							std::cout << "Successfully saved the word: " << word << '\n';
 						}
 						mysql_free_result(res);
 					} else {
@@ -285,6 +286,9 @@ void add_wordnet(MYSQL* conn){
 					}
 				}
 			}
+		}
+		else{
+			std::cerr << "core-wordnet.bin is empty!" << '\n';
 		}
 	}
 	else{
@@ -325,15 +329,10 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 	size_t td = 2000;
 	sys_j.writeLog("/home/ronnieji/lib/db_tools/log","Start looking for words past tenses...");
 	std::string query = "SELECT word,word_type,meaning_en,meaning_zh FROM nlp_db.english_voc order by word asc";
-    if (mysql_query(conn, query.c_str()) != 0) {
+    if (mysql_query(conn, query.c_str())==0) {
 		std::vector<Mdatatype> Data;
 		MYSQL_RES* res;
 		MYSQL_ROW row;
-		std::string query = "SELECT * FROM english_voc";
-		if (mysql_query(conn, query.c_str()) != 0) {
-			std::cerr << "Error executing query: " << mysql_error(conn) << std::endl;
-			return;
-		}add_wordnet
 		res = mysql_store_result(conn);
 		while ((row = mysql_fetch_row(res)) != nullptr) {
 			Mdatatype data;
@@ -345,6 +344,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 				check if the word has already checked
 			*/
 			std::string wChecked = data.word;
+			std::cout << "Start checking..." << wChecked << '\n';
 			auto word_c = std::find_if(words_checked.begin(),words_checked.end(),[wChecked](const std::string& s){
 				return wChecked == s;
 			});
@@ -359,17 +359,17 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 			*/
 			std::string str_word_type = jsonl_j.trim(data.word_type);
 			if(str_word_type=="VB"){
-				std::string strWord = jsonl_j.trim(data.word);
+				wChecked = jsonl_j.trim(wChecked);
 				std::string strUrl_past_participle;
 				/*
 					word net's vacabulary has more than one words
 				*/
-				int wordCount = nem_j.en_string_word_count(strWord);add_wordnet
+				int wordCount = nem_j.en_string_word_count(wChecked);
 				if(wordCount > 1){
 					/*
 						There are more than one words
 					*/
-					std::vector<std::string> strWord_split = nem_j.tokenize_en(strWord);
+					std::vector<std::string> strWord_split = nem_j.tokenize_en(wChecked);
 					if(!strWord_split.empty()){
 						std::string str_word_lookup = strWord_split[0];
 						std::string str_rest_words;
@@ -395,6 +395,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 								new_word.word_type="VB";
 								new_word.meaning_en = data.meaning_en + " ";
 								new_word.meaning_zh = data.meaning_zh + " ";
+								std::cout << "Checking the word: " << new_word.word << std::endl;
 								/*
 									delete the repeated word in english_voc
 								*/
@@ -419,7 +420,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 					
 				}
 				else{
-					strUrl_past_participle = "https://www.merriam-webster.com/dictionary/" + strWord;
+					strUrl_past_participle = "https://www.merriam-webster.com/dictionary/" + wChecked;
 					/*
 						get past participle
 					*/
@@ -435,6 +436,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 							/*
 								delete the repeated word in english_voc
 							*/
+							std::cout << "Checking the word: " << new_word.word << std::endl;
 							std::string query = "DELETE FROM english_voc where word='" + new_word.word + "'";
 							if (mysql_query(conn, query.c_str())) {
 								std::cerr << "Error DELETE FROM english_voc: " << new_word.word << " " << mysql_error(conn) << std::endl;
@@ -454,6 +456,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 					}
 				}
 			}
+			std::this_thread::sleep_for(std::chrono::seconds(5));//seconds
 		}
 		mysql_free_result(res);
 	}
@@ -466,7 +469,7 @@ int main(int argc, char* argv[]) {
 	SysLogLib syslog_j;
 	MYSQL conn;
     if (connect_to_mysql(&conn)) {
-		add_wordnet(&conn);
+		//add_wordnet(&conn);
 		local_look_for_past_participle_of_word(&conn);
 	}
 	syslog_j.writeLog("/home/ronnieji/lib/db_tools/log","All jobs are done!");
