@@ -337,6 +337,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 		while ((row = mysql_fetch_row(res)) != nullptr) {
 			Mdatatype data;
 			data.word = row[0];
+			data.word = nem_j.removeEnglishPunctuation_training(data.word);
 			data.word_type = row[1];
 			data.meaning_en = row[2];
 			data.meaning_zh = row[3];
@@ -392,6 +393,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 							for(const auto& gr : get_result_past_participle){
 								Mdatatype new_word;
 								new_word.word = gr + " " + str_rest_words;
+								new_word.word = nem_j.removeEnglishPunctuation_training(new_word.word);
 								new_word.word_type="VB";
 								new_word.meaning_en = data.meaning_en + " ";
 								new_word.meaning_zh = data.meaning_zh + " ";
@@ -430,6 +432,7 @@ void local_look_for_past_participle_of_word(MYSQL* conn){
 						for(const auto& gr : get_result_past_participle){
 							Mdatatype new_word;
 							new_word.word = gr;
+							new_word.word = nem_j.removeEnglishPunctuation_training(new_word.word);
 							new_word.word_type="VB";
 							new_word.meaning_en = data.meaning_en + " ";
 							new_word.meaning_zh = data.meaning_zh + " ";
