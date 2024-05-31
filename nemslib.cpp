@@ -655,13 +655,15 @@ if(!words.empty()){
             }
         }
     }
-    for (const auto& word : words) {
-        if (std::find(result.begin(), result.end(), word) == result.end()) {
-            result.push_back(word);
-        }
+    if(!result.empty()){
+    	for(const auto& res : result){
+	    if (std::find(words.begin(), words.end(), res) == words.end()) {
+            	words.push_back(res);
+            }
+	}
     }
 }
-return result;
+return words;
 }
 bool nemslib::is_stopword_en(const std::string& word){
     if(word.empty()){
