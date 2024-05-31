@@ -108,7 +108,8 @@ class nemslib{
 	std::string removeChinesePunctuation_excluseHyphen(const std::string&);//remove all punctuations (unicode) but not '-' between words
         std::vector<std::string> tokenize_en(const std::string&);
         std::vector<std::string> tokenize_zh(const std::string&);//tokenize a string and extract Chinese characters as separate tokens.
-        std::vector<std::string> tokenize_zh_unicode(const std::string&);//tokenize a string and extract individual Unicode characters as separate tokens.
+        std::vector<std::string> tokenize_zh_unicode(const std::string&);//tokenize a string and extract individual Unicode characters as separate tokens. for Chinese
+        std::vector<std::string> tokenize_en_root(const std::string&);//New tokenization updated on May 31, 2024
 		bool is_stopword_en(const std::string&);//check if a word is a stopword
 		std::vector<std::pair<std::string, int>> calculateTermFrequency(const std::string&);
 		/*

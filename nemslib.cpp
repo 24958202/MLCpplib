@@ -45,6 +45,9 @@ lib compile:
 #include <map>
 #include <unordered_map>
 
+/*
+    End callback function
+*/
 //#define DB_PATH std::filesystem::absolute(std::filesystem::path("db/catalogdb.db")).string();
 /*
     std::filesystem::path currentPath = std::filesystem::current_path();
@@ -64,15 +67,35 @@ std::atomic<bool> result_found(false); // Shared flag variable for database
 static std::unordered_set<std::string> stopwordSet;
 
 /*-Start Json Library-*/
-std::string Jsonlib::trim(const std::string& str_input) {
-    auto is_not_space = [](unsigned char ch){return !std::isspace(ch);};
-    auto start = std::ranges::find_if(str_input,is_not_space);
-    auto end = std::ranges::find_if(str_input | std::views::reverse, is_not_space).base();
+/*
+    std::string Jsonlib::trim(const std::string& str_input) {
+    if (str_input.empty()) {
+        return {};
+    }
+    auto is_not_space = std::not_fn(std::isspace);
+    std::string::iterator start = std::find_if(str_input.begin(), str_input.end(), is_not_space);
+    std::string::reverse_iterator r_end = std::find_if(str_input.rbegin(), str_input.rend(), is_not_space);
+    std::string::iterator end = r_end.base();
+
     if (start < end) {
-        return {start, end};
+        return std::string(str_input.begin() + (start - str_input.begin()), end);
     } else {
         return {};
-    }  
+    }
+}
+*/
+std::string Jsonlib::trim(const std::string& str_input) {
+    // Check if the input string is empty
+    if (str_input.empty()) {
+        return {};
+    }
+    // Lambda to check for non-space characters
+    auto is_not_space = [](unsigned char ch) { return !std::isspace(ch); };
+    // Find the start of the non-space characters
+    auto start = std::ranges::find_if(str_input, is_not_space);
+    // Find the end of the non-space characters by reverse iteration
+    auto end = std::ranges::find_if(str_input | std::views::reverse, is_not_space).base();
+    return (start < end) ? std::string(start, end) : std::string{};
 }
 /*
     Get the strings between [BOF] and [EOF]-special case for article topics seperator
@@ -563,6 +586,82 @@ std::vector<std::string> nemslib::tokenize_zh_unicode(const std::string& text) {
         characters.push_back(utf8Character);
     }
     return characters;
+}
+std::vector<std::string> nemslib::tokenize_en_root(const std::string& input){
+    std::vector<std::string> result;
+    std::vector<std::string> word_root = {
+    // Prefixes
+    "anti", "auto", "bi", "co", "counter", "de", "dis", "ex", 
+    "extra", "hyper", "hypo", "inter", "intra", "meta", "micro", 
+    "mini", "multi", "neo", "non", "omni", "over", "paleo", 
+    "para", "peri", "post", "pre", "pro", "proto", "pseudo", 
+    "re", "sub", "super", "trans", "tri", "ultra", "un", "under", 
+    "uni", "up", "with",
+    // Roots
+    "act", "anim", "anthrop", "astr", "bio", "civ", "cog", "cosm", "crat", 
+    "dem", "derm", "dynam", "dynast", "ec", "eco", "end", "erg", "eu", 
+    "geo", "gnost", "graph", "heli", "hema", "homo", "hydr", "hyper", 
+    "kine", "kosm", "leth", "ling", "lit", "log", "lud", "lumin", "morph", 
+    "mot", "muth", "myth", "nebul", "nem", "neo", "neur", "nex", "nom", 
+    "ophthalm", "ortho", "osteo", "pagan", "path", "ped", "pen", "pet", 
+    "phant", "phil", "phon", "phot", "phys", "pneu", "poet", "pol", "psych", 
+    "pter", "puls", "pyl", "rhab", "rhiz", "rhod", "rhyth", "scop", 
+    "sema", "sen", "sens", "soc", "sola", "sol", "spath", "spec", "spect", 
+    "spher", "sta", "stat", "stel", "stom", "strat", "stron", "syl", "syn", 
+    "sys", "tech", "tel", "tels", "ten", "tens", "term", "terr", "test", 
+    "tetr", "thal", "ther", "therm", "thix", "tom", "top", "tox", "tra", 
+    "trans", "tri", "trope", "trop", "ty", "type", "typ", "umb", "uno", 
+    "ur", "uran", "uro", "vela", "velar", "vent", "ver", "vers", "vert", 
+    "ves", "vest", "vit", "vita", "vocab", "voy", "acu", "bene", "capit", 
+    "cred", "dict", "duct", "fac", "fact", "fract", "frag", "ject", "mal", 
+    "mit", "miss", "mort", "nic", "nomin", "opt", "pater", "port", "rect", 
+    "rupt", "scribe", "script", "tact", "tang", "vid",
+    // Suffixes
+    "able", "age", "al", "ance", "ant", "arian", "ary", "ate", 
+    "ation", "ative", "ator", "ble", "cess", "cy", "dom", 
+    "ed", "ee", "el", "ence", "ency", "ent", "er", "es", 
+    "est", "etic", "etry", "ful", "fy", "gen", "geny", "gie", 
+    "hood", "ial", "ian", "ic", "ical", "ics", "ide", "ify", 
+    "ing", "inity", "ious", "ism", "ist", "ite", "ity", "ive", 
+    "ivity", "ize", "less", "ly", "lysis", "man", "ment", "meter", 
+    "mor", "oid", "ol", "oma", "ome", "on", "onal", "ony", "ophobe", 
+    "osis", "ous", "path", "phile", "phobia", "phore", "phere", 
+    "ship", "sion", "some", "son", "sphere", "tic", "tor", "try", 
+    "type", "ural", "ure", "us", "y",
+    // Infixes
+    "em", "en", "in", "im", "ir", "il", "is", "it", 
+    "exi", "endi", "enta", "enti", "ento", "entu", "enyl", 
+    "mono", "multi", "nano", "neo", "non", "omi", "onta", 
+    "opho", "ortho", "pathe", "philo", "phobo", "photo", 
+    "poly", "pseudo", "psych", "rhizo", "socio", "sopho", 
+    "tele", "thermo", "toxo", "trope", "typo", "xeno",  
+    // Miscellaneous
+    "ab", "acu", "clud", "clus", "cred", "dict", "duct", "duc", 
+    "fac", "fact", "fract", "frag", "ject", "mit", "miss", "port", 
+    "rupt", "scribe", "script", "spec", "spect", "tact", "tang", 
+    "an", "circum", "contra", "epi", "in", "mis", "per", "retro", 
+    "sym", "bio", "cardio", "chrom", "cyclo", "dyna", "geo", 
+    "hydro", "lith", "phono", "photo", "thermo", "xeno"
+};
+std::vector<std::string> words = this->tokenize_en(input);
+if(!words.empty()){
+    for (const auto &word : words) {
+        std::string str_word(word.data(), word.size()); // or std::string(str_word) = word; in C++17
+        for(const auto& wr : word_root){
+            if(word.find(wr)!= std::string::npos){
+                if(std::find(result.begin(),result.end(),wr) == result.end()){
+                     result.push_back(wr);
+                }
+            }
+        }
+    }
+    for (const auto& word : words) {
+        if (std::find(result.begin(), result.end(), word) == result.end()) {
+            result.push_back(word);
+        }
+    }
+}
+return result;
 }
 bool nemslib::is_stopword_en(const std::string& word){
     if(word.empty()){
