@@ -657,10 +657,10 @@ if(!words.empty()){
     }
     if(!result.empty()){
     	for(const auto& res : result){
-	    if (std::find(words.begin(), words.end(), res) == words.end()) {
-            	words.push_back(res);
+            if (std::find(words.begin(), words.end(), res) == words.end()) {
+                    words.push_back(res);
             }
-	}
+	    }
     }
 }
 return words;
