@@ -751,6 +751,37 @@ std::string nemslib::get_topics(const std::string& str_in){
     topic_string = jsl_j.trim(topic_string);
     return topic_string;
 }
+std::string nemslib::get_topics_root(const std::string& str_in){
+    Jsonlib jsl_j;
+    std::string strNoStopwords;
+    // Tokenization
+    std::vector<std::string> result;
+    if(str_in.empty()){
+    	std::cerr << "nemslib::get_topics_root input empty" << '\n';
+    	return "";
+    }
+    if(this->isNonAlphabetic(str_in)){
+        result = this->tokenize_zh(str_in);
+    }
+    else{
+        result = this->tokenize_en_root(str_in);
+    }
+	for(const auto& rs : result){
+		if(!this->is_stopword_en(rs)){
+			strNoStopwords += rs + " ";
+		}
+	}
+    strNoStopwords = jsl_j.trim(strNoStopwords);
+    std::string topic_string;
+    if(!str_in.empty() && str_in.length() > 0){
+        std::vector<std::pair<std::string, int>> sorted_txt = this->calculateTermFrequency(strNoStopwords);
+        for(const auto& item : sorted_txt){
+            topic_string += item.first + " ";
+        }
+    }
+    topic_string = jsl_j.trim(topic_string);
+    return topic_string;
+}
 std::vector<std::unordered_map<std::string,unsigned int>> nemslib::get_topics_freq(const std::string& str_in){
     Jsonlib jsl_j;
     std::string strNoStopwords;
@@ -766,6 +797,39 @@ std::vector<std::unordered_map<std::string,unsigned int>> nemslib::get_topics_fr
     }
     else{
         result = this->tokenize_en(str_in);
+    }
+	for(const auto& rs : result){
+		if(!this->is_stopword_en(rs)){
+			strNoStopwords += rs + " ";
+		}
+	}
+    strNoStopwords = jsl_j.trim(strNoStopwords);
+    std::string topic_string;
+    if(!str_in.empty() && str_in.length() > 0){
+        std::vector<std::pair<std::string, int>> sorted_txt = this->calculateTermFrequency(strNoStopwords);
+        for(const auto& item : sorted_txt){
+            std::unordered_map<std::string,unsigned int> uitem;
+            uitem[item.first] = item.second;
+            final_result.push_back(uitem);
+        }
+    }
+    return final_result;
+}
+std::vector<std::unordered_map<std::string,unsigned int>> nemslib::get_topics_freq_root(const std::string& str_in){
+    Jsonlib jsl_j;
+    std::string strNoStopwords;
+    // Tokenization
+    std::vector<std::string> result;
+    std::vector<std::unordered_map<std::string,unsigned int>> final_result;
+    if(str_in.empty()){
+    	std::cerr << "nemslib::get_topics_freq_root input empty" << '\n';
+    	return final_result;
+    }
+    if(this->isNonAlphabetic(str_in)){
+        result = this->tokenize_zh(str_in);
+    }
+    else{
+        result = this->tokenize_en_root(str_in);
     }
 	for(const auto& rs : result){
 		if(!this->is_stopword_en(rs)){

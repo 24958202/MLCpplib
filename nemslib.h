@@ -127,7 +127,9 @@ class nemslib{
 			nems_j.get_topics(strInput);
 		*/
         std::string get_topics(const std::string&);
+        std::string get_topics_root(const std::string&);
 		std::vector<std::unordered_map<std::string,unsigned int>> get_topics_freq(const std::string&);
+        std::vector<std::unordered_map<std::string,unsigned int>> get_topics_freq_root(const std::string&);
         std::vector<std::string> readTextFile(const std::string&);
 		/*
 			read_rawtxts(const std::string&,const std::string&):
