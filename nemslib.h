@@ -310,7 +310,7 @@ class nlp_lib{
         */
         void remove_vocA_from_vocB(std::vector<std::string>&, std::vector<std::string>&);
         void writeBinaryFile(const std::vector<Mdatatype>&, const std::string&);// write the binaryfile
-        std::optional<Mdatatype> readValueFromBinaryFile(const std::string&, const std::string&);//read the binary file-(key-value)What's your opinion?
+        std::optional<Mdatatype> readValueFromBinaryFile(const std::string&, const std::string&);//read the binary file-(key-value)
 	/*
 			get_english_voc_and_create_bin : input parameter sqlite3 db file path
             binary file creater can use: exp_input.cpp
