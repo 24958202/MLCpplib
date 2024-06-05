@@ -182,19 +182,18 @@ bool Jsonlib::isAbbreviation(const std::string& word){
 }
 bool Jsonlib::isDotinADigit(const std::string& word){
     std::regex re(R"((?:\d+\.\d+)|\.)"); // matches '.' except in digits (e.g., 3.2)
-    std::sregex_iterator it(word.begin(), word.end(), re);
-    std::sregex_iterator end;
-    return it!= end; // return true if a match is found, false otherwise
+    return std::regex_search(word, re);
+    // std::sregex_iterator it(word.begin(), word.end(), re);
+    // std::sregex_iterator end;
+    // return it!= end; // return true if a match is found, false otherwise
 }
 bool Jsonlib::isDotinAList(const std::string& word){
-    std::regex re(R"(\.(?!\d|$)|(?<=\D)\.|\.(?=\D|$))"); // matches '.' except in digits (e.g., 3.2) and in lists (e.g., 1., 2.)
-    std::sregex_iterator it(word.begin(), word.end(), re);
-    std::sregex_iterator end;
-    return it!= end; // return true if a match is found, false otherwise
+    std::regex re(R"(^(?!(\d+\.|[A-Za-z]+\.|[숫자一二三四五六七八九十]+\.))\.(?!\d))");
+    return std::regex_search(word, re);
 }
 std::vector<std::string> Jsonlib::split_sentences(const std::string& text){
 	std::vector<std::string> sentences;
-    std::regex sentence_regex(R"(([^.!?;]*[.!?;])|([^\.!?;]*$))"); // match sentence boundaries
+    std::regex sentence_regex(R"(([^.!?;]*[.!?;])|([^.!?;]*$))"); // match sentence boundaries
     std::sregex_iterator it(text.begin(), text.end(), sentence_regex);
     std::sregex_iterator end;
     std::string current_sentence;
