@@ -101,11 +101,19 @@ class nemslib{
         bool isNonAlphabetic(const std::string&);
 		bool isNumeric(const std::string&);
         int en_string_word_count(const std::string&);
+        /*
+            convert utf-8 to std::u32string 
+        */
+        std::u32string to_u32string(const std::string&);
+        /*
+            convert std::u32string to utf-8
+        */
+        std::string to_utf8(const std::u32string&);
         std::string remove_chars_from_str(const std::string&, const std::vector<std::string>&);
         std::string removeEnglishPunctuation_training(const std::string&);
         std::string removeChinesePunctuation_training(const std::string&);
-	bool isHyphenBetweenWords(const icu::UnicodeString& input, int32_t index);//to check if a Hyphen is between words  like "Brand-new"; We should keep the hyphen.
-	std::string removeChinesePunctuation_excluseHyphen(const std::string&);//remove all punctuations (unicode) but not '-' between words
+	    bool isHyphenBetweenWords(const icu::UnicodeString& input, int32_t index);//to check if a Hyphen is between words  like "Brand-new"; We should keep the hyphen.
+	    std::string removeChinesePunctuation_excluseHyphen(const std::string&);//remove all punctuations (unicode) but not '-' between words
         std::vector<std::string> tokenize_en(const std::string&);
         std::vector<std::string> tokenize_zh(const std::string&);//tokenize a string and extract Chinese characters as separate tokens.
         std::vector<std::string> tokenize_zh_unicode(const std::string&);//tokenize a string and extract individual Unicode characters as separate tokens. for Chinese
@@ -302,7 +310,7 @@ class nlp_lib{
         */
         void remove_vocA_from_vocB(std::vector<std::string>&, std::vector<std::string>&);
         void writeBinaryFile(const std::vector<Mdatatype>&, const std::string&);// write the binaryfile
-        std::optional<Mdatatype> readValueFromBinaryFile(const std::string&, const std::string&);//read the binary file-(key-value)
+        std::optional<Mdatatype> readValueFromBinaryFile(const std::string&, const std::string&);//read the binary file-(key-value)What's your opinion?
 	/*
 			get_english_voc_and_create_bin : input parameter sqlite3 db file path
             binary file creater can use: exp_input.cpp

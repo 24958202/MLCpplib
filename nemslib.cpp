@@ -44,6 +44,8 @@ lib compile:
 #include <ranges> //std::ranges::split(tokens,input,std::isspace);
 #include <map>
 #include <unordered_map>
+#include <locale>
+#include <codecvt>
 
 /*
     End callback function
@@ -416,6 +418,15 @@ int nemslib::en_string_word_count(const std::string& sentence){
     }
     int count = std::ranges::distance(sentence | std::views::split(' '));
     return count;
+}
+std::u32string nemslib::to_u32string(const std::string& input) {
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+    return converter.from_bytes(input);
+}
+
+std::string nemslib::to_utf8(const std::u32string& input) {
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+    return converter.to_bytes(input);
 }
 /*
 	remove all the char_list's char in input_str
