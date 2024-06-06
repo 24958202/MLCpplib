@@ -158,17 +158,30 @@ std::vector<std::string> Jsonlib::splitString_bystring(const std::string& input,
 }
 bool Jsonlib::isDomainExtension(const std::string& word){
 	static const std::vector<std::string> domainExtensions = {
-        //Generic Top-Level Domains (gTLDs):
-		".com", ".net", ".org", ".edu", ".gov", ".io", ".co", ".mil", ".int", ".info", ".biz", ".name", ".pro", ".aero", ".coop", ".museum",
-        //Country Code Top-Level Domains (ccTLDs):
-        ".us", ".uk", ".ca", ".de", ".fr", ".jp", ".cn", ".in", ".au", ".br" , ".ru", ".za", ".mx", ".es", ".it", ".nl",
-        //New gTLDs:
-        ".app", ".blog", ".shop", ".online", ".site", ".tech", ".xyz", ".club", ".design", ".news", ".store", ".website",
-        //Sponsored Top-Level Domains (sTLDs):
-        ".asia", ".cat", ".jobs", ".mobi", ".tel", ".travel",
-        //Infrastructure Top-Level Domain:
-        ".arpa"
-	};
+        // Generic Top-Level Domains (gTLDs):
+        ".com", ".net", ".org", ".edu", ".gov", ".io", ".co", ".mil", ".int",
+        ".info", ".biz", ".name", ".pro", ".aero", ".coop", ".museum",
+        // Country Code Top-Level Domains (ccTLDs):
+        ".us", ".uk", ".ca", ".de", ".fr", ".jp", ".cn", ".in", ".au", ".br",
+        ".ru", ".za", ".mx", ".es", ".it", ".nl", ".se", ".no", ".dk", ".fi", 
+        ".ie", ".nz", ".ch", ".at", ".be", ".gr", ".hu", ".pl", ".pt", ".tr",
+        ".ar", ".cl", ".co", ".my", ".sg", ".hk", ".tw", ".kr", ".ph", ".id",
+        // New gTLDs:
+        ".app", ".blog", ".shop", ".online", ".site", ".tech", ".xyz", ".club",
+        ".design", ".news", ".store", ".website", ".guru", ".space", ".today",
+        ".solutions", ".agency", ".center", ".company", ".life", ".world",
+        ".health", ".community", ".support", ".email", ".photography", ".media",
+        // Sponsored Top-Level Domains (sTLDs):
+        ".asia", ".cat", ".jobs", ".mobi", ".tel", ".travel", ".post", ".gov",
+        // Infrastructure Top-Level Domain:
+        ".arpa",
+        // Additional new gTLDs and popular ccTLDs:
+        ".bio", ".cloud", ".digital", ".family", ".expert", ".global", ".law",
+        ".properties", ".report", ".reviews", ".show", ".tools", ".work", 
+        ".academy", ".capital", ".care", ".dating", ".education", ".events",
+        ".fund", ".host", ".institute", ".land", ".lease", ".loans", ".network",
+        ".partners", ".software", ".vacations", ".ventures"
+    };
 	for (const auto& ext : domainExtensions) {
 		if (word.size() >= ext.size() && word.substr(word.size() - ext.size()) == ext) {
 			return true;
