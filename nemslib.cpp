@@ -161,7 +161,7 @@ bool Jsonlib::isDomainExtension(const std::string& word){
         //Generic Top-Level Domains (gTLDs):
 		".com", ".net", ".org", ".edu", ".gov", ".io", ".co", ".mil", ".int", ".info", ".biz", ".name", ".pro", ".aero", ".coop", ".museum",
         //Country Code Top-Level Domains (ccTLDs):
-        ".us", ".uk", ".ca", ".de", ".fr", "jp", ".cn", ".in", ".au", ".br" , ".ru", ".za", ".mx", "es", ".it", ".nl",
+        ".us", ".uk", ".ca", ".de", ".fr", ".jp", ".cn", ".in", ".au", ".br" , ".ru", ".za", ".mx", ".es", ".it", ".nl",
         //New gTLDs:
         ".app", ".blog", ".shop", ".online", ".site", ".tech", ".xyz", ".club", ".design", ".news", ".store", ".website",
         //Sponsored Top-Level Domains (sTLDs):
@@ -178,20 +178,16 @@ bool Jsonlib::isDomainExtension(const std::string& word){
 }
 bool Jsonlib::isAbbreviation(const std::string& word){
     const std::unordered_set<std::string> common_abbreviations = {
-        "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Sr.", "Jr.", "Inc.", "Ltd.", "Co.", "St.", "Ave.", "Blvd.", "Rd.", "Mt.", "Ft."
+        "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Sr.", "Jr.", "Inc.", "Ltd.", "Co.", "St.", "Ave.", "Blvd.", "Rd.", "Mt.", "Ft.",
+        "0.","1.","2.","3.","4.","5.","6.","7.","8.","9."
     };
     return common_abbreviations.find(word) != common_abbreviations.end();
 }
-bool Jsonlib::isDotinADigit(const std::string& word){
-    std::regex re(R"((?:\d+\.\d+)|\.)"); // matches '.' except in digits (e.g., 3.2)
-    return std::regex_search(word, re);
-    // std::sregex_iterator it(word.begin(), word.end(), re);
-    // std::sregex_iterator end;
-    // return it!= end; // return true if a match is found, false otherwise
-}
 bool Jsonlib::isDotinAList(const std::string& word){
     std::regex re(R"(^(?!(\d+\.|[A-Za-z]+\.|[숫자一二三四五六七八九十]+\.))\.(?!\d))");
-    return std::regex_search(word, re);
+    std::sregex_iterator it(word.begin(), word.end(), re);
+    std::sregex_iterator end;
+    return it!= end; // return true if a match is found, false otherwise
 }
 std::vector<std::string> Jsonlib::split_sentences(const std::string& text){
 	std::vector<std::string> sentences;
@@ -207,7 +203,8 @@ std::vector<std::string> Jsonlib::split_sentences(const std::string& text){
         while (iss >> token) {
             current_sentence += token + " ";
             if (token.back() == '.' || token.back() == '?' || token.back() == '!' || token.back() == ';') {
-                if (this->isDomainExtension(token) || this->isAbbreviation(token) || this->isDotinADigit(token) || this->isDotinAList(token)) {
+                //if (this->isDomainExtension(token) || this->isAbbreviation(token) || this->isDotinADigit(token) || this->isDotinAList(token))
+                if (this->isDomainExtension(token) || this->isAbbreviation(token) || this->isDotinAList(token)) {
                     continue;
                 }
                 current_sentence = std::regex_replace(current_sentence, std::regex(R"(\s+$)"), ""); // trim trailing spaces
