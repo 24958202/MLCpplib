@@ -48,7 +48,8 @@ class Jsonlib{
 		bool isDomainExtension(const std::string&);
         bool isAbbreviation(const std::string&);
         bool isDotinADigit(const std::string&);//Exclude the '.' in a digit like 3.14;
-        bool isDotinAList(const std::string&);//Exclude the '.' in a list like "1.this is a book; 2.this is an apple;"
+        //bool isDotinAList(const std::string&);//Exclude the '.' in a list like "1.this is a book; 2.this is an apple;"
+        bool isDotinAList(const std::string&, int);
 		std::vector<std::string> split_sentences(const std::string&);
         void toLower(std::string&);
 		void toUpper(std::string&);
