@@ -260,6 +260,21 @@ std::vector<std::string> Jsonlib::split_sentences(const std::string& text) {
 
     return sentences;
 }
+std::vector<std::string> Jsonlib::split_paragraphs(const std::string& text){
+    std::vector<std::string> paragraphs;
+    std::regex paragraph_regex(R"(([^(\r\n)]+))");
+    std::sregex_iterator it(text.begin(), text.end(), paragraph_regex);
+    std::sregex_iterator end;
+    for (; it != end; ++it) {
+        std::smatch match = *it;
+        std::string paragraph = match.str();
+        paragraph = std::regex_replace(paragraph, std::regex(R"(\s+$)"), ""); // Remove trailing whitespace
+        if (!paragraph.empty()) {
+            paragraphs.push_back(paragraph);
+        }
+    }
+    return paragraphs;
+}
 void Jsonlib::toLower(std::string& str){
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c){ return std::tolower(c); });
 }
