@@ -127,6 +127,7 @@ class nemslib{
         std::vector<std::string> tokenize_zh_unicode(const std::string&);//tokenize a string and extract individual Unicode characters as separate tokens. for Chinese
         std::vector<std::string> tokenize_en_root(const std::string&);//New tokenization updated on May 31, 2024
 		bool is_stopword_en(const std::string&);//check if a word is a stopword
+        std::string is_a_code_snippet(const std::string&);
 		std::vector<std::pair<std::string, int>> calculateTermFrequency(const std::string&);
 		/*
 			Before you using get_topics, you need to initialize stopwords list by calling set_stop_word_file_path(const std::string& stopword_file_path);

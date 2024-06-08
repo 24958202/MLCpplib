@@ -728,7 +728,7 @@ return words;
 }
 bool nemslib::is_stopword_en(const std::string& word){
     if(word.empty()){
-        std::cerr << "nemslib::is_stopword_en input word is empty." << '\n';
+        std::cerr << "nemslib::is_stopword_en input string is empty." << '\n';
         return false;
     }
     //static std::unordered_set<std::string> stopwordSet;
@@ -741,6 +741,52 @@ bool nemslib::is_stopword_en(const std::string& word){
         }
     }
     return stopwordSet.find(word) != stopwordSet.end();
+}
+std::string nemslib::is_a_code_snippet(const std::string& word){
+    if(word.empty()){
+        std::cerr << "nemslib::is_a_code_snippet input string is empty." << '\n';
+        return "";
+    }
+    std::unordered_map<std::string, std::string> escaped_keywords = {
+        {"c++", "#include std:: class template namespace using public private protected friend virtual override static const volatile extern inline typename struct union enum static_cast dynamic_cast reinterpret_cast const_cast __attribute__ __declspec decltype"},
+        {"python", "def class import from as with assert lambda if elif else for while try except finally raise break continue pass del global nonlocal yield print exec eval chr ord len range __name__ __main__ __doc__ __module__"},
+        {"java", "public private protected static final abstract interface extends implements throws class enum interface abstract native synchronized volatile transient native import package assert break continue return switch default case else finally"},
+        {"javascript", "function var let const if else switch case default break continue return throw try catch finally import export async await class extends enum interface abstract static get set toString valueOf classmethod await"},
+        {"c#", "using namespace class interface abstract sealed static virtual override new public private protected internal extern alias get set add remove async await yield return break continue goto throw try catch finally foreach for while do"},
+        {"ruby", "class module def end if elsif else case when then rescue ensure begin retry break next redo super self nil true false __FILE__ __LINE__ __ENCODING__ __dir__"},
+        {"php", "<?php ?> echo print var const define defined isset empty unset array list class interface abstract extends implements public private protected static final global include require include_once require_once"},
+        {"go", "package import func struct interface var const type map chan select if else switch case default for range break continue goto return defer panic recover"},
+        {"rust", "fn trait struct enum impl pub priv static mut ref move Self self super crate macro if else match loop break continue return yield await"},
+        {"swift", "import class struct enum protocol func init deinit subscript get set willSet didSet public private internal fileprivate weak unowned lazy optional if else switch case default for while repeat break continue"},
+        {"kotlin", "package import class interface abstract open final enum companion object init get set constructor if else when for while do break continue return throw"},
+        {"typescript", "interface class abstract extends implements public private protected static readonly type enum namespace module declare if else switch case default for while do break continue return throw try catch finally"},
+        {"perl", "use my our local state package sub BEGIN END INIT CHECK UNITCHECK BLOCK AUTOLOAD if elsif unless until while for foreach when given when default next last redo"},
+        {"sql", "SELECT FROM WHERE GROUP HAVING ORDER BY LIMIT OFFSET JOIN ON USING AS WITH CREATE TABLE VIEW INDEX ALTER DROP INSERT INTO VALUES UPDATE SET DELETE TRUNCATE"},
+        {"haskell", "module import data type newtype class instance where let in do case of if then else deriving default infix infixl infixr foreign pattern as qualified hiding"},
+        {"bash", "if then else elif fi case esac for select while until do done in function time coproc return exit source"},
+        {"lua", "and break do else elseif end false for function goto if in local nil not or repeat return then true until while"}
+    };
+    std::vector<std::string> t_input = this->tokenize_en(word);
+    std::unordered_map<std::string,unsigned int> result;
+    for(const auto& item : escaped_keywords){
+        unsigned int key_c = 0;
+        for(const auto& ti : t_input){
+            if(item.second.find(ti) != std::string::npos){
+                key_c += 1;
+            }
+        }
+        result[item.first] = key_c;
+    }
+    if(!result.empty()){
+        std::pair<std::string, unsigned int> max_pair = {"", 0u};
+        std::for_each(result.begin(), result.end(), [&max_pair](const auto& pair) {
+            if (pair.second > max_pair.second) {
+                max_pair = pair; 
+            }
+        });
+        return max_pair.first;
+    }
+    return "NoFound";
 }
 std::vector<std::pair<std::string, int>> nemslib::calculateTermFrequency(const std::string& text){
     std::map<std::string, int> termFreq;
