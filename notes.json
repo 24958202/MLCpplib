@@ -1,0 +1,229 @@
+{
+    "Group 1": [
+        {
+            "x": 744,
+            "y": 386,
+            "height": 940,
+            "width": 1816,
+            "color": "yellow",
+            "title": "",
+            "text": "Check library independencies:\nldd /home/ronnieji/lib/nemslib.so\n\ng++ -c -fPIC '/home/ronnieji/lib/lib/mysqldatabase.cpp' -o '/home/ronnieji/lib/lib/mysqldatabase.o' -I/usr/include/ -lmysqlclient -std=c++20\ng++ -shared -o '/home/ronnieji/lib/lib/mysqldatabase.so' '/home/ronnieji/lib/lib/mysqldatabase.o' -I/usr/include/ -lmysqlclient -std=c++20\n\ng++ -c -fPIC '/home/ronnieji/lib/lib/nemslib.cpp' -o '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include/ -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20\n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include/ -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -fPIC\n\n//new\ng++ -c -fPIC '/home/ronnieji/lib/lib/nemslib.cpp' -o '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licu  \n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licuuc -fPIC\n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -lcurl -lsqlite3 -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -L/usr/lib/x86_64-linux-gnu -licuuc -licui18n -licudata -licutu -licuio -fPIC\n\n//lib\ng++ -c -fPIC '/home/ronnieji/lib/lib/nemslib.cpp' -o '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licu  \n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licuuc -fPIC\n\n//with mysql\ng++ '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql.cpp' -o '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -licuuc -licui18n -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/nemslib.so' '/home/ronnieji/lib/libdict.so' -std=c++20 -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -lmysqlclient\n\n//with mysql -final application:\ng++ '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql.cpp' -o '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql' \\\n    -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include -L/usr/local/lib \\\n    -L/home/ronnieji/lib/lib /home/ronnieji/lib/lib/nemslib.so \\\n    -licuuc -licui18n -licudata -licutu -licuio -lcurl -lsqlite3 /usr/local/lib/libgumbo.so \\\n    /home/ronnieji/lib/lib/mysqldatabase.so -lmysqlclient -std=c++20 -O3 -s -fPIE -flto -fcf-protection\n\ng++ '/home/ronnieji/lib/MLCpplib-main/testgpt.cpp' -o '/home/ronnieji/lib/MLCpplib-main/testgpt' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include -L/usr/local/lib     -L/home/ronnieji/lib/lib /home/ronnieji/lib/lib/nemslib.so     -licuuc -licui18n -licudata -licutu -licuio -lcurl -lsqlite3 /usr/local/lib/libgumbo.so     /home/ronnieji/lib/lib/mysqldatabase.so -lmysqlclient -std=c++20 -O3 -s -fPIE -flto -fcf-protection\n\ng++ '/home/ronnieji/lib/db_tools/webcrawler_english_binary.cpp' -o '/home/ronnieji/lib/db_tools/webcrawler_english_binary' -I/usr/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so '/home/ronnieji/lib/lib/mysqldatabase.so' '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/libdict.so' -std=c++20 -licuuc -licui18n -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer\n\ng++ '/home/ronnieji/lib/db_tools/webcrawler_wiki_class.cpp' -o '/home/ronnieji/lib/db_tools/webcrawler_wiki_class' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so -I/usr/include/ -lmysqlclient -lnlplib -fPIE -pie -fstack-protector -fstack-protector-strong -D_FORTIFY_SOURCE=2 -std=c++20\n\n-I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -licuuc -licui18n -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nlplib.so' '/home/ronnieji/lib/lib/libdict.so' -std=c++20 -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer\n\ng++ '/home/ronnieji/lib/MLCpplib-main/web/mycgi.cpp' -o '/home/ronnieji/lib/MLCpplib-main/web/mycgi' -I/usr/include/jsoncpp -ljsoncpp -std=c++20\ng++ '/home/ronnieji/lib/MLCpplib-main/web/mycgi.cpp' -o '/home/ronnieji/lib/MLCpplib-main/web/mycgi' -I/usr/include/jsoncpp -L/usr/lib -ljsoncpp -I/usr/include/cgicc -L/usr/lib -lcgicc -std=c++20\n\n//compile the app with opencv\n`pkg-config opencv4 --cflags --libs`\n\n-l/usr/include/opencv4 -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs\n\ng++ '/home/ronnieji/lib/MLCpplib-main/webCam.cpp' -o '/home/ronnieji/lib/MLCpplib-main/webCam' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -licuuc -licui18n -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS -I/usr/include/opencv4 -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_objdetect /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nlplib.so' '/home/ronnieji/lib/lib/libdict.so' -std=c++20 -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer\n"
+        },
+        {
+            "x": 1362,
+            "y": 931,
+            "height": 68,
+            "width": 742,
+            "color": "yellow",
+            "title": "",
+            "text": "g++ '/home/ronnieji/Downloads/FacialRecog_sdk/sdk/linux/example.cpp' -o '/home/ronnieji/Downloads/FacialRecog_sdk/sdk/linux/example' -I/usr/include/opencv4 -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -I/home/ronnieji/Downloads/FacialRecog_sdk/sdk/linux/include /lib/x86_64-linux-gnu/libssl.so -std=c++20 -lcrypto\n"
+        },
+        {
+            "x": 1069,
+            "y": 439,
+            "height": 484,
+            "width": 674,
+            "color": "yellow",
+            "title": "",
+            "text": "##install OpenCV on linux mint:\n\n## Install minimal prerequisites (Ubuntu 18.04 as reference)\nsudo apt update && sudo apt install -y cmake g++ wget unzip\n \n## Download and unpack sources\nwget -O opencv.zip https://github.com/opencv/opencv/archive/4.x.zip\nunzip opencv.zip\n \n## Create build directory\nmkdir -p build && cd build\n \n## Configure\ncmake ../opencv-4.x\n \n## Build\ncmake --build .\n\n------------------------------------------------------------------------------------------------\n\n## Install minimal prerequisites (Ubuntu 18.04 as reference)\nsudo apt update && sudo apt install -y cmake g++ wget unzip\n \n## Download and unpack sources\nwget -O opencv.zip https://github.com/opencv/opencv/archive/4.x.zip\nwget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.x.zip\nunzip opencv.zip\nunzip opencv_contrib.zip\n \n## Create build directory and switch into it\nmkdir -p build && cd build\n \n## Configure\ncmake -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib-4.x/modules ../opencv-4.x\n \n## Build\ncmake --build ."
+        },
+        {
+            "x": 587,
+            "y": 972,
+            "height": 200,
+            "width": 250,
+            "color": "yellow",
+            "title": "",
+            "text": "QQ security code:\n\njhymewfbcmrkbgjf"
+        },
+        {
+            "x": 117,
+            "y": 582,
+            "height": 83,
+            "width": 298,
+            "color": "yellow",
+            "title": "",
+            "text": "machine learning tutorials:\n\nhttps://www.geeksforgeeks.org/support-vector-machine-algorithm/"
+        },
+        {
+            "x": 85,
+            "y": 831,
+            "height": 92,
+            "width": 345,
+            "color": "yellow",
+            "title": "",
+            "text": "sudo apt-get install libcurl4-openssl-dev libgumbo-dev libtool m4 automake libicu-dev libcpprest-dev cpprestsdk -y"
+        },
+        {
+            "x": 624,
+            "y": 123,
+            "height": 1112,
+            "width": 1533,
+            "color": "yellow",
+            "title": "",
+            "text": "Install docker on linux mint:\n\n#tag:link:https://www.linuxtechi.com/how-to-install-docker-on-linux-mint/##:~:text=How%20to%20Install%20Docker%20on%20Linux%20Mint%2021,User%20...%206%206%29%20Test%20Docker%20Installation%20#tag:link:\n\n1.sudo apt update\n2.sudo apt install -y apt-transport-https ca-certificates curl gnupg\n3.curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/dockerce.gpg\n4.echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/dockerce.gpg] https://download.docker.com/linux/ubuntu jammy stable\" | sudo tee /etc/apt/sources.list.d/dockerce.list > /dev/null\n5.sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y\n6.sudo systemctl status docker\n7.sudo usermod -aG docker $USER\n\nUse docker:\n\n1.build:\ndocker build -t webcrawler_wiki:tag .\n\ncopy the image into the flash disk drive:\n\na.save the image\ndocker save your-image-name:tag > /path/to/save/your-image-name.tar\nb.copy the image to flash drive:\ncp /path/to/your-image-name.tar /path/to/your/flash/disk\n\ncheck existing images:\ndocker image ls\n\n2.load images:\ndocker load < /path/to/your-image-name.tar\n\nTo install and run your Docker image on another Linux computer using the ~/your-image-name.tar file you've transferred, you'll need to have Docker installed on that computer. Once Docker is installed, you can load the image from the tar file and then run it as a container. Here\u2019s how you can do it step-by-step:\n\nStep 1: Install Docker on the Other Linux Computer\nIf Docker is not already installed, you'll need to install it. The installation steps may vary depending on the Linux distribution. Here's how to install Docker on Ubuntu as an example:\n\nUpdate your existing list of packages:\nsudo apt update\nInstall a few prerequisite packages which let apt use packages over HTTPS:\nsudo apt install apt-transport-https ca-certificates curl software-properties-common\nAdd the GPG key for the official Docker repository to your system:\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nAdd the Docker repository to APT sources:\nsudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\nUpdate your package database with the Docker packages from the newly added repo:\nsudo apt update\nMake sure you are about to install from the Docker repo instead of the default Ubuntu repo:\napt-cache policy docker-ce\nFinally, install Docker:\nsudo apt install docker-ce\nEnsure Docker is running:\nsudo systemctl status docker\nStep 2: Load the Docker Image from the Tar Archive\nTransfer the ~/your-image-name.tar file to the other computer using a USB drive, network transfer, or any other method.\n\nOn the target computer, navigate to the directory where you've placed the tar file.\n\nLoad the Docker image from the tar file:\n\ndocker load < ~/your-image-name.tar\nThis command reads the tar file from the specified path and loads the Docker image into the local image registry.\n\nStep 3: Run the Docker Image as a Container\nAfter loading the image, you can run it as a container:\n\ndocker run -d --name your-container-name your-image-name:tag\nReplace your-container-name with a name for your container, and your-image-name:tag with the name.\n\nREBUILD image:\ndocker build -t webcrawler_wiki:newtag .\n\n\n////////////////////\ndelete juck images:\ndocker system prune\n\n///\nForce remove an image:\ndocker rmi -f d0a7363126bc\n\n\n"
+        },
+        {
+            "x": 389,
+            "y": 646,
+            "height": 68,
+            "width": 404,
+            "color": "yellow",
+            "title": "",
+            "text": "sudo taskset -c 0,1 '/home/ronnieji/watchdog/procT'"
+        },
+        {
+            "x": 1358,
+            "y": 459,
+            "height": 241,
+            "width": 935,
+            "color": "yellow",
+            "title": "",
+            "text": "Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                   \nudp   UNCONN 0      0            0.0.0.0:52974      0.0.0.0:*    users:((\"avahi-daemon\",pid=707,fd=14))   \nudp   UNCONN 0      0            0.0.0.0:5353       0.0.0.0:*    users:((\"avahi-daemon\",pid=707,fd=12))   \nudp   UNCONN 0      0      127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=689,fd=13))\nudp   UNCONN 0      0            0.0.0.0:631        0.0.0.0:*    users:((\"cups-browsed\",pid=1176,fd=7))   \nudp   UNCONN 0      0               [::]:5353          [::]:*    users:((\"avahi-daemon\",pid=707,fd=13))   \nudp   UNCONN 0      0               [::]:57244         [::]:*    users:((\"avahi-daemon\",pid=707,fd=15))   \ntcp   LISTEN 0      151        127.0.0.1:3306       0.0.0.0:*    users:((\"mysqld\",pid=975,fd=23))         \ntcp   LISTEN 0      70         127.0.0.1:33060      0.0.0.0:*    users:((\"mysqld\",pid=975,fd=21))         \ntcp   LISTEN 0      128        127.0.0.1:631        0.0.0.0:*    users:((\"cupsd\",pid=939,fd=7))           \ntcp   LISTEN 0      4096   127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=689,fd=14))\ntcp   LISTEN 0      128            [::1]:631           [::]:*    users:((\"cupsd\",pid=939,fd=6))   "
+        },
+        {
+            "x": 538,
+            "y": 430,
+            "height": 157,
+            "width": 617,
+            "color": "yellow",
+            "title": "",
+            "text": "##!/bin/bash\n\n## Read each line from file_list.txt\nwhile IFS= read -r url; do\n    ## Download the file using curl\n    curl -O \"$url\"\ndone < file_list.txt\n"
+        },
+        {
+            "x": 491,
+            "y": 750,
+            "height": 78,
+            "width": 270,
+            "color": "yellow",
+            "title": "",
+            "text": "How to find a library in linux:\n\nsudo find / -name <lib name>\n\n"
+        },
+        {
+            "x": 283,
+            "y": 763,
+            "height": 561,
+            "width": 647,
+            "color": "yellow",
+            "title": "",
+            "text": "##include <iostream>\n##include <fstream>\n##include <unistd.h>\n\nbool isProcessRunning(const std::string& pidFile) {\n    std::ifstream file(pidFile);\n    int pid;\n    if (file >> pid) {\n        if (kill(pid, 0) == 0) {\n            return true; // Process with PID is running\n        }\n    }\n    return false; // Process not running\n}\n\nvoid createPIDFile(const std::string& pidFile) {\n    std::ofstream file(pidFile);\n    file << getpid();\n}\n\nint main() {\n    std::string pidFile = \"myprocess.pid\";\n\n    if (isProcessRunning(pidFile)) {\n        std::cout << \"Another instance of the process is already running.\" << std::endl;\n        return 1;\n    }\n\n    createPIDFile(pidFile);\n\n    // Your application logic here\n\n    return 0;\n}"
+        },
+        {
+            "x": 1317,
+            "y": 333,
+            "height": 590,
+            "width": 787,
+            "color": "yellow",
+            "title": "",
+            "text": "Catch keyboard & mouse event:\n\n##include <iostream>\n##include <X11/Xlib.h>\n##include <X11/Xutil.h>\n\nint main() {\n    Display* display = XOpenDisplay(NULL);\n    Window root = DefaultRootWindow(display);\n\n    XEvent event;\n    while (true) {\n        XQueryPointer(display, root, &event.xbutton.root, &event.xbutton.window, &event.xbutton.x_root, &event.xbutton.y_root, &event.xbutton.x, &event.xbutton.y, &event.xbutton.state);\n\n        std::cout << \"Mouse Position: \" << event.xbutton.x_root << \", \" << event.xbutton.y_root << std::endl;\n\n        XNextEvent(display, &event);\n        if (event.type == KeyPress) {\n            char key;\n            KeySym keysym;\n            XLookupString(&event.xkey, &key, 1, &keysym, NULL);\n            std::cout << \"Key Pressed: \" << key << std::endl;\n\n            if (key == 'q') {\n                std::cout << \"Exiting...\" << std::endl;\n                break;\n            }\n        }\n    }\n\n    XCloseDisplay(display);\n\n    return 0;\n}"
+        },
+        {
+            "x": 663,
+            "y": 795,
+            "height": 164,
+            "width": 700,
+            "color": "yellow",
+            "title": "",
+            "text": "Install Json on Linux mint:\n\nsudo apt-get install libjsoncpp-dev\n\nsudo apt-get install libnlohmann-json3-dev\n\nsudo apt-get install libjsoncpp-dev libjsoncpp25 -y\n"
+        },
+        {
+            "x": 1739,
+            "y": 755,
+            "height": 118,
+            "width": 396,
+            "color": "yellow",
+            "title": "",
+            "text": "Install snapd in linux mint:\n1.sudo rm /etc/apt/preferences.d/nosnap.pref\nsudo apt update\n2.sudo apt install snapd -y\n3.sudo snap install mysql-workbench-community"
+        },
+        {
+            "x": 898,
+            "y": 560,
+            "height": 361,
+            "width": 700,
+            "color": "yellow",
+            "title": "",
+            "text": "sudo mysql -u root -p\nmysql password recovery:\n1.sudo mysql\n2.create users\nALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'new_password';\n//create a new user\nCREATE USER 'new_user'@'localhost' IDENTIFIED BY 'password';\n//if you want the user to be able to connect from any host, you can use the following command instead:\nCREATE USER 'new_user'@'%'IDENTIFIED BY 'password';\n3. assign necessary privileges to access database and perform specific operations\nGRANT ALL PRIVILEGES ON database_name.*TO'new_user'@'localhost';\n\n//restart mysql on linux\nsudo systemctl restart mysql\n\nrestart mysql on mac\nsudo /usr/local/mysql/support-files/mysql.server stop\nsudo /usr/local/mysql/support-files/mysql.server start\n\nif you can not find <mysql/mysql.h>\nsudo apt-get install libmysqlclient-dev\n"
+        },
+        {
+            "x": 682,
+            "y": 400,
+            "height": 200,
+            "width": 250,
+            "color": "yellow",
+            "title": "",
+            "text": "ChatGPT corpus:\n1. #tag:link:https://simplemaps.com/resources/free-country-cities#tag:link:\n2.#tag:link:https://www.oxfordlearnersdictionaries.com/wordlists/oxford-phrase-list#tag:link:\n3.#tag:link:https://www.behindthename.com/names#tag:link:\n\n"
+        },
+        {
+            "x": 746,
+            "y": 420,
+            "height": 934,
+            "width": 1355,
+            "color": "yellow",
+            "title": "",
+            "text": "delete from nlp_db.all_voc;\ndelete from nlp_db.learned_voc;\ndelete from nlp_db.db_corpus;\nALTER TABLE nlp_db.all_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.learned_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.db_corpus AUTO_INCREMENT = 1;\n\n\n//////////////////////////////////////////////////////////////\nstd::string query = \"SELECT * FROM nlp_db.all_voc where t_x =? and t_y =? and t_z =?\";\n\nMYSQL_STMT *stmt;\nMYSQL_BIND bind[3]; // 3 parameters\n\n// Initialize the statement\nstmt = mysql_stmt_init(mysql);\n\n// Prepare the statement\nif (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {\n    // Error handling\n    std::cerr << \"Error preparing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Bind the parameters\nbind[0].buffer_type = MYSQL_TYPE_STRING;\nbind[0].buffer = (char*)bt1.c_str(); // assume bt1 is a std::string\nbind[0].buffer_length = bt1.size();\n\nbind[1].buffer_type = MYSQL_TYPE_STRING;\nbind[1].buffer = (char*)bt2.c_str(); // assume bt2 is a std::string\nbind[1].buffer_length = bt2.size();\n\nbind[2].buffer_type = MYSQL_TYPE_STRING;\nbind[2].buffer = (char*)bt3.c_str(); // assume bt3 is a std::string\nbind[2].buffer_length = bt3.size();\n\n// Bind the parameters to the statement\nif (mysql_stmt_bind_param(stmt, bind)) {\n    // Error handling\n    std::cerr << \"Error binding parameters: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Execute the statement\nif (mysql_stmt_execute(stmt)) {\n    // Error handling\n    std::cerr << \"Error executing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Fetch the results\nMYSQL_RES *res;\nMYSQL_ROW row;\n\nif (!(res = mysql_stmt_result_metadata(stmt))) {\n    // Error handling\n    std::cerr << \"Error getting result metadata: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\nwhile ((row = mysql_stmt_fetch(stmt))) {\n    // Process the row data\n    //...\n}\n\n// Clean up\nmysql_stmt_close(stmt);"
+        },
+        {
+            "x": 1088,
+            "y": 531,
+            "height": 558,
+            "width": 1208,
+            "color": "yellow",
+            "title": "",
+            "text": "sudo apt-get install build-essential g++ \\\n    cmake \\\n    autoconf \\\n    pkg-config \\\n    ca-certificates \\\n    libssl-dev \\\n    git \\\n    wget \\\n    curl \\\n    unzip \\\n    language-pack-en \\\n    locales \\\n    locales-all \\\n    libboost-all-dev \\\n    libeigen3-dev \\\n    libsqlite3-dev \\\n    libmysqlclient-dev \\\n    libcurl4-openssl-dev \\\n    libgumbo-dev \\\n    libtool \\\n    m4 \\\n    automake \\\n    libicu-dev \\\n    libcpprest-dev \\\n    libmysqlclient-dev \\\n    libopencv-highgui4.5 \\\n    libopencv-dev \\\n    libopencv-video-dev \\\n    libopencv-imgcodecs-dev \\\n    vim \\\n    gdb \\\n    sqlite3 \\\n    libwxsqlite3-3.0-0 \\\n    libwxsqlite3-3.0-dev \\\n    libsoci-sqlite3-4.0 \\\n    libu2f-udev \\\n    mysql-client-8.0 \\\n    mysql-client-core-8.0 \\\n    mysql-server-8.0 \\\n    mysql-server-core-8.0 \\\n    libsoci-mysql4.0 \\\n    libmysqlcppconn-dev \\\n    libmysqlcppconn7v5 \\\n    libmysql++-dev \\\n    libmysql++3v5 \\\n    libu2f-udev \\\n    libgtkmm-3.0-dev \\\n-y\n    sudo add-apt-repository ppa:savoury1/curl34 -y\n    sudo add-apt-repository ppa:savoury1/build-tools -y\n    sudo add-apt-repository ppa:savoury1/backports -y\n    sudo add-apt-repository ppa:savoury1/python -y \n    sudo add-apt-repository ppa:savoury1/encryption -y\n    sudo apt-get install curl -y\n    sudo rm /etc/apt/preferences.d/nosnap.pref\n    sudo apt update\n    sudo apt install snapd -y"
+        },
+        {
+            "x": 864,
+            "y": 287,
+            "height": 80,
+            "width": 254,
+            "color": "yellow",
+            "title": "",
+            "text": "Flash ios burner:\n\nhttps://etcher.balena.io/"
+        },
+        {
+            "x": 439,
+            "y": 552,
+            "height": 200,
+            "width": 250,
+            "color": "yellow",
+            "title": "",
+            "text": "IP check:\n\n#tag:link:https://www.virustotal.com/gui/ip-address/104.22.5.69#tag:link:\n\nhttps://rdap.arin.net/registry/ip/172.64.154.167"
+        },
+        {
+            "x": 516,
+            "y": 698,
+            "height": 396,
+            "width": 529,
+            "color": "yellow",
+            "title": "",
+            "text": "ollama run llama3:70b\n\nCLI\n\nOpen the terminal and run ollama run llama3\nAPI\n\nExample using curl:\n\ncurl -X POST http://localhost:11434/api/generate -d '{\n  \"model\": \"llama3\",\n  \"prompt\":\"Why is the sky blue?\"\n }'\n\nAPI documentation\nModel variants\n\nInstruct is fine-tuned for chat/dialogue use cases.\n\nExample: ollama run llama3 ollama run llama3:70b\n\nPre-trained is the base model.\n\nExample: ollama run llama3:text ollama run llama3:70b-text\n"
+        },
+        {
+            "x": 955,
+            "y": 439,
+            "height": 165,
+            "width": 808,
+            "color": "yellow",
+            "title": "",
+            "text": "auto it = std::find_if(in_voc.begin(), in_voc.end(), [](const Mdatatype& s) {\n        return s.word == \"california\"; // Return true if the word is \"california\"\n    });\n    \n    if (it != in_voc.end()) {\n        std::cout << it->word << \" \" << it->word_type << \" \" << it->meaning_en << \" \" << it->meaning_zh << '\\n';\n    }\n-----------------------------------------------------------------------------------------------------------------------------------------\nauto it = std::find_if(in_voc.begin(), in_voc.end(), [&gbl](const Mdatatype& s) -> bool {\n            return s.word == gbl; // Return true if the word is equal to gbl\n        });\n\n        if (it != in_voc.end()) {\n            std::cout << it->word << \" \" << it->word_type << \" \" << it->meaning_en << \" \" << it->meaning_zh << '\\n';\n        }"
+        },
+        {
+            "x": 377,
+            "y": 529,
+            "height": 458,
+            "width": 539,
+            "color": "yellow",
+            "title": "",
+            "text": "clamscan -r /home\n\n./lynis audit system\n\nps aux\n\n//check who is using the port:\nsudo lsof -i :631\nps -A | grep 631\n\n//check smpt:\nps -A | grep smtpd\n\n//install ufw :\nsudo apt-get install ufw\nsudo service ufw status\n\nsudo ufw default deny outgoing\nsudo ufw default deny incoming\nsudo ufw allow out https\nsudo ufw allow out 53\nsudo ufw allow out 80\n\nnetstat -antop\nnetstat -antop | grep ESTABLISHED\n\n\n\n\n\n"
+        },
+        {
+            "x": 705,
+            "y": 642,
+            "height": 200,
+            "width": 250,
+            "color": "yellow",
+            "title": "",
+            "text": ""
+        }
+    ]
+}
