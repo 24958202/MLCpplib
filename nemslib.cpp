@@ -732,7 +732,7 @@ bool nemslib::is_stopword_en(const std::string& word){
         std::cerr << "nemslib::is_stopword_en input string is empty." << '\n';
         return false;
     }
-    //static std::unordered_set<std::string> stopwordSet;
+    static std::unordered_set<std::string> stopwordSet;
     if(stopwordSet.empty()){
         std::vector<std::string> stopword_en = this->read_stopword_list();
         if(!stopword_en.empty()){
