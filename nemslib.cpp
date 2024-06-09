@@ -46,6 +46,7 @@ lib compile:
 #include <unordered_map>
 #include <locale>
 #include <codecvt>
+#include <utility>
 
 /*
     End callback function
