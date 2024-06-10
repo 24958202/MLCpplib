@@ -2,7 +2,7 @@
     "Group 1": [
         {
             "x": 744,
-            "y": 386,
+            "y": 411,
             "height": 940,
             "width": 1816,
             "color": "yellow",
@@ -55,7 +55,7 @@
             "text": "sudo apt-get install libcurl4-openssl-dev libgumbo-dev libtool m4 automake libicu-dev libcpprest-dev cpprestsdk -y"
         },
         {
-            "x": 642,
+            "x": 1027,
             "y": 242,
             "height": 1112,
             "width": 1533,
@@ -163,13 +163,13 @@
             "text": "delete from nlp_db.all_voc;\ndelete from nlp_db.learned_voc;\ndelete from nlp_db.db_corpus;\nALTER TABLE nlp_db.all_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.learned_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.db_corpus AUTO_INCREMENT = 1;\n\n\n//////////////////////////////////////////////////////////////\nstd::string query = \"SELECT * FROM nlp_db.all_voc where t_x =? and t_y =? and t_z =?\";\n\nMYSQL_STMT *stmt;\nMYSQL_BIND bind[3]; // 3 parameters\n\n// Initialize the statement\nstmt = mysql_stmt_init(mysql);\n\n// Prepare the statement\nif (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {\n    // Error handling\n    std::cerr << \"Error preparing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Bind the parameters\nbind[0].buffer_type = MYSQL_TYPE_STRING;\nbind[0].buffer = (char*)bt1.c_str(); // assume bt1 is a std::string\nbind[0].buffer_length = bt1.size();\n\nbind[1].buffer_type = MYSQL_TYPE_STRING;\nbind[1].buffer = (char*)bt2.c_str(); // assume bt2 is a std::string\nbind[1].buffer_length = bt2.size();\n\nbind[2].buffer_type = MYSQL_TYPE_STRING;\nbind[2].buffer = (char*)bt3.c_str(); // assume bt3 is a std::string\nbind[2].buffer_length = bt3.size();\n\n// Bind the parameters to the statement\nif (mysql_stmt_bind_param(stmt, bind)) {\n    // Error handling\n    std::cerr << \"Error binding parameters: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Execute the statement\nif (mysql_stmt_execute(stmt)) {\n    // Error handling\n    std::cerr << \"Error executing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Fetch the results\nMYSQL_RES *res;\nMYSQL_ROW row;\n\nif (!(res = mysql_stmt_result_metadata(stmt))) {\n    // Error handling\n    std::cerr << \"Error getting result metadata: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\nwhile ((row = mysql_stmt_fetch(stmt))) {\n    // Process the row data\n    //...\n}\n\n// Clean up\nmysql_stmt_close(stmt);"
         },
         {
-            "x": 1188,
-            "y": 796,
+            "x": 1285,
+            "y": 426,
             "height": 558,
             "width": 1208,
             "color": "yellow",
             "title": "",
-            "text": "sudo apt-get install build-essential g++ \\\n    cmake \\\n    autoconf \\\n    pkg-config \\\n    ca-certificates \\\n    libssl-dev \\\n    git \\\n    wget \\\n    curl \\\n    unzip \\\n    language-pack-en \\\n    locales \\\n    locales-all \\\n    libboost-all-dev \\\n    libeigen3-dev \\\n    libsqlite3-dev \\\n    libmysqlclient-dev \\\n    libcurl4-openssl-dev \\\n    libgumbo-dev \\\n    libtool \\\n    m4 \\\n    automake \\\n    libicu-dev \\\n    libcpprest-dev \\\n    libmysqlclient-dev \\\n    libopencv-highgui4.5 \\\n    libopencv-dev \\\n    libopencv-video-dev \\\n    libopencv-imgcodecs-dev \\\n    vim \\\n    gdb \\\n    sqlite3 \\\n    libwxsqlite3-3.0-0 \\\n    libwxsqlite3-3.0-dev \\\n    libsoci-sqlite3-4.0 \\\n    libu2f-udev \\\n    mysql-client-8.0 \\\n    mysql-client-core-8.0 \\\n    mysql-server-8.0 \\\n    mysql-server-core-8.0 \\\n    libsoci-mysql4.0 \\\n    libmysqlcppconn-dev \\\n    libmysqlcppconn7v5 \\\n    libmysql++-dev \\\n    libmysql++3v5 \\\n    libu2f-udev \\\n    libgtkmm-3.0-dev \\\n-y\n    sudo add-apt-repository ppa:savoury1/curl34 -y\n    sudo add-apt-repository ppa:savoury1/build-tools -y\n    sudo add-apt-repository ppa:savoury1/backports -y\n    sudo add-apt-repository ppa:savoury1/python -y \n    sudo add-apt-repository ppa:savoury1/encryption -y\n    sudo apt-get install curl -y\n    sudo rm /etc/apt/preferences.d/nosnap.pref\n    sudo apt update\n    sudo apt install snapd -y"
+            "text": "sudo apt-get install build-essential g++ \\\n    libgmp-dev \\\n    libmpfr-dev \\\n    libmpc-dev \\\n    cmake \\\n    autoconf \\\n    pkg-config \\\n    ca-certificates \\\n    libssl-dev \\\n    git \\\n    wget \\\n    curl \\\n    unzip \\\n    language-pack-en \\\n    locales \\\n    locales-all \\\n    libboost-all-dev \\\n    libeigen3-dev \\\n    libsqlite3-dev \\\n    libmysqlclient-dev \\\n    libcurl4-openssl-dev \\\n    libgumbo-dev \\\n    libtool \\\n    m4 \\\n    automake \\\n    libicu-dev \\\n    libcpprest-dev \\\n    libmysqlclient-dev \\\n    libopencv-highgui4.5 \\\n    libopencv-dev \\\n    libopencv-video-dev \\\n    libopencv-imgcodecs-dev \\\n    vim \\\n    gdb \\\n    sqlite3 \\\n    libwxsqlite3-3.0-0 \\\n    libwxsqlite3-3.0-dev \\\n    libsoci-sqlite3-4.0 \\\n    libu2f-udev \\\n    mysql-client-8.0 \\\n    mysql-client-core-8.0 \\\n    mysql-server-8.0 \\\n    mysql-server-core-8.0 \\\n    libsoci-mysql4.0 \\\n    libmysqlcppconn-dev \\\n    libmysqlcppconn7v5 \\\n    libmysql++-dev \\\n    libmysql++3v5 \\\n    libu2f-udev \\\n    libgtkmm-3.0-dev \\\n-y\n    sudo add-apt-repository ppa:savoury1/curl34 -y\n    sudo add-apt-repository ppa:savoury1/build-tools -y\n    sudo add-apt-repository ppa:savoury1/backports -y\n    sudo add-apt-repository ppa:savoury1/python -y \n    sudo add-apt-repository ppa:savoury1/encryption -y\n    sudo apt-get install curl -y\n    sudo rm /etc/apt/preferences.d/nosnap.pref\n    sudo apt update\n    sudo apt install snapd -y"
         },
         {
             "x": 864,
@@ -217,7 +217,7 @@
             "text": "clamscan -r /home\n\n./lynis audit system\n\nps aux\n\n//check who is using the port:\nsudo lsof -i :631\nps -A | grep 631\n\n//check smpt:\nps -A | grep smtpd\n\n//install ufw :\nsudo apt-get install ufw\nsudo service ufw status\n\nsudo ufw default deny outgoing\nsudo ufw default deny incoming\nsudo ufw allow out https\nsudo ufw allow out 53\nsudo ufw allow out 80\n\nnetstat -antop\nnetstat -antop | grep ESTABLISHED\n\n\n\n\n\n"
         },
         {
-            "x": 838,
+            "x": 966,
             "y": 156,
             "height": 1198,
             "width": 928,
@@ -235,15 +235,6 @@
             "text": "c++ TTS Linux:\n\nOn Linux, you can use the espeak-ng library to implement a text-to-speech program in C++ using standard C++20. Here's an example:\n\n##include <iostream>\n##include <string>\n##include <espeak-ng/speak_lib.h>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::string text = \"Hello, this is a text-to-speech example using C++20 on Linux.\";\n\n\u2006 \u2006 \u2006 \u2006 // Initialize espeak-ng\n\u2006 \u2006 \u2006 \u2006 espeak_ng_Initialize(NULL, 0, NULL, 0);\n\n\u2006 \u2006 \u2006 \u2006 // Set the text to be spoken\n\u2006 \u2006 \u2006 \u2006 espeak_ng_TTS textToSpeak;\n\u2006 \u2006 \u2006 \u2006 textToSpeak.text = text.c_str();\n\u2006 \u2006 \u2006 \u2006 textToSpeak.length = text.length();\n\u2006 \u2006 \u2006 \u2006 textToSpeak.position = POS_CHARACTER;\n\n\u2006 \u2006 \u2006 \u2006 // Speak the text\n\u2006 \u2006 \u2006 \u2006 espeak_ng_Synth(&textToSpeak, 1, NULL);\n\n\u2006 \u2006 \u2006 \u2006 // Wait for speech to finish\n\u2006 \u2006 \u2006 \u2006 while (espeak_ng_IsPlaying()) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 // Do nothing\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 // Shutdown espeak-ng\n\u2006 \u2006 \u2006 \u2006 espeak_ng_Terminate();\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}"
         },
         {
-            "x": 40,
-            "y": 40,
-            "height": 515,
-            "width": 758,
-            "color": "yellow",
-            "title": "",
-            "text": ""
-        },
-        {
             "x": 777,
             "y": 104,
             "height": 1118,
@@ -251,15 +242,6 @@
             "color": "yellow",
             "title": "",
             "text": "c++ multi-thread:\n\n##include <iostream>\n##include <thread>\n##include <future>\n\nint function1() {\n\u2006 \u2006 \u2006 \u2006 std::cout << \"Function 1 is running\" << std::endl;\n\u2006 \u2006 \u2006 \u2006 return 42;\n}\n\nint function2() {\n\u2006 \u2006 \u2006 \u2006 std::cout << \"Function 2 is running\" << std::endl;\n\u2006 \u2006 \u2006 \u2006 return 84;\n}\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::future<int> result1 = std::async(std::launch::async, function1);\n\u2006 \u2006 \u2006 \u2006 std::future<int> result2 = std::async(std::launch::async, function2);\n\n\u2006 \u2006 \u2006 \u2006 int value1 = result1.get();\n\u2006 \u2006 \u2006 \u2006 int value2 = result2.get();\n\n\u2006 \u2006 \u2006 \u2006 std::cout << \"Function 1 returned: \" << value1 << std::endl;\n\u2006 \u2006 \u2006 \u2006 std::cout << \"Function 2 returned: \" << value2 << std::endl;\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n\n##include <iostream>\n##include <thread>\n##include <fstream>\n##include <mutex>\n\nstd::mutex fileMutex;\n\nvoid function1() {\n\u2006 \u2006 \u2006 \u2006 fileMutex.lock(); // Lock the mutex to ensure exclusive access to the file\n\u2006 \u2006 \u2006 \u2006 std::ifstream file(\"input.txt\");\n\u2006 \u2006 \u2006 \u2006 std::string line;\n\u2006 \u2006 \u2006 \u2006 while (std::getline(file, line)) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << \"Function 1: \" << line << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 file.close();\n\u2006 \u2006 \u2006 \u2006 fileMutex.unlock(); // Unlock the mutex after file access is done\n}\n\nvoid function2() {\n\u2006 \u2006 \u2006 \u2006 fileMutex.lock(); // Lock the mutex\n\u2006 \u2006 \u2006 \u2006 std::ifstream file(\"input.txt\");\n\u2006 \u2006 \u2006 \u2006 std::string line;\n\u2006 \u2006 \u2006 \u2006 while (std::getline(file, line)) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << \"Function 2: \" << line << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 file.close();\n\u2006 \u2006 \u2006 \u2006 fileMutex.unlock(); // Unlock the mutex\n}\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::thread t1(function1);\n\u2006 \u2006 \u2006 \u2006 std::thread t2(function2);\n\n\u2006 \u2006 \u2006 \u2006 t1.join();\n\u2006 \u2006 \u2006 \u2006 t2.join();\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}"
-        },
-        {
-            "x": 60,
-            "y": 60,
-            "height": 371,
-            "width": 1032,
-            "color": "yellow",
-            "title": "",
-            "text": ""
         },
         {
             "x": 80,
@@ -305,6 +287,15 @@
             "color": "yellow",
             "title": "",
             "text": "Unlock a folder on linux:\n\n$ sudo chown your_username filename\n$ chmod u+rw filename\n\nUnlock a folder\n$ sudo chown your_username foldername\n\nGive the user read and write permission to the folder:\n$ chmod u+rw foldername\nOr\nchmod 600 foldername\n\n\n\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n\nLock a file:\n$ chmod u-w filename\n$ sudo chown root filename"
+        },
+        {
+            "x": 554,
+            "y": 736,
+            "height": 318,
+            "width": 666,
+            "color": "yellow",
+            "title": "",
+            "text": "/** how to compile and install g++ **/\n\nsudo apt-get install libgmp-dev libmpfr-dev libmpc-dev\n\n1.git clone https://github.com/gcc-mirror/gcc.git\n2.\ncd gcc\n./configure --prefix=/usr/local/gcc-13.3.0 --enable-languages=c,c++,fortran --disable-multilib\n3.\nmake -j4\n4.\nmake install\n5.\nexport PATH=/usr/local/gcc-13.3.0/bin:$PATH\n6.\n/gcc-13.3.0/bin/gcc --version\n\n\n\n"
         }
     ]
 }
