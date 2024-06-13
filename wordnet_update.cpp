@@ -98,6 +98,9 @@ void get_data_with_type(std::string& str_line, const std::string& f_name){
 				str_explaination += ts + " ";
 			}
 			str_explaination.pop_back();
+			if(str_word.find('_') != std::string::npos){
+				boost::algorithm::replace_all(str_word, "_", " ");
+			}
 			word_plus_explaination = std::make_pair(str_word,str_explaination);
 			std::cout << "Adding the word: " << str_word << " explain: " << str_explaination << '\n';
 		}
