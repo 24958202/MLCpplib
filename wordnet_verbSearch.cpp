@@ -1,4 +1,6 @@
 #include <iostream>
+#include <vector>
+#include <string>
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -6,12 +8,87 @@
 #include <ranges>
 #include <thread>
 #include <chrono>
+#include <regex>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include "../lib/nemslib.h"
-#include "../lib/libdict.h"
-
+std::vector<std::string> findAllWordsBehindSpans(const std::string& input, const std::string& strreg){
+    std::regex regexPattern(strreg);
+    std::smatch match;
+    std::vector<std::string> words;
+    std::sregex_iterator it(input.begin(), input.end(), regexPattern);
+    std::sregex_iterator end;
+    while (it != end) {
+        words.push_back((*it)[1].str());
+        ++it;
+    }
+    return words;
+}
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output){
+    size_t totalSize = size * nmemb;
+    output->append((char*)contents, totalSize);
+    return totalSize;
+}
+std::string GetURLContent(const std::string& url){
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    CURL* curl = curl_easy_init();
+    std::string output;
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &output);
+        /* For completeness */
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        /* only allow redirects to HTTP and HTTPS URLs */
+        //curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, "http,https");
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
+        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
+        /* each transfer needs to be done within 20 seconds! */
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 20000L);
+        /* connect fast or fail */
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 2000L);
+        /* skip files larger than a gigabyte */
+        curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE,
+                        (curl_off_t)1024*1024*1024);
+        //curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "cookies.txt"); // Use a cookie file if needed
+        curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
+        curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
+        // Set the User-Agent header to simulate a browser
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"); //"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3");
+        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+        curl_easy_setopt(curl, CURLOPT_UNRESTRICTED_AUTH, 1L);
+        curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+        curl_easy_setopt(curl, CURLOPT_EXPECT_100_TIMEOUT_MS, 0L);
+        // Disable SSL verification (not recommended for production)
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "Error: " << curl_easy_strerror(res) << std::endl;
+        }
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+    return output;
+}
+std::vector<std::string> getPastParticiple(const std::string& strurl, const std::string& strWord){
+    std::vector<std::string> dbresult;
+	WebSpiderLib wSpider_j;
+	Jsonlib jsl_j;
+	std::string strWord_lower = strWord;
+    boost::algorithm::to_lower(strWord_lower);
+	std::cout << "String input: --->" << strWord_lower << std::endl;
+	std::string htmlContent = GetURLContent(strurl);
+    dbresult = findAllWordsBehindSpans(htmlContent,"<span class=\"if\">(.*?)</span>");
+    for(auto& db : dbresult){
+        boost::algorithm::trim(db);
+        std::cout << strWord << " >>word found: >>>" << db << '\n';
+    }
+    return dbresult;
+}
 void write_to_file(const std::string& f_path, const std::pair<std::string,std::string>& f_content){
 	nlp_lib nl_j;
 	std::string str_bin_output = f_path + "_.bin";
@@ -235,7 +312,6 @@ void merge_one(){
 }
 void verb_search(){
 	nemslib nem_j;
-	libdict lib_j;
 	std::vector<std::string> get_verbs = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_data_verb.txt");//
 	std::vector<std::string> word_index_verb = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_index_verb.txt");
 	std::set<std::string> no_repeated_verbs(get_verbs.begin(),get_verbs.end());
@@ -255,7 +331,8 @@ void verb_search(){
 			if(containsOnlyOneWord(str_verb)){
 				str_url = "https://www.merriam-webster.com/dictionary/" + str_verb;
 				str_word = str_verb;
-				getPasAnt = lib_j.getPastParticiple(str_url, str_word,"/home/ronnieji/lib/db_tools/log");
+                boost::algorithm::replace_all(str_word, "_", " ");
+				getPasAnt = getPastParticiple(str_url, str_word);
 				if(!getPasAnt.empty()){
 					for(const auto& gp : getPasAnt){
 						if(no_repeated_verbs.find(gp) == no_repeated_verbs.end()){
@@ -265,12 +342,14 @@ void verb_search(){
 				}
 			}
 			else{//has more than one word
+                boost::algorithm::replace_all(str_verb, "_", " ");
 				boost::algorithm::split(phrases_to_check, str_verb, boost::algorithm::is_space(), boost::algorithm::token_compress_off);
 				if(!phrases_to_check.empty()){
 					str_phrase = phrases_to_check[0];//check the first word
+                    std::cout << str_verb << " | to check -> " << str_phrase << '\n';
 					str_url = "https://www.merriam-webster.com/dictionary/" + str_phrase;
 					str_word = str_phrase;
-					getPasAnt = lib_j.getPastParticiple(str_url, str_word,"/home/ronnieji/lib/db_tools/log");
+					getPasAnt = getPastParticiple(str_url, str_word);
 					if(!getPasAnt.empty()){
 						for(const auto& gp : getPasAnt){
 							std::string word_to_lookup;
@@ -289,9 +368,20 @@ void verb_search(){
 					}
 				}
 			}
+            if(!get_verbs.empty()){
+                std::ofstream oofile("/home/ronnieji/lib/EnglishWords/dict/output/total_verb_temp.txt", std::ios::app);
+		        if(!oofile.is_open()){
+			        oofile.open("/home/ronnieji/lib/EnglishWords/dict/output/total_verb_temp.txt", std::ios::app);
+		        }
+		        for(auto& gv : get_verbs){
+                    boost::algorithm::trim(gv);
+			        oofile << gv << '\n';
+		        }
+		        oofile.close();                            
+            }
 			no_repeated_verbs.clear();
 			no_repeated_verbs.insert(get_verbs.begin(),get_verbs.end());
-			std::this_thread::sleep_for(std::chrono::seconds(1));//seconds 
+			std::this_thread::sleep_for(std::chrono::seconds(5));//seconds 
 		}
 		std::sort(get_verbs.begin(),get_verbs.end());
 		std::ofstream ofile("/home/ronnieji/lib/EnglishWords/dict/output/total_verb.txt", std::ios::out);
