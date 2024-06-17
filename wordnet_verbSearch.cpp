@@ -9,10 +9,18 @@
 #include <thread>
 #include <chrono>
 #include <regex>
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include "../lib/nemslib.h"
+class publicV{
+	public:
+		static inline std::vector<std::string> total_voc;
+		static inline std::vector<std::string> total_voc_done;
+		static inline std::vector<std::string> missed_words;
+		static inline std::string last_voc;
+};
 std::vector<std::string> findAllWordsBehindSpans(const std::string& input, const std::string& strreg){
     std::regex regexPattern(strreg);
     std::smatch match;
@@ -83,10 +91,12 @@ std::vector<std::string> getPastParticiple(const std::string& strurl, const std:
 	std::cout << "String input: --->" << strWord_lower << std::endl;
 	std::string htmlContent = GetURLContent(strurl);
     dbresult = findAllWordsBehindSpans(htmlContent,"<span class=\"if\">(.*?)</span>");
-    for(auto& db : dbresult){
-        boost::algorithm::trim(db);
-        std::cout << strWord << " >>word found: >>>" << db << '\n';
-    }
+	if(!dbresult.empty()){
+		for(auto& db : dbresult){
+			boost::algorithm::trim(db);
+			std::cout << strWord << " >>word found: >>>" << db << '\n';
+		}
+	}
     return dbresult;
 }
 void write_to_file(const std::string& f_path, const std::pair<std::string,std::string>& f_content){
@@ -310,24 +320,41 @@ void merge_one(){
 	}
 	std::cout << "File was saved at /home/ronnieji/lib/EnglishWords/dict/output/total_voc.txt " << '\n';
 }
-void verb_search(){
-	nemslib nem_j;
-	std::vector<std::string> get_verbs = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_data_verb.txt");//
-	std::vector<std::string> word_index_verb = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_index_verb.txt");
-	std::set<std::string> no_repeated_verbs(get_verbs.begin(),get_verbs.end());
-	for (const auto& word : word_index_verb) {
-		if (no_repeated_verbs.find(word) == no_repeated_verbs.end()) {
-			get_verbs.push_back(word);
-		}
+void save_disconnected_words(const std::string& s_word){
+	if(s_word.empty()){
+		return;
 	}
-	if(!get_verbs.empty()){
-		for(const auto& gv : get_verbs){
-			std::string str_verb = gv;
+	std::ofstream file("/home/ronnieji/lib/EnglishWords/dict/output/missed_words.txt",std::ios::app);
+	if(!file.is_open()){
+		file.open("/home/ronnieji/lib/EnglishWords/dict/output/missed_words.txt",std::ios::app);
+	}
+	file << s_word << '\n';
+	file.close();
+}
+void save_words(const std::string& f_name, const std::string& s_word){
+	if(s_word.empty()){
+		return;
+	}
+	std::ofstream file(f_name,std::ios::app);
+	if(!file.is_open()){
+		file.open(f_name,std::ios::app);
+	}
+	file << s_word << '\n';
+	file.close();
+}
+void start_search(std::vector<std::string>& gv){
+	if(gv.empty()){
+		return;
+	}
+	if(!gv.empty()){
+		for(const auto& gvitem : gv){
+			std::string str_verb = gvitem;
 			std::string str_url;
 			std::vector<std::string> phrases_to_check;//more than one word
 			std::string str_phrase;
 			std::string str_word;
 			std::vector<std::string> getPasAnt;
+			std::set<std::string> no_repeated_items(gv.begin(),gv.end());
 			if(containsOnlyOneWord(str_verb)){
 				str_url = "https://www.merriam-webster.com/dictionary/" + str_verb;
 				str_word = str_verb;
@@ -335,13 +362,18 @@ void verb_search(){
 				getPasAnt = getPastParticiple(str_url, str_word);
 				if(!getPasAnt.empty()){
 					for(const auto& gp : getPasAnt){
-						if(no_repeated_verbs.find(gp) == no_repeated_verbs.end()){
-							get_verbs.push_back(gp);
+						if(no_repeated_items.find(gp) == no_repeated_items.end()){
+							publicV::total_voc_done.push_back(gp);
+							save_words("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt",gp);
 						}
 					}
 				}
+				else{
+					save_disconnected_words(str_word);
+				}
 			}
 			else{//has more than one word
+				std::string str_phrase_for_restlist = str_verb;
                 boost::algorithm::replace_all(str_verb, "_", " ");
 				boost::algorithm::split(phrases_to_check, str_verb, boost::algorithm::is_space(), boost::algorithm::token_compress_off);
 				if(!phrases_to_check.empty()){
@@ -361,44 +393,100 @@ void verb_search(){
 								}
 							}
 							word_to_lookup.pop_back();
-							if(no_repeated_verbs.find(word_to_lookup) == no_repeated_verbs.end()){
-								get_verbs.push_back(word_to_lookup);
+							if(no_repeated_items.find(word_to_lookup) == no_repeated_items.end()){
+								publicV::total_voc_done.push_back(word_to_lookup);
+								save_words("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt",word_to_lookup);
 							}
 						}
 					}
+					else{
+						save_disconnected_words(str_phrase);
+					}
 				}
 			}
-            if(!get_verbs.empty()){
-                std::ofstream oofile("/home/ronnieji/lib/EnglishWords/dict/output/total_verb_temp.txt", std::ios::app);
-		        if(!oofile.is_open()){
-			        oofile.open("/home/ronnieji/lib/EnglishWords/dict/output/total_verb_temp.txt", std::ios::app);
-		        }
-		        for(auto& gv : get_verbs){
-                    boost::algorithm::trim(gv);
-			        oofile << gv << '\n';
-		        }
-		        oofile.close();                            
-            }
-			no_repeated_verbs.clear();
-			no_repeated_verbs.insert(get_verbs.begin(),get_verbs.end());
 			std::this_thread::sleep_for(std::chrono::seconds(5));//seconds 
 		}
-		std::sort(get_verbs.begin(),get_verbs.end());
-		std::ofstream ofile("/home/ronnieji/lib/EnglishWords/dict/output/total_verb.txt", std::ios::out);
-		if(!ofile.is_open()){
-			ofile.open("/home/ronnieji/lib/EnglishWords/dict/output/total_verb.txt", std::ios::out);
-		}
-		for(const auto& item : get_verbs){
-			ofile << item << '\n';
-		}
-		ofile.close();
 	}
 	std::cout << "https://www.merriam-webster.com/dictionary/ word checking is finished." << '\n'; 
+}
+void verb_search(){
+	nemslib nem_j;
+	std::vector<std::string> get_word_data_verb_temp;
+	if(std::filesystem::exists("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt")){
+		publicV::total_voc_done = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt");//
+	}
+	else{
+		std::vector<std::string> get_verbs = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_data_verb.txt");//
+		std::vector<std::string> word_index_verb = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_index_verb.txt");
+		std::set<std::string> no_repeated_verbs(get_verbs.begin(),get_verbs.end());
+		for (const auto& word : word_index_verb) {
+			if (no_repeated_verbs.find(word) == no_repeated_verbs.end()) {
+				get_verbs.push_back(word);
+			}
+		}
+		if(!get_verbs.empty()){
+			publicV::total_voc = get_verbs;
+			std::set<std::string> no_repeated_done(publicV::total_voc_done.begin(),publicV::total_voc_done.end());
+			if(!no_repeated_done.empty()){
+				for(auto it = publicV::total_voc.begin(); it != publicV::total_voc.end();){
+					if(no_repeated_done.find(*it) != no_repeated_done.end()){
+						it = publicV::total_voc.erase(it);
+					}
+					else{
+						++it;
+					}
+				}
+			}
+			start_search(publicV::total_voc);
+		}
+	}
+
+}
+void checkMissedWords(){
+	nemslib nem_j;
+	Jsonlib jsl_j;
+	if(std::filesystem::exists("/home/ronnieji/lib/EnglishWords/dict/output/missed_words.txt")){
+		publicV::missed_words = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/missed_words.txt");
+		jsl_j.removeDuplicates(publicV::missed_words);
+		if(!publicV::missed_words.empty()){
+			start_search(publicV::missed_words);
+		}
+	}
+}
+void merge_one_veb(){
+	nemslib nem_j;
+	if(std::filesystem::exists("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt")){
+		publicV::total_voc_done = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt");//
+	}
+	else{
+		std::vector<std::string> get_verbs = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_data_verb.txt");//
+		std::vector<std::string> word_index_verb = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_index_verb.txt");
+		std::set<std::string> no_repeated_verbs(get_verbs.begin(),get_verbs.end());
+		for (const auto& word : word_index_verb) {
+			if (no_repeated_verbs.find(word) == no_repeated_verbs.end()) {
+				get_verbs.push_back(word);
+			}
+		}
+		if(!get_verbs.empty() && !publicV::total_voc_done.empty()){
+			std::set<std::string> no_repeated(publicV::total_voc_done.begin(),publicV::total_voc_done.end());
+			for(const auto& item : get_verbs){
+				if(no_repeated.find(item) == no_repeated.end()){
+					get_verbs.push_back(item);
+				}
+			}
+		}
+		std::sort(get_verbs.begin(),get_verbs.end());
+		for(const auto& gv : get_verbs){
+			save_words("/home/ronnieji/lib/EnglishWords/dict/output/done.txt",gv);
+		}
+	}
 }
 int main(){
     //readFolder("/home/ronnieji/lib/EnglishWords/dict");
 	//merge_one();
 	verb_search();
+	checkMissedWords();
+	merge_one_veb();
 	std::cout << "All jobs are done!" << '\n';
     return 0;
 }
