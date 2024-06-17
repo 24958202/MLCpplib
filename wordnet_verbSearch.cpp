@@ -332,9 +332,6 @@ void save_disconnected_words(const std::string& s_word){
 	file.close();
 }
 void save_words(const std::string& f_name, const std::string& s_word){
-	if(s_word.empty()){
-		return;
-	}
 	std::ofstream file(f_name,std::ios::app);
 	if(!file.is_open()){
 		file.open(f_name,std::ios::app);
@@ -455,10 +452,9 @@ void checkMissedWords(){
 }
 void merge_one_veb(){
 	nemslib nem_j;
+	Jsonlib jsl_j;
 	if(std::filesystem::exists("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt")){
 		publicV::total_voc_done = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/done_list.txt");//
-	}
-	else{
 		std::vector<std::string> get_verbs = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_data_verb.txt");//
 		std::vector<std::string> word_index_verb = nem_j.readTextFile("/home/ronnieji/lib/EnglishWords/dict/output/word_index_verb.txt");
 		std::set<std::string> no_repeated_verbs(get_verbs.begin(),get_verbs.end());
@@ -468,13 +464,14 @@ void merge_one_veb(){
 			}
 		}
 		if(!get_verbs.empty() && !publicV::total_voc_done.empty()){
-			std::set<std::string> no_repeated(publicV::total_voc_done.begin(),publicV::total_voc_done.end());
-			for(const auto& item : get_verbs){
+			std::set<std::string> no_repeated(get_verbs.begin(),get_verbs.end());
+			for(const auto& item : publicV::total_voc_done){
 				if(no_repeated.find(item) == no_repeated.end()){
 					get_verbs.push_back(item);
 				}
 			}
 		}
+		jsl_j.removeDuplicates(get_verbs);
 		std::sort(get_verbs.begin(),get_verbs.end());
 		for(const auto& gv : get_verbs){
 			save_words("/home/ronnieji/lib/EnglishWords/dict/output/done.txt",gv);
@@ -484,9 +481,11 @@ void merge_one_veb(){
 int main(){
     //readFolder("/home/ronnieji/lib/EnglishWords/dict");
 	//merge_one();
-	verb_search();
-	checkMissedWords();
+	//verb_search();
+	//checkMissedWords();
 	merge_one_veb();
 	std::cout << "All jobs are done!" << '\n';
     return 0;
 }
+/*--------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
