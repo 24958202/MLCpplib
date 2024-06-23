@@ -35,7 +35,9 @@
 #include <codecvt>
 #include <utility>
 #include <mysql/mysql.h>
-
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 std::atomic<bool> result_found(false); // Shared flag variable for database
 
 /*
