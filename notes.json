@@ -1,8 +1,8 @@
 {
     "Group 1": [
         {
-            "x": 617,
-            "y": 207,
+            "x": 104,
+            "y": 54,
             "height": 940,
             "width": 1816,
             "color": "yellow",
@@ -10,8 +10,8 @@
             "text": "Check library independencies:\nldd /home/ronnieji/lib/nemslib.so\n\ng++ -c -fPIC '/home/ronnieji/lib/lib/mysqldatabase.cpp' -o '/home/ronnieji/lib/lib/mysqldatabase.o' -I/usr/include/ -lmysqlclient -std=c++20\ng++ -shared -o '/home/ronnieji/lib/lib/mysqldatabase.so' '/home/ronnieji/lib/lib/mysqldatabase.o' -I/usr/include/ -lmysqlclient -std=c++20\n\ng++ -c -fPIC '/home/ronnieji/lib/lib/nemslib.cpp' -o '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include/ -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20\n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include/ -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -fPIC\n\n//new\ng++ -c -fPIC '/home/ronnieji/lib/lib/nemslib.cpp' -o '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licu  \n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licuuc -fPIC\n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -lcurl -lsqlite3 -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so -L/usr/lib/x86_64-linux-gnu -licuuc -licui18n -licudata -licutu -licuio -fPIC\n\n//lib\ng++ -c -fPIC '/home/ronnieji/lib/lib/nemslib.cpp' -o '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licu  \n\ng++ -shared -o '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nemslib.o' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licuuc -fPIC\n\n//app\ng++ '/home/ronnieji/lib/EnglishWords/wordnet.cpp' -o '/home/ronnieji/lib/EnglishWords/wordnet' \\\n-I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 \\\n-DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -lmysqlclient \\\n/home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' -O3 -s -fPIE -flto \\\n-fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licuuc -licui18n -licudata\n\n//big \ng++ '/home/ronnieji/lib/MLCpplib-main/cpp.cpp' -o '/home/ronnieji/lib/MLCpplib-main/cpp' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -lcurl -lsqlite3 -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so -I/usr/include -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -std=c++20 -licuuc -licui18n -licudata\n\n//with mysql\ng++ '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql.cpp' -o '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -licuuc -licui18n -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/nemslib.so' '/home/ronnieji/lib/libdict.so' -std=c++20 -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer -lmysqlclient\n\n//with mysql -final application:\ng++ '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql.cpp' -o '/home/ronnieji/lib/MLCpplib-main/read_englishvoc_mysql' \\\n    -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include -L/usr/local/lib \\\n    -L/home/ronnieji/lib/lib /home/ronnieji/lib/lib/nemslib.so \\\n    -licuuc -licui18n -licudata -licutu -licuio -lcurl -lsqlite3 /usr/local/lib/libgumbo.so \\\n    /home/ronnieji/lib/lib/mysqldatabase.so -lmysqlclient -std=c++20 -O3 -s -fPIE -flto -fcf-protection\n\ng++ '/home/ronnieji/lib/MLCpplib-main/testgpt.cpp' -o '/home/ronnieji/lib/MLCpplib-main/testgpt' -I/usr/local/include/eigen3 -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include -L/usr/local/lib     -L/home/ronnieji/lib/lib /home/ronnieji/lib/lib/nemslib.so     -licuuc -licui18n -licudata -licutu -licuio -lcurl -lsqlite3 /usr/local/lib/libgumbo.so     /home/ronnieji/lib/lib/mysqldatabase.so -lmysqlclient -std=c++20 -O3 -s -fPIE -flto -fcf-protection\n\ng++ '/home/ronnieji/lib/db_tools/webcrawler_english_binary.cpp' -o '/home/ronnieji/lib/db_tools/webcrawler_english_binary' -I/usr/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so '/home/ronnieji/lib/lib/mysqldatabase.so' '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/libdict.so' -std=c++20 -licuuc -licui18n -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer\n\ng++ '/home/ronnieji/lib/db_tools/webcrawler_wiki_class.cpp' -o '/home/ronnieji/lib/db_tools/webcrawler_wiki_class' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so -I/usr/include/ -lmysqlclient -lnlplib -fPIE -pie -fstack-protector -fstack-protector-strong -D_FORTIFY_SOURCE=2 -std=c++20\n\n-I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -licuuc -licui18n -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nlplib.so' '/home/ronnieji/lib/lib/libdict.so' -std=c++20 -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer\n\ng++ '/home/ronnieji/lib/MLCpplib-main/web/mycgi.cpp' -o '/home/ronnieji/lib/MLCpplib-main/web/mycgi' -I/usr/include/jsoncpp -ljsoncpp -std=c++20\ng++ '/home/ronnieji/lib/MLCpplib-main/web/mycgi.cpp' -o '/home/ronnieji/lib/MLCpplib-main/web/mycgi' -I/usr/include/jsoncpp -L/usr/lib -ljsoncpp -I/usr/include/cgicc -L/usr/lib -lcgicc -std=c++20\n\n//compile the app with opencv\n`pkg-config opencv4 --cflags --libs`\n\n-l/usr/include/opencv4 -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs\n\ng++ '/home/ronnieji/lib/MLCpplib-main/webCam.cpp' -o '/home/ronnieji/lib/MLCpplib-main/webCam' -I/usr/local/include/eigen3 -I/usr/local/include -lcurl -lsqlite3 -licuuc -licui18n -I/usr/include -DBOOST_BIND_GLOBAL_PLACEHOLDERS -I/usr/include/opencv4 -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_objdetect /usr/local/lib/libgumbo.so /home/ronnieji/lib/lib/mysqldatabase.so '/home/ronnieji/lib/lib/nemslib.so' '/home/ronnieji/lib/lib/nlplib.so' '/home/ronnieji/lib/lib/libdict.so' -std=c++20 -O3 -s -fPIE -flto -fcf-protection=full -fstack-protector-strong -fomit-frame-pointer\n"
         },
         {
-            "x": 1362,
-            "y": 931,
+            "x": 1178,
+            "y": 926,
             "height": 68,
             "width": 742,
             "color": "yellow",
@@ -29,7 +29,7 @@
         },
         {
             "x": 587,
-            "y": 972,
+            "y": 794,
             "height": 200,
             "width": 250,
             "color": "yellow",
@@ -56,8 +56,8 @@
         },
         {
             "x": 137,
-            "y": 190,
-            "height": 1112,
+            "y": 0,
+            "height": 994,
             "width": 1533,
             "color": "yellow",
             "title": "",
@@ -73,7 +73,7 @@
             "text": "sudo taskset -c 0,1 '/home/ronnieji/watchdog/procT'"
         },
         {
-            "x": 1358,
+            "x": 985,
             "y": 459,
             "height": 241,
             "width": 935,
@@ -101,7 +101,7 @@
         },
         {
             "x": 379,
-            "y": 793,
+            "y": 433,
             "height": 561,
             "width": 647,
             "color": "yellow",
@@ -109,7 +109,7 @@
             "text": "##include <iostream>\n##include <fstream>\n##include <unistd.h>\n\nbool isProcessRunning(const std::string& pidFile) {\n    std::ifstream file(pidFile);\n    int pid;\n    if (file >> pid) {\n        if (kill(pid, 0) == 0) {\n            return true; // Process with PID is running\n        }\n    }\n    return false; // Process not running\n}\n\nvoid createPIDFile(const std::string& pidFile) {\n    std::ofstream file(pidFile);\n    file << getpid();\n}\n\nint main() {\n    std::string pidFile = \"myprocess.pid\";\n\n    if (isProcessRunning(pidFile)) {\n        std::cout << \"Another instance of the process is already running.\" << std::endl;\n        return 1;\n    }\n\n    createPIDFile(pidFile);\n\n    // Your application logic here\n\n    return 0;\n}"
         },
         {
-            "x": 1317,
+            "x": 1133,
             "y": 333,
             "height": 590,
             "width": 787,
@@ -127,7 +127,7 @@
             "text": "Install Json on Linux mint:\n\nsudo apt-get install libjsoncpp-dev\n\nsudo apt-get install libnlohmann-json3-dev\n\nsudo apt-get install libjsoncpp-dev libjsoncpp25 -y\n"
         },
         {
-            "x": 1739,
+            "x": 1524,
             "y": 755,
             "height": 118,
             "width": 396,
@@ -136,8 +136,8 @@
             "text": "Install snapd in linux mint:\n1.sudo rm /etc/apt/preferences.d/nosnap.pref\nsudo apt update\n2.sudo apt install snapd -y\n3.sudo snap install mysql-workbench-community"
         },
         {
-            "x": 1335,
-            "y": 839,
+            "x": 1220,
+            "y": 633,
             "height": 361,
             "width": 700,
             "color": "yellow",
@@ -154,8 +154,8 @@
             "text": "ChatGPT corpus:\n1. #tag:link:https://simplemaps.com/resources/free-country-cities#tag:link:\n2.#tag:link:https://www.oxfordlearnersdictionaries.com/wordlists/oxford-phrase-list#tag:link:\n3.#tag:link:https://www.behindthename.com/names#tag:link:\n\n"
         },
         {
-            "x": 886,
-            "y": 213,
+            "x": 565,
+            "y": 60,
             "height": 934,
             "width": 1355,
             "color": "yellow",
@@ -163,7 +163,7 @@
             "text": "delete from nlp_db.all_voc;\ndelete from nlp_db.learned_voc;\ndelete from nlp_db.db_corpus;\nALTER TABLE nlp_db.all_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.learned_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.db_corpus AUTO_INCREMENT = 1;\n\n\n//////////////////////////////////////////////////////////////\nstd::string query = \"SELECT * FROM nlp_db.all_voc where t_x =? and t_y =? and t_z =?\";\n\nMYSQL_STMT *stmt;\nMYSQL_BIND bind[3]; // 3 parameters\n\n// Initialize the statement\nstmt = mysql_stmt_init(mysql);\n\n// Prepare the statement\nif (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {\n    // Error handling\n    std::cerr << \"Error preparing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Bind the parameters\nbind[0].buffer_type = MYSQL_TYPE_STRING;\nbind[0].buffer = (char*)bt1.c_str(); // assume bt1 is a std::string\nbind[0].buffer_length = bt1.size();\n\nbind[1].buffer_type = MYSQL_TYPE_STRING;\nbind[1].buffer = (char*)bt2.c_str(); // assume bt2 is a std::string\nbind[1].buffer_length = bt2.size();\n\nbind[2].buffer_type = MYSQL_TYPE_STRING;\nbind[2].buffer = (char*)bt3.c_str(); // assume bt3 is a std::string\nbind[2].buffer_length = bt3.size();\n\n// Bind the parameters to the statement\nif (mysql_stmt_bind_param(stmt, bind)) {\n    // Error handling\n    std::cerr << \"Error binding parameters: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Execute the statement\nif (mysql_stmt_execute(stmt)) {\n    // Error handling\n    std::cerr << \"Error executing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Fetch the results\nMYSQL_RES *res;\nMYSQL_ROW row;\n\nif (!(res = mysql_stmt_result_metadata(stmt))) {\n    // Error handling\n    std::cerr << \"Error getting result metadata: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\nwhile ((row = mysql_stmt_fetch(stmt))) {\n    // Process the row data\n    //...\n}\n\n// Clean up\nmysql_stmt_close(stmt);"
         },
         {
-            "x": 1285,
+            "x": 712,
             "y": 426,
             "height": 558,
             "width": 1208,
@@ -199,7 +199,7 @@
             "text": "ollama run llama3:70b\n\nCLI\n\nOpen the terminal and run ollama run llama3\nAPI\n\nExample using curl:\n\ncurl -X POST http://localhost:11434/api/generate -d '{\n  \"model\": \"llama3\",\n  \"prompt\":\"Why is the sky blue?\"\n }'\n\nAPI documentation\nModel variants\n\nInstruct is fine-tuned for chat/dialogue use cases.\n\nExample: ollama run llama3 ollama run llama3:70b\n\nPre-trained is the base model.\n\nExample: ollama run llama3:text ollama run llama3:70b-text\n"
         },
         {
-            "x": 1290,
+            "x": 1112,
             "y": 479,
             "height": 165,
             "width": 808,
@@ -208,7 +208,7 @@
             "text": "auto it = std::find_if(in_voc.begin(), in_voc.end(), [](const Mdatatype& s) {\n        return s.word == \"california\"; // Return true if the word is \"california\"\n    });\n    \n    if (it != in_voc.end()) {\n        std::cout << it->word << \" \" << it->word_type << \" \" << it->meaning_en << \" \" << it->meaning_zh << '\\n';\n    }\n-----------------------------------------------------------------------------------------------------------------------------------------\nauto it = std::find_if(in_voc.begin(), in_voc.end(), [&gbl](const Mdatatype& s) -> bool {\n            return s.word == gbl; // Return true if the word is equal to gbl\n        });\n\n        if (it != in_voc.end()) {\n            std::cout << it->word << \" \" << it->word_type << \" \" << it->meaning_en << \" \" << it->meaning_zh << '\\n';\n        }"
         },
         {
-            "x": 1468,
+            "x": 1381,
             "y": 226,
             "height": 458,
             "width": 539,
@@ -218,8 +218,8 @@
         },
         {
             "x": 596,
-            "y": 80,
-            "height": 1198,
+            "y": 0,
+            "height": 994,
             "width": 928,
             "color": "yellow",
             "title": "",
@@ -227,7 +227,7 @@
         },
         {
             "x": 427,
-            "y": 590,
+            "y": 422,
             "height": 572,
             "width": 690,
             "color": "yellow",
@@ -236,8 +236,8 @@
         },
         {
             "x": 777,
-            "y": 104,
-            "height": 1118,
+            "y": 0,
+            "height": 994,
             "width": 800,
             "color": "yellow",
             "title": "",
@@ -245,7 +245,7 @@
         },
         {
             "x": 393,
-            "y": 529,
+            "y": 515,
             "height": 479,
             "width": 844,
             "color": "yellow",
@@ -254,8 +254,8 @@
         },
         {
             "x": 303,
-            "y": 322,
-            "height": 1032,
+            "y": 0,
+            "height": 994,
             "width": 1202,
             "color": "yellow",
             "title": "",
@@ -263,7 +263,7 @@
         },
         {
             "x": 317,
-            "y": 256,
+            "y": 51,
             "height": 943,
             "width": 1513,
             "color": "yellow",
@@ -290,7 +290,7 @@
         },
         {
             "x": 554,
-            "y": 736,
+            "y": 565,
             "height": 429,
             "width": 784,
             "color": "yellow",
@@ -308,7 +308,7 @@
         },
         {
             "x": 602,
-            "y": 644,
+            "y": 391,
             "height": 603,
             "width": 778,
             "color": "yellow",
@@ -316,7 +316,7 @@
             "text": "Call back functions:\n\n##include <cmath>\n##include <numbers>\n\ndouble gelu(double x) {\n    double sqrt2_over_pi = std::sqrt(2.0 / std::numbers::pi_v<double>);\n    return 0.5 * x * (1 + std::tanh(sqrt2_over_pi * (x + 0.044715 * std::pow(x, 3))));\n}\n\n-----------------------------------------------------------------------------------------------------------\n\n##include <numeric>\n##include <algorithm>\n##include <utility>\n\ntemplate <std::size_t Axis, typename T>\nauto softmax(const std::vector<T>& input) {\n    std::vector<T> output(input.size());\n    std::partial_sum(input.begin(), input.end(), output.begin());\n\n    T max_val = *std::max_element(input.begin(), input.end());\n    for (auto& elem : input) {\n        elem -= max_val;\n    }\n\n    for (auto& elem : input) {\n        elem = std::exp(elem);\n    }\n\n    T sum = std::accumulate(input.begin(), input.end(), 0.0);\n    for (auto& elem : input) {\n        elem /= sum;\n    }\n\n    return input;\n}"
         },
         {
-            "x": 1139,
+            "x": 1003,
             "y": 166,
             "height": 664,
             "width": 917,
@@ -334,8 +334,8 @@
             "text": "English words\n\n#tag:link:https://touchtypie.github.io/english-words/#tag:link:\n\nhttp://gwicks.net/dictionaries.htm"
         },
         {
-            "x": 939,
-            "y": 517,
+            "x": 929,
+            "y": 196,
             "height": 798,
             "width": 991,
             "color": "yellow",
@@ -361,13 +361,22 @@
             "text": "sudo ufw default deny\nsudo ufw default deny incoming\nsudo ufw default deny outgoing\nsudo ufw allow out 443\nsudo ufw allow out 53\nsudo ufw allow out 80\nsudo ufw reload\nsudo ufw status \n"
         },
         {
-            "x": 60,
-            "y": 60,
-            "height": 1181,
+            "x": 342,
+            "y": 0,
+            "height": 994,
             "width": 1263,
             "color": "yellow",
             "title": "",
             "text": "bool containsOnlyOneWord(const std::string& str) {\n    if(str.find(' ') != std::string::npos){\n        return false;//has space,there are more than one words\n\t}\n    else{\n        return true;\n\t}\n}\nvoid m_reading(const std::string& f_name){  \n    if(f_name.empty()){\n        return;\n    }\n    Jsonlib jsl_j;\n    nemslib nem_j;\n    std::vector<std::string> strBooks;\n    std::vector<std::string> strBooks_path;   \n    for (const auto& entry : std::filesystem::directory_iterator(f_name)) {\n        if (entry.is_regular_file() && entry.path().extension() == \".txt\") {\n            strBooks_path.push_back(entry.path());\n        }\n    }\n    /*\n        test\n    */\n    if(!strBooks_path.empty()){\n        std::vector<std::pair<std::string,std::string>> phrases_picked;\n        for(const auto& stb : strBooks_path){\n            std::string s_book_path = stb;\n            for(const auto& spath : strBooks_path){\n                if(stb != spath){\n                    std::ifstream file(spath);\n                    if(!file.is_open()){\n                        continue;\n                    }\n                    std::string line;\n                    std::string s_book;\n                    while(std::getline(file,line)){\n                        s_book += line + \" \";\n                        //std::this_thread::sleep_for(std::chrono::milliseconds(5));//seconds\n                    }\n                    file.close();\n                    s_book.pop_back();\n                    std::vector<std::string> split_byS = jsl_j.split_sentences(s_book);\n                    if(!split_byS.empty()){\n                        for(const auto& sen : split_byS){\n                            std::vector<std::string> tok_sens;\n                            std::string str_sen = sen;\n                            //str_sen = nem_j.removeEnglishPunctuation_training(str_sen);\n                            str_sen.erase(std::remove_if(str_sen.begin(), str_sen.end(),[](char c) { return std::ispunct(static_cast<unsigned char>(c)); }), str_sen.end());\n                            boost::algorithm::to_lower(str_sen);\n                            boost::algorithm::split(tok_sens, str_sen, boost::algorithm::is_space(), boost::algorithm::token_compress_off);\n                            if(!tok_sens.empty()){\n                                for(size_t i = 0; i < tok_sens.size(); ++i){\n                                    std::string s_combo;\n                                    for(size_t j = i; j < tok_sens.size(); ++j){\n                                        s_combo += tok_sens[j] + \" \";\n                                        std::string s_addd = s_combo;\n                                        s_addd.pop_back();\n                                        if(containsOnlyOneWord(s_addd)==false){\n                                            for(const auto& sks : strBooks_path){\n                                                if(sks != stb){\n                                                    std::string o_book_path = sks;\n                                                    std::string line_input;\n                                                    std::string str_other_book;\n                                                    std::ifstream obookfile(o_book_path);\n                                                    if(!obookfile.is_open()){\n                                                        continue;\n                                                    }\n                                                    std::cout << \"loading the others...\" << '\\n';\n                                                    while(std::getline(obookfile,line_input)){\n                                                        str_other_book += line_input + \" \";\n                                                        std::this_thread::sleep_for(std::chrono::milliseconds(2));//seconds\n                                                    }\n                                                    obookfile.close();\n                                                    std::cout << \"load completed! Continue...\" << '\\n';\n                                                    str_other_book.pop_back();\n                                                    boost::algorithm::to_lower(str_other_book);\n                                                    std::vector<std::string> split_obS = jsl_j.split_sentences(str_other_book);\n                                                    for(const auto& sobS : split_obS){\n                                                        std::string str_check = sobS;\n                                                        if(str_check.find(s_addd)!=std::string::npos){\n                                                            std::pair<std::string,std::string> pickedPhrase = std::make_pair(s_addd,str_check);\n                                                            /*\n                                                                check if the target word is the last word, if it's the last word, continue;\n                                                            */\n                                                            std::cout << s_addd <<\" >>>> \" <<  str_check << '\\n'; \n                                                            //phrases_picked.push_back(pickedPhrase);\n                                                        }\n                                                    }\n                                                }\n                                            }\n                                        }\n                                        //std::this_thread::sleep_for(std::chrono::milliseconds(5));//seconds \n                                    }\n                                }\n                            }\n                           \n                        }\n                    }\n                }\n            }\n        }\n    }\n\n}\nint main(){\n    nemslib nems_j;\n    nems_j.set_stop_word_file_path(\"/home/ronnieji/lib/lib/res/english_stopwords\");\n    //m_reading(\"/home/ronnieji/corpus/test/Egypt\");\n    m_reading(\"/home/ronnieji/corpus/english_ebooks\");\n    return 0;\n}"
+        },
+        {
+            "x": 60,
+            "y": 60,
+            "height": 190,
+            "width": 615,
+            "color": "yellow",
+            "title": "",
+            "text": "Make an app run at the startup of Raspberry Pi 5:\n(before the following: sudo chmod +x )\n\n1.sudo nano /etc/xdg/autostart/display.desktop\n\n2.\n[Desktop Entry]\nName=PiCounter\nExec=/usr/bin/python3 /home/pi/PiCounter/display.py"
         }
     ]
 }
