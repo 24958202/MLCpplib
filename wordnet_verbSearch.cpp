@@ -814,9 +814,9 @@ void save_disconnected_words(const std::string& s_word){
 	if(s_word.empty()){
 		return;
 	}
-	std::ofstream file("/home/ronnieji/lib/EnglishWords/dict/output/missed_words.txt",std::ios::app);
+	std::ofstream file("/home/ronnieji/lib/EnglishWords/dict/output/missed_words_noun.txt",std::ios::app);
 	if(!file.is_open()){
-		file.open("/home/ronnieji/lib/EnglishWords/dict/output/missed_words.txt",std::ios::app);
+		file.open("/home/ronnieji/lib/EnglishWords/dict/output/missed_words_noun.txt",std::ios::app);
 	}
 	file << s_word << '\n';
 	file.close();
