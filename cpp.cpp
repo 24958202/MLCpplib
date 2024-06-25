@@ -35,6 +35,7 @@
 #include <codecvt>
 #include <utility>
 #include <mysql/mysql.h>
+#include <cstdint>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
