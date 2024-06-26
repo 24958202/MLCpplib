@@ -41,6 +41,7 @@
 #include <boost/algorithm/string/classification.hpp>
 std::atomic<bool> result_found(false); // Shared flag variable for database
 //std::this_thread::sleep_for(std::chrono::milliseconds(2));//seconds
+//std::this_thread::sleep_for(std::chrono::microseconds(2));
 /*
     store the stopword list
 */
