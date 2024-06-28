@@ -9,6 +9,7 @@
 #include <sqlite3.h>
 #include <unicode/unistr.h>  // ICU
 #include <unicode/uchar.h>
+#include <unicode/ucsdet.h>
 #include <string_view>
 #include <curl/curl.h>
 #include <gumbo.h>
@@ -39,6 +40,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/locale.hpp>
 std::atomic<bool> result_found(false); // Shared flag variable for database
 //std::this_thread::sleep_for(std::chrono::milliseconds(2));//seconds
 //std::this_thread::sleep_for(std::chrono::microseconds(2));
