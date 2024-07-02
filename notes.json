@@ -1,8 +1,8 @@
 {
     "Group 1": [
         {
-            "x": 638,
-            "y": 60,
+            "x": 104,
+            "y": 54,
             "height": 940,
             "width": 1816,
             "color": "yellow",
@@ -55,8 +55,8 @@
             "text": "sudo apt-get install libcurl4-openssl-dev libgumbo-dev libtool m4 automake libicu-dev libcpprest-dev cpprestsdk -y"
         },
         {
-            "x": 670,
-            "y": 134,
+            "x": 387,
+            "y": 0,
             "height": 994,
             "width": 1533,
             "color": "yellow",
@@ -163,8 +163,8 @@
             "text": "delete from nlp_db.all_voc;\ndelete from nlp_db.learned_voc;\ndelete from nlp_db.db_corpus;\nALTER TABLE nlp_db.all_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.learned_voc AUTO_INCREMENT = 1;\nALTER TABLE nlp_db.db_corpus AUTO_INCREMENT = 1;\n\n\n//////////////////////////////////////////////////////////////\nstd::string query = \"SELECT * FROM nlp_db.all_voc where t_x =? and t_y =? and t_z =?\";\n\nMYSQL_STMT *stmt;\nMYSQL_BIND bind[3]; // 3 parameters\n\n// Initialize the statement\nstmt = mysql_stmt_init(mysql);\n\n// Prepare the statement\nif (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {\n    // Error handling\n    std::cerr << \"Error preparing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Bind the parameters\nbind[0].buffer_type = MYSQL_TYPE_STRING;\nbind[0].buffer = (char*)bt1.c_str(); // assume bt1 is a std::string\nbind[0].buffer_length = bt1.size();\n\nbind[1].buffer_type = MYSQL_TYPE_STRING;\nbind[1].buffer = (char*)bt2.c_str(); // assume bt2 is a std::string\nbind[1].buffer_length = bt2.size();\n\nbind[2].buffer_type = MYSQL_TYPE_STRING;\nbind[2].buffer = (char*)bt3.c_str(); // assume bt3 is a std::string\nbind[2].buffer_length = bt3.size();\n\n// Bind the parameters to the statement\nif (mysql_stmt_bind_param(stmt, bind)) {\n    // Error handling\n    std::cerr << \"Error binding parameters: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Execute the statement\nif (mysql_stmt_execute(stmt)) {\n    // Error handling\n    std::cerr << \"Error executing statement: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\n// Fetch the results\nMYSQL_RES *res;\nMYSQL_ROW row;\n\nif (!(res = mysql_stmt_result_metadata(stmt))) {\n    // Error handling\n    std::cerr << \"Error getting result metadata: \" << mysql_stmt_error(stmt) << std::endl;\n    return;\n}\n\nwhile ((row = mysql_stmt_fetch(stmt))) {\n    // Process the row data\n    //...\n}\n\n// Clean up\nmysql_stmt_close(stmt);"
         },
         {
-            "x": 712,
-            "y": 426,
+            "x": 436,
+            "y": 66,
             "height": 928,
             "width": 1484,
             "color": "yellow",
@@ -262,8 +262,8 @@
             "text": "std::unordered_map\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\nInsert items into std::unordered_map:\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n##include <iostream>\n##include <unordered_map>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, int> myMap;\n\n\u2006 \u2006 \u2006 \u2006 // Insert items\n\u2006 \u2006 \u2006 \u2006 myMap[\"apple\"] = 5;\n\u2006 \u2006 \u2006 \u2006 myMap[\"banana\"] = 3;\n\u2006 \u2006 \u2006 \u2006 myMap[\"orange\"] = 7;\n\n\u2006 \u2006 \u2006 \u2006 // Display the map\n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : myMap) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << pair.first << \": \" << pair.second << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\n/*\n\tother ways to insert data\n*/\n// Inserting data using insert function with std::pair\n\u2006 \u2006 \u2006 \u2006 occupations.insert(std::make_pair(\"John\", \"Engineer\"));\n\u2006 \u2006 \u2006 \u2006 occupations.insert(std::make_pair(\"Alice\", \"Doctor\"));\n\n\u2006 \u2006 \u2006 \u2006 // Inserting data using emplace function\n\u2006 \u2006 \u2006 \u2006 occupations.emplace(\"Bob\", \"Teacher\");\n\n//insert a same structure dataset\nmyMap.insert(new_occupations_from_txt.begin(),new_occupations_from_txt.end());\n\n\nUpdate items in std::unordered_map:\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n\n##include <iostream>\n##include <unordered_map>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, int> myMap = {{\"apple\", 5}, {\"banana\", 3}, {\"orange\", 7}};\n\n\u2006 \u2006 \u2006 \u2006 // Update item\n\u2006 \u2006 \u2006 \u2006 myMap[\"apple\"] = 8;\n\n\u2006 \u2006 \u2006 \u2006 // Display the updated map\n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : myMap) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << pair.first << \": \" << pair.second << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\n\nDelete items from std::unordered_map:\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n##include <iostream>\n##include <unordered_map>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, int> myMap = {{\"apple\", 5}, {\"banana\", 3}, {\"orange\", 7}};\n\n\u2006 \u2006 \u2006 \u2006 // Delete item\n\u2006 \u2006 \u2006 \u2006 myMap.erase(\"banana\");\n\n\u2006 \u2006 \u2006 \u2006 // Display the modified map\n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : myMap) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << pair.first << \": \" << pair.second << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\n//to erase multiple items\nfor (auto it = myMap.begin(); it != myMap.end(); ) {\n\u2006 \u2006 \u2006 \u2006 if (it->first == nna) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 it = myMap.erase(it);\n\u2006 \u2006 \u2006 \u2006 } else {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 ++it;\n\u2006 \u2006 \u2006 \u2006 }\n}\n\n\nSelect items from std::unordered_map (performing a lookup):\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n##include <iostream>\n##include <unordered_map>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, int> myMap = {{\"apple\", 5}, {\"banana\", 3}, {\"orange\", 7}};\n\n\u2006 \u2006 \u2006 \u2006 // Select item\n\u2006 \u2006 \u2006 \u2006 std::string key = \"banana\";\n\u2006 \u2006 \u2006 \u2006 if (myMap.contains(key)) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << \"The value for \" << key << \" is \" << myMap[key] << std::endl;\n\u2006 \u2006 \u2006 \u2006 } else {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << key << \" not found in the map\" << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014remove repeated items \u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n\nstd::unordered_map<std::string,std::string> my_map(vec.begin(),vec.end());\n\u2006 \u2006 \u2006 \u2006 try{\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::unordered_set<std::string> unique_keys;\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 for (auto it = my_map.begin(); it != my_map.end(); ) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 if (!unique_keys.insert(it->first).second) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 it = my_map.erase(it);\u2006 \u2006 // Erase the element and move to the next\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 } else {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 ++it;\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 catch(const std::exception& e){\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cerr << \"Error remove_repeated_items_um: \" << e.what() << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 return my_map;\n\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014remove empty items\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n\nfor (auto it = myMap.begin(); it != myMap.end(); ) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 if (it->second.empty()) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 it = myMap.erase(it);\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 } else {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 ++it;\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\n##include <iostream>\n##include <unordered_map>\n##include <vector>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, std::vector<int>> myMap;\n\u2006 \u2006 \u2006 \u2006 \n\u2006 \u2006 \u2006 \u2006 myMap[\"apple\"].push_back(5);\n\u2006 \u2006 \u2006 \u2006 myMap[\"apple\"].push_back(7);\n\u2006 \u2006 \u2006 \u2006 myMap[\"apple\"].push_back(9);\n\u2006 \u2006 \u2006 \u2006 \n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : myMap) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << pair.first << \": \";\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 for (int value : pair.second) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << value << \" \";\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\u2006 \u2006 \u2006 \u2006 \n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\n//\u2014\u2014\u2014\u2014\u2014 sored the items\u2014\u2014\u2014\u2014\n\n##include <iostream>\n##include <unordered_map>\n##include <map>\n##include <string>\n\nstruct Compare {\n\u2006 \u2006 \u2006 \u2006 bool operator()(const std::pair<std::string, int>& a, const std::pair<std::string, int>& b) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 return a.second > b.second; // Sort by int value in descending order\n\u2006 \u2006 \u2006 \u2006 }\n};\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, int> myMap = {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 {\"one\", 1},\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 {\"two\", 2},\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 {\"three\", 3}\n\u2006 \u2006 \u2006 \u2006 };\n\n\u2006 \u2006 \u2006 \u2006 // Create a multimap using the custom comparator\n\u2006 \u2006 \u2006 \u2006 std::multimap<std::string, int, Compare> sortedMap;\n\n\u2006 \u2006 \u2006 \u2006 // Insert key-value pairs from the unordered_map to the multimap\n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : myMap) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 sortedMap.insert(pair);\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 // Print the sorted map\n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : sortedMap) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << pair.first << \": \" << pair.second << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}\n\n\u2014\u2014 insert one to another\u2006 \u2006 std::unordered_map<std::string, std::string>\n\n##include <iostream>\n##include <unordered_map>\n##include <string>\n\nint main() {\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, std::string> map1 = {{\"key1\", \"value1\"}, {\"key2\", \"value2\"}};\n\u2006 \u2006 \u2006 \u2006 std::unordered_map<std::string, std::string> map2 = {{\"key3\", \"value3\"}, {\"key4\", \"value4\"}};\n\n\u2006 \u2006 \u2006 \u2006 map1.insert(map2.begin(), map2.end());\n\n\u2006 \u2006 \u2006 \u2006 // Display the combined map\n\u2006 \u2006 \u2006 \u2006 for (const auto& pair : map1) {\n\u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 \u2006 std::cout << pair.first << \": \" << pair.second << std::endl;\n\u2006 \u2006 \u2006 \u2006 }\n\n\u2006 \u2006 \u2006 \u2006 return 0;\n}"
         },
         {
-            "x": 887,
-            "y": 111,
+            "x": 407,
+            "y": 51,
             "height": 943,
             "width": 1513,
             "color": "yellow",
@@ -307,8 +307,8 @@
             "text": "Return the max int -> std::pair<std::string,std::string> dataset\n\nstd::unordered_multiplemap<int,std::pair<std::string,std::string>> res;\n\nauto maxIt = std::max_element(res.begin(), res.end(),\n        [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });\n    std::pair<std::string,std::string> f_res = maxIt->second;\n"
         },
         {
-            "x": 1232,
-            "y": 403,
+            "x": 1142,
+            "y": 391,
             "height": 603,
             "width": 778,
             "color": "yellow",
@@ -361,8 +361,8 @@
             "text": "sudo ufw default deny\nsudo ufw default deny incoming\nsudo ufw default deny outgoing\nsudo ufw allow out 443\nsudo ufw allow out 53\nsudo ufw allow out 80\nsudo ufw reload\nsudo ufw status \n"
         },
         {
-            "x": 1107,
-            "y": 338,
+            "x": 657,
+            "y": 0,
             "height": 994,
             "width": 1263,
             "color": "yellow",
@@ -415,8 +415,8 @@
             "text": "Use ##include <tuple>\nto accept multiple type values for one variable:\n\nstd::tuple<int,float,std::string> v;\n\nv = std::make_tuple(10,0.f,std::string());\nauto i = std::get<0>(v);\nauto f = std::get<1>(v);\nauto s = std::get<2>(v);"
         },
         {
-            "x": 697,
-            "y": 247,
+            "x": 475,
+            "y": 269,
             "height": 725,
             "width": 1445,
             "color": "yellow",
@@ -425,12 +425,21 @@
         },
         {
             "x": 934,
-            "y": 668,
+            "y": 642,
             "height": 352,
             "width": 984,
             "color": "yellow",
             "title": "",
             "text": "ulimit -n 4096\nThe maximum number of open files (file descriptors) allowed by the system, which can be set using ulimit -n, is platform-dependent.\n\nOn most modern Unix-like systems, including Linux and macOS, the maximum number of open files is usually limited by the kernel parameter fs.file-max.\n\nHere are some common limits:\n\nLinux: The default limit is usually around 1024, but it can be increased up to a maximum of 1048576 (1048576 is the maximum value for fs.file-max in the kernel).\nmacOS: The default limit is 256, and it can be increased up to a maximum of 10240.\nHowever, it's important to note that increasing the limit too high can lead to performance issues and even crashes, as each open file descriptor consumes system resources.\n\nIn your specific case, setting ulimit -n 4096 sets the limit to 4096 open files, which is a relatively modest increase from the default limit. This should be sufficient for most use cases, but if you need to process a very large number of files, you may need to increase the limit further or implement a more efficient file handling strategy.\n\nRemember to always check the system documentation and kernel parameters to determine the maximum allowed limit for your specific system."
+        },
+        {
+            "x": 40,
+            "y": 40,
+            "height": 50,
+            "width": 422,
+            "color": "yellow",
+            "title": "",
+            "text": "https://github.com/24958202/MLCpplib"
         }
     ]
 }
