@@ -45,6 +45,7 @@ std::vector<std::vector<RGB>> get_img_matrix(const std::string& imgPath){
             pixels.push_back(pixel);  
         }  
     }  
+    cv::destroyAllWindows();
     // Populate the datasets matrix with RGB values  
     int index = 0;  
     for (int i = 0; i < gray_image.rows; ++i) {  
