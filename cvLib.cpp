@@ -34,7 +34,7 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
             // Get the intensity value  
             uchar intensity = genImg.at<uchar>(i, j);  
             // Populate the RGB struct for grayscale  
-            datasets[i][j] = {static_cast<size_t>(intensity), static_cast<size_t>(intensity), static_cast<size_t>(intensity)};  
+            datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)};  
         }  
     }  
     return datasets;
@@ -150,6 +150,29 @@ std::vector<std::pair<int, int>> cvLib::findOutlierEdges(const std::vector<std::
     }  
     return outliers;  
 }
+bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::string& filename){ 
+     if (data.empty() || data[0].empty()){   
+        std::cerr << "Error: Image data is empty." << std::endl;  
+        return false;  
+    }
+    std::ofstream file(filename);  
+    if (!file.is_open()){   
+        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;  
+        return false; // Return false if the file couldn't be opened  
+    }
+    int width = data[0].size(); // Corrected width and height calculation  
+    int height = data.size();   
+    file << "P3\n" << width << " " << height << "\n255\n"; // PPM header  
+    for (int i = 0; i < height; ++i){   
+        for (int j = 0; j < width; ++j){   
+            const RGB& rgb = data[i][j];  
+            file << rgb.r << " " << rgb.g << " " << rgb.b << "\n";  
+        }
+    }
+    file.close();  
+    std::cout << "Image saved as " << filename << std::endl;  
+    return true; // Return true if saving was successful
+}
 void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<std::pair<int, int>>& outliers, const cv::Scalar& markerColor) {  
     // Find the bounding rectangle for drawing  
     if (outliers.empty()) return;  
@@ -179,27 +202,6 @@ void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<
         // Mark the outlier in green  
         data[x][y] = {markerColor[0], markerColor[1], markerColor[2]}; // Mark in green  
     }  
-}  
-bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::string& filename) {  
-   std::ofstream file(filename);  
-    if (!file.is_open()) {  
-        //file.open(filename);
-        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;  
-        return false; // Return false if the file couldn't be opened  
-    }  
-    int width = data.size();  
-    int height = data[0].size();   
-    // PPM file header  
-    file << "P3\n" << width << " " << height << "\n255\n"; // PPM header  
-    for (int i = 0; i < width; ++i) {  
-        for (int j = 0; j < height; ++j) {  
-            const RGB& rgb = data[i][j];  
-            file << rgb.r << " " << rgb.g << " " << rgb.b << "\n";  
-        }  
-    }   
-    file.close();  
-    std::cout << "Image saved as " << filename << std::endl;  
-    return true; // Return true if saving was successful  
 }  
 void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData, const std::vector<std::pair<int, int>>& outliers, const std::string& outImgPath, const cv::Scalar& bgColor){
     // Calculate the minimum and maximum coordinates of the outliers  
@@ -234,7 +236,8 @@ void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData
         }  
     }  
     // Save the output image in various formats  
-    this->savePPM(outputImage, outImgPath);  
+    this->savePPM(outputImage, outImgPath); 
+    this->saveImage(originalData,outImgPath + "_orig.ppm");
     cv::imwrite(outImgPath, outputImage);  
     // cv::imwrite("/home/ronnieji/lib/images/output/outlier_uncompressed_image.png", outputImage, {cv::IMWRITE_PNG_COMPRESSION, 0});  
     // cv::imwrite("/home/ronnieji/lib/images/output/outlier_compressed9_image.png", outputImage, {cv::IMWRITE_PNG_COMPRESSION, 9});  

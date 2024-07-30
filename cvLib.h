@@ -6,9 +6,9 @@
 #include <opencv2/opencv.hpp>  
 #include <Eigen/Dense> 
 struct RGB {  
-    size_t r;  
-    size_t g;  
-    size_t b;  
+    int r;  
+    int g;  
+    int b;  
 };  
 struct imgSize{
     int width;
@@ -77,13 +77,19 @@ class cvLib{
         */
         void createOutlierImage(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&, const std::string&, const cv::Scalar&);
         /*
-            This function can read an image, and mark all the edges of objects in the image, and output an marked image
+            This function can read an image, and mark all the edges of objects in the image
             para1: the image path
             para2: gradientMagnitude threshold 0-100, better result with small digits
             para3: the output image path (*.ppm file)
         */
         void read_image_detect_edges(const std::string&,int,const std::string&);
-
+        /*
+            This function can read an image, and mark all the edges of objects in the image, and output the marked objects in the image
+            para1: the image path
+            para2: gradientMagnitude threshold 0-100, better result with small digits
+            para3: the output image path (*.ppm file)
+        */
+        void read_image_detect_objects(const std::string&,int,const std::string&);
 
 };
 #endif
