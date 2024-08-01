@@ -14,6 +14,12 @@ struct imgSize{
     int width;
     int height;
 };
+enum class brushColor{
+    Green,
+    Red,
+    White,
+    Black
+};
 class cvLib{
     public:
         std::vector<std::vector<RGB>> cv_mat_to_dataset(const cv::Mat&);
@@ -81,15 +87,9 @@ class cvLib{
             para1: the image path
             para2: gradientMagnitude threshold 0-100, better result with small digits
             para3: the output image path (*.ppm file)
+            para4: marker color
+            para5: background color
         */
-        void read_image_detect_edges(const std::string&,int,const std::string&);
-        /*
-            This function can read an image, and mark all the edges of objects in the image, and output the marked objects in the image
-            para1: the image path
-            para2: gradientMagnitude threshold 0-100, better result with small digits
-            para3: the output image path (*.ppm file)
-        */
-        void read_image_detect_objects(const std::string&,int,const std::string&);
-
+        void read_image_detect_edges(const std::string&,int,const std::string&, const brushColor&, const brushColor&);
 };
 #endif

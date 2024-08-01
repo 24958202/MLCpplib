@@ -47,7 +47,6 @@ imgSize cvLib::get_image_size(const std::string& imgPath){
     cv::Mat img = cv::imread(imgPath);
     im_s.width = img.cols;
     im_s.height = img.rows;
-    img.release();
     return im_s; 
 }
 /*
@@ -93,9 +92,6 @@ std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, 
     // cv::imwrite(output_folder,gray_image);
     /*---------------------------------------------------------*/ 
     datasets = cv_mat_to_dataset(gray_image);
-    image.release();
-    resized_image.release();
-    gray_image.release();
     return datasets;  
 }
 std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& folderPath){  
@@ -200,9 +196,9 @@ void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<
         maxX = std::max(maxX, x);  
         maxY = std::max(maxY, y);  
         // Mark the outlier in green  
-        data[x][y] = {markerColor[0], markerColor[1], markerColor[2]}; // Mark in green  
+        data[x][y] = {static_cast<int>(markerColor[0]), static_cast<int>(markerColor[1]), static_cast<int>(markerColor[2])}; // Mark in green   
     }  
-}  
+}
 void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData, const std::vector<std::pair<int, int>>& outliers, const std::string& outImgPath, const cv::Scalar& bgColor){
     // Calculate the minimum and maximum coordinates of the outliers  
     if (outliers.empty()) {  
@@ -242,10 +238,9 @@ void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData
     // cv::imwrite("/home/ronnieji/lib/images/output/outlier_uncompressed_image.png", outputImage, {cv::IMWRITE_PNG_COMPRESSION, 0});  
     // cv::imwrite("/home/ronnieji/lib/images/output/outlier_compressed9_image.png", outputImage, {cv::IMWRITE_PNG_COMPRESSION, 9});  
     // cv::imwrite("/home/ronnieji/lib/images/output/outlier_image.bmp", outputImage);  
-    outputImage.release();
     std::cout << "Outlier image saved successfully." << std::endl;  
 }
-void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMagnitude_threshold,const std::string& outImgPath){
+void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMagnitude_threshold,const std::string& outImgPath,const brushColor& markerColor, const brushColor& bgColor){
     if(imagePath.empty()){
         return;
     }
@@ -253,13 +248,46 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
     imgSize img_size = get_image_size(imagePath);
     std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imagePath,img_size.width,img_size.height);  
     // Find outliers (edges)  
-    auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold);  
-    // Mark outliers in green  
-    cv::Scalar markColor(0,255,0);
-    this->markOutliers(image_rgb, outliers, markColor);  
+    auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold); 
+    cv::Scalar brushMarkerColor;  
+    switch (markerColor) {  
+        case brushColor::Green:  
+            brushMarkerColor = cv::Scalar(0, 255, 0);  
+            break;  
+        case brushColor::Red:  
+            brushMarkerColor = cv::Scalar(255, 0, 0);  
+            break;  
+        case brushColor::White:  
+            brushMarkerColor = cv::Scalar(255, 255, 255);  
+            break;  
+        case brushColor::Black:  
+            brushMarkerColor = cv::Scalar(0, 0, 0);  
+            break;  
+        default:  
+            std::cerr << "Error: Unexpected marker color" << std::endl;  
+            return; // or handle an error  
+    }    
+    this->markOutliers(image_rgb, outliers, brushMarkerColor);  
     // //Save the modified image to a file  
     std::string ppmFile = outImgPath;
     //save selection images
-    cv::Scalar bgColor(0,0,0);
-    this->createOutlierImage(image_rgb, outliers,outImgPath,bgColor);
+    cv::Scalar brushbgColor;  
+    switch (bgColor) {  
+        case brushColor::Green:  
+            brushbgColor = cv::Scalar(0, 255, 0);  
+            break;  
+        case brushColor::Red:  
+            brushbgColor = cv::Scalar(255, 0, 0);  
+            break;  
+        case brushColor::White:  
+            brushbgColor = cv::Scalar(255, 255, 255);  
+            break;  
+        case brushColor::Black:  
+            brushbgColor = cv::Scalar(0, 0, 0);  
+            break;  
+        default:  
+            std::cerr << "Error: Unexpected marker color" << std::endl;  
+            return; // or handle an error  
+    }    
+    this->createOutlierImage(image_rgb, outliers,outImgPath,brushbgColor);
 }
