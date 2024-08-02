@@ -2,6 +2,7 @@
     c++20 lib for using opencv
 */
 #include <opencv2/opencv.hpp>  
+#include <opencv2/features2d.hpp> 
 #include <Eigen/Dense> 
 #include "authorinfo/author_info.h" 
 #include <vector>  
@@ -108,7 +109,7 @@ std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& fol
             std::string nuts_key = folderPath + imgPath;
             imgSize img_size;
             img_size = this->get_image_size(nuts_key);
-            std::vector<std::vector<RGB>> image_rgb = get_img_matrix(nuts_key,img_size.width,img_size.height);  
+            std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(nuts_key,img_size.width,img_size.height);  
             std::vector<RGB> one_d_image_rgb;
             for(const auto& mg : image_rgb){
                 for(const auto& m : mg){
@@ -290,4 +291,74 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
             return; // or handle an error  
     }    
     this->createOutlierImage(image_rgb, outliers,outImgPath,brushbgColor);
+}
+bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& img2, int de_threshold){
+    if(img1.empty() || img2.empty()){
+        return false;
+    }
+    cv::Mat m_img1, m_img2;
+    m_img1 = cv::imread(img1);
+    m_img2 = cv::imread(img2);
+    // Convert to grayscale if necessary  
+    cv::Mat gray1, gray2;  
+    if (m_img1.channels() == 3) {  
+        cv::cvtColor(m_img1, gray1, cv::COLOR_BGR2GRAY);  
+    } else {  
+        gray1 = m_img1;  
+    }  
+    if (m_img2.channels() == 3) {  
+        cv::cvtColor(m_img2, gray2, cv::COLOR_BGR2GRAY);  
+    } else {  
+        gray2 = m_img2;  
+    }  
+    // Use SIFT from cv:: namespace  
+    cv::Ptr<cv::Feature2D> detector = cv::SIFT::create();  
+    std::vector<cv::KeyPoint> keypoints1, keypoints2;  
+    cv::Mat descriptors1, descriptors2;  
+    std::cout << "Start processing... " << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    detector->detectAndCompute(gray1, cv::noArray(), keypoints1, descriptors1);  
+    detector->detectAndCompute(gray2, cv::noArray(), keypoints2, descriptors2);  
+    cv::BFMatcher matcher(cv::NORM_L2);  
+    std::vector<std::vector<cv::DMatch>> knnMatches;  
+    matcher.knnMatch(descriptors1, descriptors2, knnMatches, 2);  
+    // Apply the ratio test as per Lowe's paper  
+    const float ratio_thresh = 0.7f;  
+    std::vector<cv::DMatch> goodMatches;  
+    for (size_t i = 0; i < knnMatches.size(); i++) {  
+        if (knnMatches[i][0].distance < ratio_thresh * knnMatches[i][1].distance) {  
+            goodMatches.push_back(knnMatches[i][0]);  
+        }  
+    }  
+    // End time measurement  
+    auto end = std::chrono::high_resolution_clock::now();  
+    // Calculate the duration  
+    std::chrono::duration<double> duration = end - start;  
+    // Output the execution time  
+    std::cout << "Execution time: " << duration.count() << " seconds\n"; 
+    std::cout << img1 << " score: " <<  goodMatches.size() << std::endl;
+    if(goodMatches.size() < de_threshold){
+        return false;
+    }
+    else{  
+        std::vector<cv::Point2f> img1Points;  
+        std::vector<cv::Point2f> img2Points;  
+        for (size_t i = 0; i < goodMatches.size(); i++) {  
+            img1Points.push_back(keypoints1[goodMatches[i].queryIdx].pt);  
+            img2Points.push_back(keypoints2[goodMatches[i].trainIdx].pt);  
+        }  
+        cv::Mat H = cv::findHomography(img1Points, img2Points, cv::RANSAC, 5.0);  
+        if (!H.empty()) {  
+            // Optionally visualize matches  
+            cv::Mat img_matches;  
+            cv::drawMatches(m_img1, keypoints1, m_img2, keypoints2, goodMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);  
+            cv::imshow("Matches", img_matches);
+            std::string strimgout = img1;
+            strimgout.append("_output.jpg");
+            cv::imwrite(strimgout, img_matches);
+            //cv::waitKey(0);  
+            return true;  
+        }  
+    }  
+    return false; 
 }

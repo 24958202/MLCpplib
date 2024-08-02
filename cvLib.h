@@ -91,5 +91,12 @@ class cvLib{
             para5: background color
         */
         void read_image_detect_edges(const std::string&,int,const std::string&, const brushColor&, const brushColor&);
+         /*
+            This function can read two images and return true if imgage1 is in image2
+            para1: the image1 path
+            para2: the image2 path
+            para3: threshold for detecting the matching score. if score >threshold, matched, else did not. default value = 10;
+        */
+        bool read_image_detect_objs(const std::string&,const std::string&, int de_threshold = 10);
 };
 #endif
