@@ -299,6 +299,9 @@ bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& im
     cv::Mat m_img1, m_img2;
     m_img1 = cv::imread(img1);
     m_img2 = cv::imread(img2);
+    if(m_img1.empty() || m_img2.empty()){
+        return false;
+    }
     // Convert to grayscale if necessary  
     cv::Mat gray1, gray2;  
     if (m_img1.channels() == 3) {  
