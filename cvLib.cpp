@@ -347,7 +347,25 @@ bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& im
             img1Points.push_back(keypoints1[goodMatches[i].queryIdx].pt);  
             img2Points.push_back(keypoints2[goodMatches[i].trainIdx].pt);  
         }  
-        cv::Mat H = cv::findHomography(img1Points, img2Points, cv::RANSAC, 5.0);  
+        // Check if there are enough points  
+        if (img1Points.size() < 4 || img2Points.size() < 4) {  
+            std::cerr << "Error: Not enough points to calculate homography. Need at least 4 pairs of points." << std::endl;  
+            return false;  
+        }  
+        cv::Mat H;
+        try{
+            H = cv::findHomography(img1Points, img2Points, cv::RANSAC, 5.0);  
+        } 
+        catch (const cv::Exception& e) {  
+            std::cerr << "OpenCV error: " << e.what() << std::endl;  
+            return false;  
+        } catch (const std::exception& e) {  
+            std::cerr << "Standard exception: " << e.what() << std::endl;  
+            return false;  
+        } catch (...) {  
+            std::cerr << "Unknown exception occurred." << std::endl;  
+            return false;  
+        }  
         if (!H.empty()) {  
             // Optionally visualize matches  
             cv::Mat img_matches;  
