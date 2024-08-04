@@ -98,5 +98,20 @@ class cvLib{
             para3: threshold for detecting the matching score. if score >threshold, matched, else did not. default value = 10;
         */
         bool read_image_detect_objs(const std::string&,const std::string&, int de_threshold = 10);
+        /*
+            This function can recognize text in an image
+            para1: the image path
+            return: text1, text2... in the image
+            You need to install library: 
+            brew install tesseract
+            brew install tesseract-lang (multi-language supported)
+            // Call the function and handle the result  
+            char* recognizedText = read_image_detect_text("/Users/dengfengji/ronnieji/imageRecong/samples/board2.jpg");  
+            if (recognizedText) {  
+                std::cout << "Recognized text: " << recognizedText << std::endl;  
+                delete[] recognizedText; //Free the allocated memory for text  
+            }  
+        */
+        char* read_image_detect_text(const std::string&);
 };
 #endif

@@ -3,6 +3,8 @@
 */
 #include <opencv2/opencv.hpp>  
 #include <opencv2/features2d.hpp> 
+#include <tesseract/baseapi.h>  
+#include <tesseract/publictypes.h>  
 #include <Eigen/Dense> 
 #include "authorinfo/author_info.h" 
 #include <vector>  
@@ -382,4 +384,30 @@ bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& im
         }  
     }  
     return false; 
+}
+char* cvLib::read_image_detect_text(const std::string& imgPath){
+    if(imgPath.empty()){
+        return nullptr;
+    }
+    // Load the image  
+    cv::Mat image = cv::imread(imgPath);  
+    if (image.empty()) {  
+        std::cerr << "Could not open or find the image!" << std::endl;  
+        return nullptr; // Return nullptr to indicate failure  
+    }  
+    // Preprocessing: convert to grayscale  
+    cv::Mat gray;  
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);  
+    // Initialize Tesseract  
+    tesseract::TessBaseAPI *ocr = new tesseract::TessBaseAPI();  
+    if (ocr->Init(NULL, "eng+chi_sim")) { // Initialize for both English and Simplified Chinese  
+        fprintf(stderr, "Could not initialize tesseract.\n");  
+        return nullptr; // Return nullptr to indicate failure  
+    }  
+    // Set the image for recognition  
+    ocr->SetImage(gray.data, gray.cols, gray.rows, 1, gray.step[0]);  
+    // Get recognized text  
+    char* text = ocr->GetUTF8Text();  
+    ocr->End(); // Cleanup Tesseract object  
+    return text; // Return the recognized text  
 }
