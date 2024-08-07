@@ -91,6 +91,22 @@ class cvLib{
             para5: background color
         */
         void read_image_detect_edges(const std::string&,int,const std::string&, const brushColor&, const brushColor&);
+        /*
+            this function to normalize function to preprocess images  
+            to turn images to black and white
+            prar1: input image path
+            para2:  return a std::vector<RGB> dataset
+            para3: image width
+            para4: image height
+            para5: threshold
+            The value threshold serves as a cutoff point between black and white during the conversion process, helping to create a binary image
+            based on pixel brightness effectively. Adjusting this value can help tailor the black-and-white conversion to better suit the 
+            specific characteristics of different images.
+            0 corresponds to black
+            255 corresponds to white
+            Values in between represent various shades of gray.
+        */
+        void convertToBlackAndWhite(const std::string&, std::vector<RGB>&, int&, int&, int);
          /*
             This function can read two images and return true if imgage1 is in image2
             para1: the image1 path

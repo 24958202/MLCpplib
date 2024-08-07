@@ -22,6 +22,7 @@
 #include <cmath>
 #include <algorithm>
 #include <ranges> //std::views
+#include <cstdint> 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -294,17 +295,45 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
     }    
     this->createOutlierImage(image_rgb, outliers,outImgPath,brushbgColor);
 }
-bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& img2, int de_threshold){
-    if(img1.empty() || img2.empty()){
-        return false;
-    }
-    cv::Mat m_img1, m_img2;
-    m_img1 = cv::imread(img1);
-    m_img2 = cv::imread(img2);
-    if(m_img1.empty() || m_img2.empty()){
-        return false;
-    }
-    // Convert to grayscale if necessary  
+// Normalize function to preprocess images  
+void cvLib::convertToBlackAndWhite(const std::string& filename, std::vector<RGB>& pixels, int& width, int& height, int threshold) {  
+    std::ifstream in(filename);  
+    if (!in) {  
+        std::cerr << "Error opening file: " << filename << std::endl;  
+        return;  
+    }  
+    std::string line;  
+    std::getline(in, line);  
+    if (line != "P3") {  
+        std::cerr << "Unsupported PPM format. Expected P3." << std::endl;  
+        return;  
+    }  
+    std::getline(in, line); // Skip comment line  
+    in >> width >> height;  
+    int maxVal;  
+    in >> maxVal;  
+    pixels.resize(width * height);  
+    for (int i = 0; i < width * height; ++i) {  
+        int r, g, b;  
+        in >> r >> g >> b;  
+        int grayValue = static_cast<int>(0.299 * r + 0.587 * g + 0.114 * b);  
+        int bwValue = grayValue > threshold ? 255 : 0;  
+        pixels[i] = {bwValue, bwValue, bwValue};  
+    }  
+    in.close();  
+}  
+bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, int de_threshold) {  
+    if (img1.empty() || img2.empty()) {  
+        std::cerr << "Image paths are empty." << std::endl;  
+        return false;  
+    }  
+    cv::Mat m_img1 = cv::imread(img1);  
+    cv::Mat m_img2 = cv::imread(img2);  
+    if (m_img1.empty() || m_img2.empty()) {  
+        std::cerr << "Failed to read one or both images." << std::endl;  
+        return false;  
+    }  
+    // Convert to grayscale  
     cv::Mat gray1, gray2;  
     if (m_img1.channels() == 3) {  
         cv::cvtColor(m_img1, gray1, cv::COLOR_BGR2GRAY);  
@@ -316,15 +345,15 @@ bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& im
     } else {  
         gray2 = m_img2;  
     }  
-    // Use SIFT from cv:: namespace  
-    cv::Ptr<cv::Feature2D> detector = cv::SIFT::create();  
+    // Use ORB for keypoint detection and description  
+    cv::Ptr<cv::ORB> detector = cv::ORB::create(500); // Adjust number of features as needed  
     std::vector<cv::KeyPoint> keypoints1, keypoints2;  
     cv::Mat descriptors1, descriptors2;  
-    std::cout << "Start processing... " << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
+    std::cout << "Start processing..." << std::endl;  
+    auto start = std::chrono::high_resolution_clock::now();  
     detector->detectAndCompute(gray1, cv::noArray(), keypoints1, descriptors1);  
     detector->detectAndCompute(gray2, cv::noArray(), keypoints2, descriptors2);  
-    cv::BFMatcher matcher(cv::NORM_L2);  
+    cv::BFMatcher matcher(cv::NORM_HAMMING);  
     std::vector<std::vector<cv::DMatch>> knnMatches;  
     matcher.knnMatch(descriptors1, descriptors2, knnMatches, 2);  
     // Apply the ratio test as per Lowe's paper  
@@ -335,33 +364,28 @@ bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& im
             goodMatches.push_back(knnMatches[i][0]);  
         }  
     }  
-    // End time measurement  
-    auto end = std::chrono::high_resolution_clock::now();  
     // Calculate the duration  
+    auto end = std::chrono::high_resolution_clock::now();  
     std::chrono::duration<double> duration = end - start;  
-    // Output the execution time  
-    std::cout << "Execution time: " << duration.count() << " seconds\n"; 
-    std::cout << img1 << " score: " <<  goodMatches.size() << std::endl;
-    if(goodMatches.size() < de_threshold){
-        return false;
-    }
-    else{  
+    std::cout << "Execution time: " << duration.count() << " seconds\n";  
+    std::cout << img1 << " score: " << goodMatches.size() << std::endl;  
+    if (goodMatches.size() < de_threshold) {  
+        return false;  
+    } else {  
         std::vector<cv::Point2f> img1Points;  
         std::vector<cv::Point2f> img2Points;  
         for (size_t i = 0; i < goodMatches.size(); i++) {  
             img1Points.push_back(keypoints1[goodMatches[i].queryIdx].pt);  
             img2Points.push_back(keypoints2[goodMatches[i].trainIdx].pt);  
         }  
-        // Check if there are enough points  
         if (img1Points.size() < 4 || img2Points.size() < 4) {  
             std::cerr << "Error: Not enough points to calculate homography. Need at least 4 pairs of points." << std::endl;  
             return false;  
         }  
-        cv::Mat H;
-        try{
+        cv::Mat H;  
+        try {  
             H = cv::findHomography(img1Points, img2Points, cv::RANSAC, 5.0);  
-        } 
-        catch (const cv::Exception& e) {  
+        } catch (const cv::Exception& e) {  
             std::cerr << "OpenCV error: " << e.what() << std::endl;  
             return false;  
         } catch (const std::exception& e) {  
@@ -383,8 +407,8 @@ bool cvLib::read_image_detect_objs(const std::string& img1,const std::string& im
             return true;  
         }  
     }  
-    return false; 
-}
+    return false;  
+}  
 char* cvLib::read_image_detect_text(const std::string& imgPath){
     if(imgPath.empty()){
         return nullptr;
