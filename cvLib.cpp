@@ -295,33 +295,6 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
     }    
     this->createOutlierImage(image_rgb, outliers,outImgPath,brushbgColor);
 }
-// Normalize function to preprocess images  
-void cvLib::convertToBlackAndWhite(const std::string& filename, std::vector<RGB>& pixels, int& width, int& height, int threshold) {  
-    std::ifstream in(filename);  
-    if (!in) {  
-        std::cerr << "Error opening file: " << filename << std::endl;  
-        return;  
-    }  
-    std::string line;  
-    std::getline(in, line);  
-    if (line != "P3") {  
-        std::cerr << "Unsupported PPM format. Expected P3." << std::endl;  
-        return;  
-    }  
-    std::getline(in, line); // Skip comment line  
-    in >> width >> height;  
-    int maxVal;  
-    in >> maxVal;  
-    pixels.resize(width * height);  
-    for (int i = 0; i < width * height; ++i) {  
-        int r, g, b;  
-        in >> r >> g >> b;  
-        int grayValue = static_cast<int>(0.299 * r + 0.587 * g + 0.114 * b);  
-        int bwValue = grayValue > threshold ? 255 : 0;  
-        pixels[i] = {bwValue, bwValue, bwValue};  
-    }  
-    in.close();  
-}  
 bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, int de_threshold) {  
     if (img1.empty() || img2.empty()) {  
         std::cerr << "Image paths are empty." << std::endl;  
