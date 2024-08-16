@@ -3,6 +3,13 @@
     click Enable to enable wifi and Disable to disable Wifi
 */
 #include <gtkmm.h>  
+#include <gtkmm/application.h>  
+#include <gtkmm/window.h>  
+#include <gtkmm/box.h>  
+#include <gtkmm/menubar.h>  
+#include <gtkmm/menu.h>  
+#include <gtkmm/menuitem.h>  
+#include <gtkmm/label.h>
 #include <cstdlib>  
 #include <iostream>  
 #include <vector>  
@@ -63,9 +70,9 @@ void enable_443() {
         "pass out proto udp from any to any port 53",
         "pass out proto tcp from any to any port 443"
     };
-    std::ofstream file("/Users/dengfengji/ronnieji/ufw/pf.conf", std::ios::out);
+    std::ofstream file("/Users/ronnieji/ufw/pf.conf", std::ios::out);
     if(!file.is_open()){
-        file.open("/Users/dengfengji/ronnieji/ufw/pf.conf", std::ios::out);
+        file.open("/Users/ronnieji/ufw/pf.conf", std::ios::out);
     }
     for(const auto& item : write_en_rules){
         file << item << '\n';
@@ -82,9 +89,9 @@ void disable_443() {
         "block in all",
         "block out all"
     };
-    std::ofstream file("/Users/dengfengji/ronnieji/ufw/pfdis.conf",std::ios::out);
+    std::ofstream file("/Users/ronnieji/ufw/pfdis.conf",std::ios::out);
     if(!file.is_open()){
-        file.open("/Users/dengfengji/ronnieji/ufw/pfdis.conf",std::ios::out);
+        file.open("/Users/ronnieji/ufw/pfdis.conf",std::ios::out);
     }
     for(const auto& item : write_dis_rules){
         file << item << '\n';
@@ -143,25 +150,25 @@ void on_menu_close() {
 }  
 void create_menu(Gtk::Box& vbox) {  
     // Create the menu bar  
-    auto menu_bar = Gtk::make_managed<Gtk::MenuBar>();  
+    auto menu_bar = Gtk::manage(new Gtk::MenuBar());  
 
     // Create the File menu  
-    auto file_item = Gtk::make_managed<Gtk::MenuItem>("Wifi", true);  
+    auto file_item = Gtk::manage(new Gtk::MenuItem("Wifi", true));  
     menu_bar->append(*file_item);  
-    auto file_menu = Gtk::make_managed<Gtk::Menu>();  
+    auto file_menu = Gtk::manage(new Gtk::Menu());  
     file_item->set_submenu(*file_menu);  
 
-    auto open_item = Gtk::make_managed<Gtk::MenuItem>("Enable", true);  
+    auto open_item = Gtk::manage(new Gtk::MenuItem("Enable", true));  
     open_item->signal_activate().connect(sigc::ptr_fun(&on_menu_open));  
     file_menu->append(*open_item);  
 
-    auto close_item = Gtk::make_managed<Gtk::MenuItem>("Disable", true);  
+    auto close_item = Gtk::manage(new Gtk::MenuItem("Disable", true));  
     close_item->signal_activate().connect(sigc::ptr_fun(&on_menu_close));  
     file_menu->append(*close_item);  
 
     // Add the menu bar to the box  
     vbox.pack_start(*menu_bar, Gtk::PACK_SHRINK);  
-}  
+}
 int main(int argc, char** argv) {  
     auto app = Gtk::Application::create(argc, argv, "org.24958202.ufw_monitor");  
     Gtk::Window window;  
