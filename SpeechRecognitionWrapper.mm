@@ -13,11 +13,11 @@ public:
         @autoreleasepool {  
             __block bool authorized = false;  
             [SFSpeechRecognizer requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {  
-                if (status != SFSpeechRecognizerAuthorizationStatusAuthorized) {  
+                if (status == SFSpeechRecognizerAuthorizationStatusAuthorized) {  
+                    authorized = true;  
+                } else {  
                     std::cerr << "Speech recognition not authorized." << std::endl;  
-                    return;  
                 }  
-                authorized = true;  
             }];  
             if (!authorized) {  
                 return;  
@@ -34,6 +34,7 @@ public:
             AVAudioFormat *recordingFormat = [inputNode outputFormatForBus:0];  
             [inputNode installTapOnBus:0 bufferSize:1024 format:recordingFormat block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {  
                 [request appendAudioPCMBuffer:buffer];  
+                std::cout << "Audio buffer appended." << std::endl;  // Debugging statement  
             }];  
             [audioEngine prepare];  
             NSError *error;  
@@ -41,6 +42,7 @@ public:
                 std::cerr << "Audio engine couldn't start: " << error.localizedDescription.UTF8String << std::endl;  
                 return;  
             }  
+            std::cout << "Audio engine started." << std::endl;  // Debugging statement  
             [speechRecognizer recognitionTaskWithRequest:request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {  
                 if (result) {  
                     recognizedText = result.bestTranscription.formattedString.UTF8String;  
@@ -63,11 +65,9 @@ public:
     std::string getRecognizedText() {  
         return recognizedText;  
     }  
-
 private:  
     std::string recognizedText;  
 };  
-
 SpeechRecognitionWrapper::SpeechRecognitionWrapper() : pImpl(new Impl()) {}  
 SpeechRecognitionWrapper::~SpeechRecognitionWrapper() { delete pImpl; }  
 void SpeechRecognitionWrapper::startRecognition() { pImpl->startRecognition(); }  
