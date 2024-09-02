@@ -8,9 +8,8 @@ class SpeechRecognitionWrapper::Impl {
 public:  
     Impl() : recognizedText("") {}  
     ~Impl() {}  
-
     void startRecognition() {  
-        std::cout << "Starting recognition..." << std::endl;  // Debugging statement  
+        std::cout << "Starting recognition..." << std::endl;  
         @autoreleasepool {  
             dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);  
             __block SFSpeechRecognizerAuthorizationStatus authStatus;  
@@ -30,64 +29,57 @@ public:
                 return;  
             }  
             NSLocale *locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en-US"];  
+            // Create and configure the speech recognizer  
             SFSpeechRecognizer *speechRecognizer = [[SFSpeechRecognizer alloc] initWithLocale:locale];  
             if (!speechRecognizer) {  
                 std::cerr << "Speech recognizer not available for the specified locale." << std::endl;  
                 return;  
             }  
-            std::cout << "Speech recognizer created." << std::endl;  // Debugging statement  
-            SFSpeechAudioBufferRecognitionRequest *request = [[SFSpeechAudioBufferRecognitionRequest alloc] init];  
-            AVAudioEngine *audioEngine = [[AVAudioEngine alloc] init];  
-            AVAudioInputNode *inputNode = [audioEngine inputNode];  
-            AVAudioFormat *recordingFormat = [inputNode outputFormatForBus:0];  
-            [inputNode installTapOnBus:0 bufferSize:1024 format:recordingFormat block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {  
-                [request appendAudioPCMBuffer:buffer];  
-                //std::cout << "Audio buffer appended." << std::endl;  // Debugging statement  
-            }];  
-            [audioEngine prepare];  
-            NSError *error;  
-            if (![audioEngine startAndReturnError:&error]) {  
-                std::cerr << "Audio engine couldn't start: " << error.localizedDescription.UTF8String << std::endl;  
-                return;  
-            }  
+            std::cout << "Speech recognizer created." << std::endl;  // Debugging statement 
+            SFSpeechAudioBufferRecognitionRequest *request = [[SFSpeechAudioBufferRecognitionRequest alloc] init];
+                // Create and configure the audio engine  
+                AVAudioEngine *audioEngine = [[AVAudioEngine alloc] init];  
+                AVAudioInputNode *inputNode = [audioEngine inputNode];  
+                AVAudioFormat *recordingFormat = [inputNode outputFormatForBus:0];  
+                [inputNode installTapOnBus:0 bufferSize:1024 format:recordingFormat block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {  
+                    [request appendAudioPCMBuffer:buffer];  
+                }];  
+                [audioEngine prepare];  
+                NSError *error;  
+                if (![audioEngine startAndReturnError:&error]) {  
+                    std::cerr << "Audio engine couldn't start: " << error.localizedDescription.UTF8String << std::endl;  
+                    return;  
+                }  
             std::cout << "Audio engine started." << std::endl;  // Debugging statement  
-            // [speechRecognizer recognitionTaskWithRequest:request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {  
-            //     if (result) {  
-            //         recognizedText = result.bestTranscription.formattedString.UTF8String;  
-            //         std::cout << "Recognized Text: " << recognizedText << std::endl;  
-            //     }  
-            //     if (error) {  
-            //         std::cerr << "Recognition error: " << error.localizedDescription.UTF8String << std::endl;  
-            //     }  
-            //     if (result.isFinal) {  
-            //         std::cout << "Final recognized text: " << recognizedText << std::endl;  
-            //         [audioEngine stop];  
-            //         [inputNode removeTapOnBus:0];  
-            //         CFRunLoopStop(CFRunLoopGetCurrent());  
-            //     }  
-            // }];  
+            // Start the recognition task  
+            __block BOOL shouldContinue = YES;  
             [speechRecognizer recognitionTaskWithRequest:request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {  
                 if (result) {  
-                    NSString *transcription = result.bestTranscription.formattedString;  
-                    if (transcription) {  
-                        recognizedText = transcription.UTF8String;  
-                        std::cout << "Recognized Text: " << recognizedText << std::endl;  
-                    } else {  
-                        std::cerr << "Transcription is nil or empty." << std::endl;  
+                    recognizedText = result.bestTranscription.formattedString.UTF8String;  
+                    std::cout << "Recognized Text: " << recognizedText << std::endl; 
+                    regCount++; 
+                    if (result.isFinal) {  
+                        std::cout << "Final recognized text: " << recognizedText << std::endl;  
+                        shouldContinue = NO;  
                     }  
                 }  
                 if (error) {  
                     std::cerr << "Recognition error: " << error.localizedDescription.UTF8String << std::endl;  
+                    shouldContinue = NO;  
                 }  
-                if (result.isFinal) {  
-                    std::cout << "Final recognized text: " << recognizedText << std::endl;  
-                    [audioEngine stop];  
-                    [inputNode removeTapOnBus:0];  
-                    CFRunLoopStop(CFRunLoopGetCurrent());  
-                }  
-            }];
-            std::cout << "Listening... Press Ctrl+C to stop." << std::endl;  
-            CFRunLoopRun();  
+            }];  
+            // Run the loop to keep listening  
+            while (shouldContinue) {  
+                [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];  
+            }  
+            // Clean up resources  
+            [audioEngine stop];  
+            [inputNode removeTapOnBus:0];  
+            // Restart recognition if needed  
+            if (regCount>=60) {  
+                regCount=0;
+                startRecognition(); // Restart the recognition process  
+            }  
         }  
     }
     std::string getRecognizedText() {  
@@ -95,6 +87,7 @@ public:
     }  
 private:  
     std::string recognizedText;  
+    int regCount = 0;
 };  
 SpeechRecognitionWrapper::SpeechRecognitionWrapper() : pImpl(new Impl()) {}  
 SpeechRecognitionWrapper::~SpeechRecognitionWrapper() { delete pImpl; }  
