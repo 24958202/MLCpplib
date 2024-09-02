@@ -61,6 +61,7 @@ public:
                     if (result.isFinal) {  
                         std::cout << "Final recognized text: " << recognizedText << std::endl;  
                         shouldContinue = NO;  
+                        regCount=60;
                     }  
                 }  
                 if (error) {  
