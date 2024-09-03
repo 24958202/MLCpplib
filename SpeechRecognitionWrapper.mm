@@ -1,14 +1,16 @@
 // SpeechRecognitionWrapper.mm  
 #include "SpeechRecognitionWrapper.h"  
 #include <iostream>  
+#include <string>
+#include <functional> 
 #import <Foundation/Foundation.h>  
 #import <Speech/Speech.h>  
 
 class SpeechRecognitionWrapper::Impl {  
 public:  
-    Impl() : recognizedText("") {}  
+    Impl() : recognizedText(""),regCount(0) {}  
     ~Impl() {}  
-    void startRecognition() {  
+    void startRecognition(std::function<void(const std::string&)> callback) {  
         std::cout << "Starting recognition..." << std::endl;  
         @autoreleasepool {  
             dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);  
@@ -26,6 +28,7 @@ public:
             dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);  
             // // Proceed only if authorized  
             if (authStatus != SFSpeechRecognizerAuthorizationStatusAuthorized) {  
+                std::cerr << "authStatus != SFSpeechRecognizerAuthorizationStatusAuthorized : exit program." << std::endl;
                 return;  
             }  
             NSLocale *locale = [[NSLocale alloc] initWithLocaleIdentifier:@"en-US"];  
@@ -56,12 +59,15 @@ public:
             [speechRecognizer recognitionTaskWithRequest:request resultHandler:^(SFSpeechRecognitionResult *result, NSError *error) {  
                 if (result) {  
                     recognizedText = result.bestTranscription.formattedString.UTF8String;  
-                    std::cout << "Recognized Text: " << recognizedText << std::endl; 
+                    //std::cout << "Recognized Text: " << recognizedText << std::endl; 
                     regCount++; 
                     if (result.isFinal) {  
-                        std::cout << "Final recognized text: " << recognizedText << std::endl;  
+                        //std::cout << "Final recognized text: " << recognizedText << std::endl;  
                         shouldContinue = NO;  
                         regCount=60;
+                    }  
+                    if (callback) {  
+                        callback(recognizedText);  
                     }  
                 }  
                 if (error) {  
@@ -79,18 +85,16 @@ public:
             // Restart recognition if needed  
             if (regCount>=60) {  
                 regCount=0;
-                startRecognition(); // Restart the recognition process  
+                startRecognition(callback); // Restart the recognition process  
             }  
         }  
     }
-    std::string getRecognizedText() {  
-        return recognizedText;  
-    }  
 private:  
     std::string recognizedText;  
     int regCount = 0;
 };  
 SpeechRecognitionWrapper::SpeechRecognitionWrapper() : pImpl(new Impl()) {}  
 SpeechRecognitionWrapper::~SpeechRecognitionWrapper() { delete pImpl; }  
-void SpeechRecognitionWrapper::startRecognition() { pImpl->startRecognition(); }  
-std::string SpeechRecognitionWrapper::getRecognizedText() { return pImpl->getRecognizedText(); }
+void SpeechRecognitionWrapper::startRecognition(std::function<void(const std::string&)> callback) {  
+    pImpl->startRecognition(callback);  
+}  
