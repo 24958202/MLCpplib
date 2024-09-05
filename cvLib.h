@@ -22,6 +22,9 @@ enum class brushColor{
 };
 class cvLib{
     public:
+        /*
+            Input an image path, will return an RGB dataset std::vector<std::vector<RGB>>
+        */
         std::vector<std::vector<RGB>> cv_mat_to_dataset(const cv::Mat&);
         /*
             para1: input an image path, will return the image size 
@@ -42,6 +45,14 @@ class cvLib{
             save cv::Mat to a file, para1: input a cv::Mat file, para2: output file path *.ppm
         */
         void savePPM(const cv::Mat&, const std::string&);
+        /*
+            save std::vector<RGB> pixels to a file, 
+            para1: input a std::vector<RGB> dataset, 
+            para2: image width
+            para3: image height
+            para4: output file path *.ppm
+        */
+        void saveVectorRGB(const std::vector<std::vector<RGB>>&, int, int, const std::string&);
         /*
             1.read an image, 2.resize the image to expected size, 3. remove image colors
             Turn into a std::vector<std::vector<RGB>> dataset (matrix: dimention-rows: dataset.size(), dimention-columns: std::vector<RGB> size())
@@ -98,15 +109,8 @@ class cvLib{
             para2:  return a std::vector<RGB> dataset
             para3: image width
             para4: image height
-            para5: threshold
-            The value threshold serves as a cutoff point between black and white during the conversion process, helping to create a binary image
-            based on pixel brightness effectively. Adjusting this value can help tailor the black-and-white conversion to better suit the 
-            specific characteristics of different images.
-            0 corresponds to black
-            255 corresponds to white
-            Values in between represent various shades of gray.
         */
-        void convertToBlackAndWhite(const std::string&, std::vector<RGB>&, int&, int&, int);
+        void convertToBlackAndWhite(const std::string&, std::vector<std::vector<RGB>>&, int, int);
          /*
             This function can read two images and return true if imgage1 is in image2
             para1: the image1 path

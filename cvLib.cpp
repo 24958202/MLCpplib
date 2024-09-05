@@ -36,9 +36,12 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     for (int i = 0; i < genImg.rows; ++i) {  
         for (int j = 0; j < genImg.cols; ++j) {  
             // Get the intensity value  
-            uchar intensity = genImg.at<uchar>(i, j);  
+            //uchar intensity = genImg.at<uchar>(i, j);  
             // Populate the RGB struct for grayscale  
-            datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)};  
+            //datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)};  
+            cv::Vec3b color = genImg.at<cv::Vec3b>(i, j);  
+            // Populate the RGB struct for color  
+            datasets[i][j] = {static_cast<int>(color[2]), static_cast<int>(color[1]), static_cast<int>(color[0])}; 
         }  
     }  
     return datasets;
@@ -79,6 +82,25 @@ void cvLib::savePPM(const cv::Mat& image, const std::string& filename) {
     ofs << "P6\n" << image.cols << ' ' << image.rows << "\n255\n";  
     ofs.write(reinterpret_cast<const char*>(image.data), image.total() * image.elemSize());  
 }  
+void cvLib::saveVectorRGB(const std::vector<std::vector<RGB>>& img, int width, int height, const std::string& filename){
+    std::ofstream out(filename);  
+    if (!out) {  
+        std::cerr << "Error opening file for writing: " << filename << std::endl;  
+        return;  
+    }  
+    // Write the PPM header  
+    out << "P3\n"; // PPM magic number  
+    out << "# Created by saveImage function\n"; // Comment line  
+    out << width << " " << height << "\n"; // Image dimensions  
+    out << "255\n"; // Maximum color value  
+    // Write pixel data  
+    for (const auto& row : img) {  
+        for (const auto& item : row) {  
+            out << item.r << " " << item.g << " " << item.b << "\n";  
+        }  
+    }  
+    out.close();  
+}
 std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, int img_rows, int img_cols){
     std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols)); // Create a vector of vectors for RGB values  
     // Read the image using imread function  
@@ -295,6 +317,29 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
     }    
     this->createOutlierImage(image_rgb, outliers,outImgPath,brushbgColor);
 }
+void cvLib::convertToBlackAndWhite(const std::string& filename, std::vector<std::vector<RGB>>& datasets, int width, int height) {   
+    if (filename.empty()) {  
+        return;  
+    }   
+    cv::Mat image = cv::imread(filename, cv::IMREAD_COLOR);  
+    if (image.empty()) {  
+        std::cerr << "Error: Could not open or find the image." << std::endl;  
+        return;   
+    }  
+    // Resize datasets to match the image dimensions  
+    datasets.resize(image.rows, std::vector<RGB>(image.cols));   
+    datasets = this->cv_mat_to_dataset(image);  
+    for (int i = 0; i < image.rows; ++i) {  
+        for (int j = 0; j < image.cols; ++j) {  
+            RGB item = datasets[i][j];  
+            // Calculate the grayscale value  
+            int grayValue = static_cast<int>(0.299 * item.r + 0.587 * item.g + 0.114 * item.b);  
+            // Set the binary value based on the threshold  
+            int bwValue = (grayValue < 128) ? 0 : 255; // Using 128 as a threshold for black and white  
+            datasets[i][j] = {bwValue, bwValue, bwValue};  
+        }  
+    }  
+}  
 bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, int de_threshold) {  
     if (img1.empty() || img2.empty()) {  
         std::cerr << "Image paths are empty." << std::endl;  
