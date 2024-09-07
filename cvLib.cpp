@@ -28,6 +28,48 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include "cvLib.h"
+class subfunctions{
+    public:
+        void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<RGB>>&);
+        // Function to convert a dataset to cv::Mat  
+        cv::Mat convertDatasetToMat(const std::vector<std::vector<RGB>>&);
+        
+};
+void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
+    for (int i = 0; i < image.rows; ++i) {  
+        for (int j = 0; j < image.cols; ++j) {  
+            // Access the pixel and its RGB values  
+            cv::Vec3b& pixel = image.at<cv::Vec3b>(i, j);  
+            int r = pixel[2];  
+            int g = pixel[1];  
+            int b = pixel[0];  
+            // Calculate the grayscale value using the luminance method  
+            int grayValue = static_cast<int>(0.299 * r + 0.587 * g + 0.114 * b);  
+            // Determine the binary value with thresholding  
+            int bwValue = (grayValue < 128) ? 0 : 255;  
+            // Assign the calculated binary value to the image  
+            pixel[0] = bwValue;  
+            pixel[1] = bwValue;  
+            pixel[2] = bwValue;  
+            // Update the corresponding dataset  
+            datasets[i][j] = {bwValue, bwValue, bwValue};  
+        }  
+    }  
+}  
+cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& dataset) {  
+    int rows = dataset.size();  
+    int cols = dataset[0].size();  
+    cv::Mat image(rows, cols, CV_8UC3); // Create a Mat with 3 channels (BGR)  
+    for (int i = 0; i < rows; ++i) {  
+        for (int j = 0; j < cols; ++j) {  
+            // Access the RGB values from the dataset  
+            const RGB& rgb = dataset[i][j];  
+            // Set the pixel in the cv::Mat  
+            image.at<cv::Vec3b>(i, j) = cv::Vec3b(rgb.b, rgb.g, rgb.r); // OpenCV uses BGR format  
+        }  
+    }  
+    return image;  
+}  
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<RGB>> dataset
 */
@@ -36,12 +78,9 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     for (int i = 0; i < genImg.rows; ++i) {  
         for (int j = 0; j < genImg.cols; ++j) {  
             // Get the intensity value  
-            //uchar intensity = genImg.at<uchar>(i, j);  
+            uchar intensity = genImg.at<uchar>(i, j);  
             // Populate the RGB struct for grayscale  
-            //datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)};  
-            cv::Vec3b color = genImg.at<cv::Vec3b>(i, j);  
-            // Populate the RGB struct for color  
-            datasets[i][j] = {static_cast<int>(color[2]), static_cast<int>(color[1]), static_cast<int>(color[0])}; 
+            datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)};  
         }  
     }  
     return datasets;
@@ -326,21 +365,27 @@ void cvLib::convertToBlackAndWhite(const std::string& filename, std::vector<std:
         std::cerr << "Error: Could not open or find the image." << std::endl;  
         return;   
     }  
-    // Resize datasets to match the image dimensions  
-    datasets.resize(image.rows, std::vector<RGB>(image.cols));   
-    datasets = this->cv_mat_to_dataset(image);  
     for (int i = 0; i < image.rows; ++i) {  
         for (int j = 0; j < image.cols; ++j) {  
-            RGB item = datasets[i][j];  
-            // Calculate the grayscale value  
-            int grayValue = static_cast<int>(0.299 * item.r + 0.587 * item.g + 0.114 * item.b);  
-            // Set the binary value based on the threshold  
-            int bwValue = (grayValue < 128) ? 0 : 255; // Using 128 as a threshold for black and white  
+            // Access the pixel and its RGB values  
+            cv::Vec3b& pixel = image.at<cv::Vec3b>(i, j);  
+            int r = pixel[2];  
+            int g = pixel[1];  
+            int b = pixel[0];  
+            // Calculate the grayscale value using the luminance method  
+            int grayValue = static_cast<int>(0.299 * r + 0.587 * g + 0.114 * b);       
+            // Determine the binary value with thresholding  
+            int bwValue = (grayValue < 128) ? 0 : 255;   
+            // Assign the calculated binary value to the image  
+            pixel[0] = bwValue;  
+            pixel[1] = bwValue;  
+            pixel[2] = bwValue;  
+            // Update the corresponding dataset  
             datasets[i][j] = {bwValue, bwValue, bwValue};  
         }  
     }  
 }  
-bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, int de_threshold) {  
+bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, int featureCount, float ratioThresh, int de_threshold) {  
     if (img1.empty() || img2.empty()) {  
         std::cerr << "Image paths are empty." << std::endl;  
         return false;  
@@ -364,7 +409,7 @@ bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& i
         gray2 = m_img2;  
     }  
     // Use ORB for keypoint detection and description  
-    cv::Ptr<cv::ORB> detector = cv::ORB::create(500); // Adjust number of features as needed  
+    cv::Ptr<cv::ORB> detector = cv::ORB::create(featureCount); // Adjust number of features as needed  
     std::vector<cv::KeyPoint> keypoints1, keypoints2;  
     cv::Mat descriptors1, descriptors2;  
     std::cout << "Start processing..." << std::endl;  
@@ -375,7 +420,7 @@ bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& i
     std::vector<std::vector<cv::DMatch>> knnMatches;  
     matcher.knnMatch(descriptors1, descriptors2, knnMatches, 2);  
     // Apply the ratio test as per Lowe's paper  
-    const float ratio_thresh = 0.7f;  
+    const float ratio_thresh = ratioThresh;  
     std::vector<cv::DMatch> goodMatches;  
     for (size_t i = 0; i < knnMatches.size(); i++) {  
         if (knnMatches[i][0].distance < ratio_thresh * knnMatches[i][1].distance) {  
@@ -421,6 +466,89 @@ bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& i
             std::string strimgout = img1;
             strimgout.append("_output.jpg");
             cv::imwrite(strimgout, img_matches);
+            //cv::waitKey(0);  
+            return true;  
+        }  
+    }  
+    return false;  
+}  
+bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, int featureCount, float ratioThresh, int deThreshold) {  
+    if (img1.empty() || img2.empty()) {  
+        std::cerr << "Image paths are empty." << std::endl;  
+        return false;  
+    }  
+    imgSize img1_size = this->get_image_size(img1);
+    imgSize img2_size = this->get_image_size(img2);
+    cv::Mat m_img1 = cv::imread(img1);  
+    cv::Mat m_img2 = cv::imread(img2);  
+    if (m_img1.empty() || m_img2.empty()) {  
+        std::cerr << "Failed to read one or both images." << std::endl;  
+        return false;  
+    }  
+    std::vector<std::vector<RGB>> dataset_img1(m_img1.rows, std::vector<RGB>(m_img1.cols));  
+    std::vector<std::vector<RGB>> dataset_img2(m_img2.rows, std::vector<RGB>(m_img2.cols));  
+    subfunctions sub_j;
+    sub_j.convertToBlackAndWhite(m_img1, dataset_img1);
+    sub_j.convertToBlackAndWhite(m_img2, dataset_img2);
+    cv::Mat gray1 = sub_j.convertDatasetToMat(dataset_img1);
+    cv::Mat gray2 = sub_j.convertDatasetToMat(dataset_img2);
+    // Use ORB for keypoint detection and description  
+    cv::Ptr<cv::ORB> detector = cv::ORB::create(featureCount);  
+    std::vector<cv::KeyPoint> keypoints1, keypoints2;  
+    cv::Mat descriptors1, descriptors2;  
+    std::cout << "Start processing..." << std::endl;  
+    auto start = std::chrono::high_resolution_clock::now();  
+    detector->detectAndCompute(gray1, cv::noArray(), keypoints1, descriptors1);  
+    detector->detectAndCompute(gray2, cv::noArray(), keypoints2, descriptors2);  
+    cv::BFMatcher matcher(cv::NORM_HAMMING);  
+    std::vector<std::vector<cv::DMatch>> knnMatches;  
+    matcher.knnMatch(descriptors1, descriptors2, knnMatches, 2);  
+    // Apply the ratio test as per Lowe's paper  
+    std::vector<cv::DMatch> goodMatches;  
+    for (size_t i = 0; i < knnMatches.size(); i++) {  
+        if (knnMatches[i][0].distance < ratioThresh * knnMatches[i][1].distance) {  
+            goodMatches.push_back(knnMatches[i][0]);  
+        }  
+    }  
+    // Calculate the duration  
+    auto end = std::chrono::high_resolution_clock::now();  
+    std::chrono::duration<double> duration = end - start;  
+    std::cout << "Execution time: " << duration.count() << " seconds\n";  
+    std::cout << img1 << " score: " << goodMatches.size() << std::endl;  
+    if (goodMatches.size() < deThreshold) {  
+        return false;  
+    } else {  
+        std::vector<cv::Point2f> img1Points;  
+        std::vector<cv::Point2f> img2Points;  
+        for (size_t i = 0; i < goodMatches.size(); i++) {  
+            img1Points.push_back(keypoints1[goodMatches[i].queryIdx].pt);  
+            img2Points.push_back(keypoints2[goodMatches[i].trainIdx].pt);  
+        }  
+        if (img1Points.size() < 4 || img2Points.size() < 4) {  
+            std::cerr << "Error: Not enough points to calculate homography. Need at least 4 pairs of points." << std::endl;  
+            return false;  
+        }  
+        cv::Mat H;  
+        try {  
+            H = cv::findHomography(img1Points, img2Points, cv::RANSAC, 5.0);  
+        } catch (const cv::Exception& e) {  
+            std::cerr << "OpenCV error: " << e.what() << std::endl;  
+            return false;  
+        } catch (const std::exception& e) {  
+            std::cerr << "Standard exception: " << e.what() << std::endl;  
+            return false;  
+        } catch (...) {  
+            std::cerr << "Unknown exception occurred." << std::endl;  
+            return false;  
+        }  
+        if (!H.empty()) {  
+            // Optionally visualize matches  
+            cv::Mat img_matches;  
+            cv::drawMatches(m_img1, keypoints1, m_img2, keypoints2, goodMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);  
+            cv::imshow("Matches", img_matches);  
+            std::string strimgout = img1;  
+            strimgout.append("_output.jpg");  
+            cv::imwrite(strimgout, img_matches);  
             //cv::waitKey(0);  
             return true;  
         }  

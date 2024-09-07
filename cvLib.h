@@ -116,8 +116,60 @@ class cvLib{
             para1: the image1 path
             para2: the image2 path
             para3: threshold for detecting the matching score. if score >threshold, matched, else did not. default value = 10;
+            Typical Range:
+            Low: 100-300 keypoints for quick processing or when images have few distinctive features.
+            Medium: 500-1000 keypoints for balanced performance and accuracy.
+            High: 1500-3000+ keypoints for detailed images with many features, at the cost of increased processing time.
+            Ratio Threshold (ratioThresh)
+            Purpose: Used in the ratio test to filter out poor matches. It compares the distance of the best match to the second-best match.
+            Effect: A lower ratio threshold makes the matching criteria stricter, reducing false positives but potentially missing some true matches. A higher threshold allows more matches but may include more false positives.
+            
+            Typical Range:
+            Strict: 0.5-0.6 for high precision, reducing false matches.
+            Balanced: 0.7 (commonly used default) for a good balance between precision and recall.
+            Relaxed: 0.8-0.9 for higher recall, allowing more matches but with a risk of false positives.
+            
+            deThreshold Overview:
+            Definition: deThreshold typically acts as a cut-off or threshold for the number of good matches required to consider img1 as present in img2.
+            Range Context: The actual value you should set for deThreshold heavily depends on:
+            Image complexity and textures.
+            Noise and quality levels in the images.
+            Whether images have significant occlusions or scale differences.
+            Typical Usage: Start by experimenting with values around 10 to 30. If you need higher confidence, increase deThreshold.
         */
-        bool read_image_detect_objs(const std::string&,const std::string&, int de_threshold = 10);
+        bool read_image_detect_objs(const std::string&,const std::string&, int featureCount = 500, float ratioThresh = 0.7f, int de_threshold = 10);
+        /*
+            This function turn both images to gray before comparing the image.
+            para1: the image1 path
+            para2: the image2 path
+            para3: threshold for detecting the matching score. if score >threshold, matched, else did not. default value = 10;
+            Feature Count (featureCount)
+            Purpose: Determines the maximum number of keypoints to detect in each image.
+            Effect: Increasing the feature count can potentially increase the number of matches, as more keypoints are available for matching. However, it also increases computational cost.
+            
+            Typical Range:
+            Low: 100-300 keypoints for quick processing or when images have few distinctive features.
+            Medium: 500-1000 keypoints for balanced performance and accuracy.
+            High: 1500-3000+ keypoints for detailed images with many features, at the cost of increased processing time.
+            Ratio Threshold (ratioThresh)
+            Purpose: Used in the ratio test to filter out poor matches. It compares the distance of the best match to the second-best match.
+            Effect: A lower ratio threshold makes the matching criteria stricter, reducing false positives but potentially missing some true matches. A higher threshold allows more matches but may include more false positives.
+            
+            Typical Range:
+            Strict: 0.5-0.6 for high precision, reducing false matches.
+            Balanced: 0.7 (commonly used default) for a good balance between precision and recall.
+            Relaxed: 0.8-0.9 for higher recall, allowing more matches but with a risk of false positives.
+            
+            deThreshold Overview:
+            Definition: deThreshold typically acts as a cut-off or threshold for the number of good matches required to consider img1 as present in img2.
+            Range Context: The actual value you should set for deThreshold heavily depends on:
+            Image complexity and textures.
+            Noise and quality levels in the images.
+            Whether images have significant occlusions or scale differences.
+            Typical Usage: Start by experimenting with values around 10 to 30. If you need higher confidence, increase deThreshold.
+
+        */
+        bool isObjectInImage(const std::string&, const std::string&, int featureCount = 500, float ratioThresh = 0.7f, int deThreshold = 10);
         /*
             This function can recognize text in an image
             para1: the image path
