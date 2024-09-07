@@ -5,6 +5,7 @@
 #include <map>
 #include <opencv2/opencv.hpp>  
 #include <Eigen/Dense> 
+#include <functional>
 struct RGB {  
     int r;  
     int g;  
@@ -57,8 +58,8 @@ class cvLib{
             1.read an image, 2.resize the image to expected size, 3. remove image colors
             Turn into a std::vector<std::vector<RGB>> dataset (matrix: dimention-rows: dataset.size(), dimention-columns: std::vector<RGB> size())
             para1: image path
-            para2: output matrix rows number
-            para3: output matrix columns number
+            para2: output matrix rows number(height)
+            para3: output matrix columns number(width)
         */
         std::vector<std::vector<RGB>> get_img_matrix(const std::string&, int,int);
         /*
@@ -106,7 +107,7 @@ class cvLib{
             this function to normalize function to preprocess images  
             to turn images to black and white
             prar1: input image path
-            para2:  return a std::vector<RGB> dataset
+            para2:  return a black-and-white std::vector<RGB> dataset
             para3: image width
             para4: image height
         */
@@ -185,5 +186,30 @@ class cvLib{
             }  
         */
         char* read_image_detect_text(const std::string&);
-};
+        /*
+            This function can open the default webcam and pass the 
+            video to a callback function
+            para1: video camera index : default 0
+            para2: video window title
+            para3: list of image list (files path) that might be detected in the video std::vector<std::string> imageList;
+            para4: marker's color cv::Scalar markColor(0,255,0);
+            para5: callback function
+            // Exit the loop if the user presses the 'q' key 
+            Usage:
+            // Example callback function  
+            void ProcessFrame(cv::Mat& frame) {  
+                // Process the frame (e.g., convert to grayscale)  
+                cv::Mat grayFrame;  
+                cv::cvtColor(frame, grayFrame, cv::COLOR_BGR2GRAY);  
+                // Display the processed frame (optional)  
+                cv::imshow("Processed Frame", grayFrame);  
+            }  
+            int main() {  
+                // Start the webcam and pass the callback function  
+                StartWebCam(ProcessFrame);  
+                return 0;  
+            }  
+        */
+        void StartWebCam(int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
+};  
 #endif

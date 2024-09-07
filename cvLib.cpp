@@ -23,6 +23,8 @@
 #include <algorithm>
 #include <ranges> //std::views
 #include <cstdint> 
+#include <functional>
+#include <cstdlib>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -33,6 +35,7 @@ class subfunctions{
         void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<RGB>>&);
         // Function to convert a dataset to cv::Mat  
         cv::Mat convertDatasetToMat(const std::vector<std::vector<RGB>>&);
+        void markVideo(cv::Mat&, const cv::Scalar&);
         
 };
 void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
@@ -56,7 +59,10 @@ void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vecto
         }  
     }  
 }  
-cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& dataset) {  
+cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& dataset) { 
+    if (dataset.empty() || dataset[0].empty()) {  
+        throw std::runtime_error("Dataset is empty or has no columns.");  
+    }   
     int rows = dataset.size();  
     int cols = dataset[0].size();  
     cv::Mat image(rows, cols, CV_8UC3); // Create a Mat with 3 channels (BGR)  
@@ -70,13 +76,27 @@ cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& d
     }  
     return image;  
 }  
+void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color){
+    if(frame.empty()){
+        return;
+    }
+    cvLib cvl_j;
+    std::vector<std::vector<RGB>> frame_to_mark = cvl_j.cv_mat_to_dataset(frame);
+    if(!frame_to_mark.empty()){
+        std::vector<std::pair<int, int>> outliers_found = cvl_j.cvLib::findOutlierEdges(frame_to_mark, 70);
+        if(!outliers_found.empty()){
+            cvl_j.markOutliers(frame_to_mark,outliers_found,brush_color);
+            frame = this->convertDatasetToMat(frame_to_mark);
+        }
+    }
+}
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<RGB>> dataset
 */
 std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     std::vector<std::vector<RGB>> datasets(genImg.rows,std::vector<RGB>(genImg.cols));
-    for (int i = 0; i < genImg.rows; ++i) {  
-        for (int j = 0; j < genImg.cols; ++j) {  
+    for (int i = 0; i < genImg.rows; ++i) {  //rows
+        for (int j = 0; j < genImg.cols; ++j) {  //cols
             // Get the intensity value  
             uchar intensity = genImg.at<uchar>(i, j);  
             // Populate the RGB struct for grayscale  
@@ -235,6 +255,9 @@ bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::stri
     return true; // Return true if saving was successful
 }
 void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<std::pair<int, int>>& outliers, const cv::Scalar& markerColor) {  
+    if (data.empty() || data[0].empty()) {  
+        return;  
+    }  
     // Find the bounding rectangle for drawing  
     if (outliers.empty()) return;  
     bool isEmpty = (markerColor[0]==0 && markerColor[1]==0 && markerColor[2]==0);
@@ -580,4 +603,48 @@ char* cvLib::read_image_detect_text(const std::string& imgPath){
     char* text = ocr->GetUTF8Text();  
     ocr->End(); // Cleanup Tesseract object  
     return text; // Return the recognized text  
+}
+void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std::vector<std::string>& imageListToFind,const cv::Scalar& brush_color,std::function<void(cv::Mat&)> callback){
+    // Open the default camera (usually the first camera, index 0)  
+    cv::VideoCapture cap(webcame_index);  
+    // Check if the camera opened successfully  
+    if (!cap.isOpened()) {  
+        std::cerr << "Error: Could not open the webcam." << std::endl;  
+        return;  
+    }  
+    // Create a window to display the video  
+    //cv::namedWindow(winTitle, cv::WINDOW_AUTOSIZE); 
+    //cv::resizeWindow(winTitle, 1024, 768);   
+    cv::Mat frame; // To hold each frame captured from the webcam  
+    // Capture frames in a loop 
+    subfunctions sub_j; 
+    while (true) {  
+        // Capture a new frame from the webcam  
+        cap >> frame; // Alternatively, you can use cap.read(frame);  
+        // Check if the frame is empty  
+        if (frame.empty()) {  
+            std::cerr << "Error: Could not grab a frame." << std::endl;  
+            break;  
+        }  
+        /*
+            start marking on the input frame
+        */
+        //cv::Scalar markColor(0,255,0);
+        sub_j.markVideo(frame,brush_color);
+        /*
+            end marking video
+        */
+        // Invoke the callback with the captured frame  
+        callback(frame);  
+        // Display the frame in the created window  
+        //cv::imshow(winTitle, frame);  
+        // Exit the loop if the user presses the 'q' key  
+        char key = (char)cv::waitKey(30);  
+        if (key == 'q') {  
+            break; // Allow exit if 'q' is pressed  
+        }  
+    }  
+    // Release the camera and close the window  
+    cap.release();  
+    cv::destroyAllWindows();  
 }
