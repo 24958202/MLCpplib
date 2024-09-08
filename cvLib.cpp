@@ -35,7 +35,8 @@ class subfunctions{
         void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<RGB>>&);
         // Function to convert a dataset to cv::Mat  
         cv::Mat convertDatasetToMat(const std::vector<std::vector<RGB>>&);
-        void markVideo(cv::Mat&, const cv::Scalar&);
+        void markVideo(cv::Mat&, const cv::Scalar&,const cv::Scalar&);
+        void drawRectangles();
         
 };
 void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
@@ -76,19 +77,25 @@ cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& d
     }  
     return image;  
 }  
-void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color){
+void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const cv::Scalar& bg_color){
     if(frame.empty()){
         return;
     }
     cvLib cvl_j;
     std::vector<std::vector<RGB>> frame_to_mark = cvl_j.cv_mat_to_dataset(frame);
     if(!frame_to_mark.empty()){
-        std::vector<std::pair<int, int>> outliers_found = cvl_j.cvLib::findOutlierEdges(frame_to_mark, 70);
+        std::vector<std::pair<int, int>> outliers_found = cvl_j.findOutlierEdges(frame_to_mark, 90);
         if(!outliers_found.empty()){
             cvl_j.markOutliers(frame_to_mark,outliers_found,brush_color);
-            frame = this->convertDatasetToMat(frame_to_mark);
+            // Create a blank image with a black background  
+            cv::Mat outputImage(frame.rows, frame.cols, CV_8UC3, bg_color); // Black background  
+            outputImage = this->convertDatasetToMat(frame_to_mark);
+            outputImage.copyTo(frame); 
         }
     }
+}
+void subfunctions::drawRectangles(){
+
 }
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<RGB>> dataset
@@ -615,22 +622,59 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
     // Create a window to display the video  
     //cv::namedWindow(winTitle, cv::WINDOW_AUTOSIZE); 
     //cv::resizeWindow(winTitle, 1024, 768);   
-    cv::Mat frame; // To hold each frame captured from the webcam  
+    //cv::Mat frame, gray, blurred, thresh;  // To hold each frame captured from the webcam  
+    //cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2(); 
+    cv::Mat frame, thresh;  
+    cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2(500, 16, true);  
+    std::vector<cv::Rect> detectedBoxes;  
     // Capture frames in a loop 
     subfunctions sub_j; 
     while (true) {  
         // Capture a new frame from the webcam  
         cap >> frame; // Alternatively, you can use cap.read(frame);  
         // Check if the frame is empty  
-        if (frame.empty()) {  
-            std::cerr << "Error: Could not grab a frame." << std::endl;  
-            break;  
-        }  
+        if (frame.empty()) break;
         /*
             start marking on the input frame
         */
-        //cv::Scalar markColor(0,255,0);
-        sub_j.markVideo(frame,brush_color);
+        //cv::Scalar bgColor(0,0,0);
+        //sub_j.markVideo(frame,brush_color,bgColor);
+        // Apply background subtraction  
+        pBackSub->apply(frame, thresh);  
+        // Find contours  
+        std::vector<std::vector<cv::Point>> contours;  
+        cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
+
+        detectedBoxes.clear(); // Clear previous detections  
+
+        for (const auto& contour : contours) {  
+            double area = cv::contourArea(contour);  
+            if (area > 1000) { // Minimum area threshold  
+                cv::Rect boundingBox = cv::boundingRect(contour);  
+                detectedBoxes.push_back(boundingBox);  
+            }  
+        }  
+
+        // Merge overlapping rectangles  
+        std::vector<cv::Rect> mergedBoxes;  
+        for (const auto& box : detectedBoxes) {  
+            bool merged = false;  
+            for (auto& mergedBox : mergedBoxes) {  
+                if ((mergedBox & box).area() > 0) { // Check for overlap  
+                    mergedBox = mergedBox | box; // Merge boxes  
+                    merged = true;  
+                    break;  
+                }  
+            }  
+            if (!merged) {  
+                mergedBoxes.push_back(box);  
+            }  
+        }  
+
+        // Draw merged rectangles  
+        for (const auto& box : mergedBoxes) {  
+            cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2); // Draw rectangle  
+        }  
         /*
             end marking video
         */
