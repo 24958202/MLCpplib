@@ -17,8 +17,8 @@ libann::libann(const std::vector<unsigned int>& layerSizes) {
             Neuron neuron;  
             neuron.value = 0.0;  
             if (i > 0) {  
-                int numInputs = layerSizes[i - 1];  
-                for (int k = 0; k < numInputs; k++) {  
+                unsigned int numInputs = layerSizes[i - 1];  
+                for (unsigned int k = 0; k < numInputs; k++) {  
                     neuron.weights.push_back(0.5); // Initialize weights with 0.5  
                 }  
             }  
@@ -33,16 +33,16 @@ std::vector<double> libann::feedForward(const std::vector<double>& inputs) {
         return outputs;  
     }  
     // Input layer  
-    for (int i = 0; i < inputs.size(); i++) {  
+    for (unsigned int i = 0; i < inputs.size(); i++) {  
         layers[0].neurons[i].value = inputs[i];  
     }  
     if (layers.size() > 1) {  
         // Hidden layers and output layer  
-        for (int i = 1; i < layers.size(); i++) {  
-            for (int j = 0; j < layers[i].neurons.size(); j++) {  
+        for (unsigned int i = 1; i < layers.size(); i++) {  
+            for (unsigned int j = 0; j < layers[i].neurons.size(); j++) {  
                 double weightedSum = 0.0;  
                 // Calculate weighted sum of inputs  
-                for (int k = 0; k < layers[i - 1].neurons.size(); k++) {  
+                for (unsigned int k = 0; k < layers[i - 1].neurons.size(); k++) {  
                     weightedSum += layers[i - 1].neurons[k].value * layers[i].neurons[j].weights[k];  
                 }  
                 // Apply activation function (sigmoid)  
