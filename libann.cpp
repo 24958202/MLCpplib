@@ -57,60 +57,57 @@ std::vector<double> libann::feedForward(const std::vector<double>& inputs) {
     }  
     return outputs;  
 }
-void libann::train(const std::vector<std::vector<double>>& trainingData,const std::vector<unsigned int>& labels, unsigned int numEpochs, double learningRate, const std::string& file_path){
-    if(trainingData.empty() || labels.empty()){
-        return;
-    }
-    unsigned int numTrainingSamples = trainingData.size();
-    std::cout << "Start training... Total sizes: " << numTrainingSamples << std::endl;
-    for(unsigned int epoch = 0; epoch < numEpochs; epoch++){
-        std::cout << "epoch: " << epoch << std::endl;
-        double totalLoss = 0.0;
-        for(unsigned int i = 0; i < numTrainingSamples; i++){
-            //Forward pass
-            std::vector<double> outputs = this->feedForward(trainingData[i]);
-            //Calculate loss
-            unsigned int correctLabel = labels[i];
-            double loss = 0.0;
-            for(unsigned int j = 0; j < outputs.size(); j++){
-                double target = (j == correctLabel) ? 1.0 : 0.0;
-                loss += (outputs[j] - target) * (outputs[j] - target);
-            }
-            totalLoss += loss;
-            //Backward pass
-            for(unsigned j = layers.size() -1; j > 0; j--){
-                for(unsigned int k = 0; k < layers[j].neurons.size(); k++){
-                    double delta = 0.0;
-                    if(j == layers.size() - 1){
-                        double output = layers[j].neurons[k].value;
-                        double target = (k == correctLabel) ? 1.0 : 0.0;
-                        delta = (output - target) * output * (1.0 - output);
-                    }
-                    else{
-                        // Update weights  
-                        for (unsigned int l = 0; l < layers[j - 1].neurons.size(); l++) {  
-                            double output = layers[j - 1].neurons[l].value;  
-                            // Update the weights of the neurons in the current layer  
-                            double gradient = output * delta; // Use delta calculated for current neuron  
-                            layers[j].neurons[k].weights[l] -= learningRate * gradient; // No need for prevDelta  
-                        }
-                    }
-                    layers[j].neurons[k].value = delta;
-                    //Update weights
-                    for(unsigned int  l = 0; l < layers[j-1].neurons.size(); l++){
-                        double output = layers[j-1].neurons[l].value;
-                        double prevDelta = layers[j].neurons[k].delta;
-                        double gradient = output * delta; // Use delta instead of prevDelta
-                        layers[j].neurons[k].weights[l] -= learningRate * gradient;
-                    }
-                }
-            }
-        }
-        std::cout << "Epoch: " << epoch + 1 << " Loss: " << totalLoss / numTrainingSamples << std::endl;
-    }
+void libann::train(const std::vector<std::vector<double>>& trainingData, const std::vector<unsigned int>& labels, unsigned int numEpochs, double learningRate, const std::string& file_path) {  
+    if (trainingData.empty() || labels.empty()) {  
+        return;  
+    }  
+    unsigned int numTrainingSamples = trainingData.size();  
+    std::cout << "Start training... Total sizes: " << numTrainingSamples << std::endl;  
+    for (unsigned int epoch = 0; epoch < numEpochs; epoch++) {  
+        std::cout << "epoch: " << epoch << std::endl;  
+        double totalLoss = 0.0;  
+        for (unsigned int i = 0; i < numTrainingSamples; i++) {  
+            // Forward pass  
+            std::vector<double> outputs = this->feedForward(trainingData[i]);  
+            // Calculate loss  
+            unsigned int correctLabel = labels[i];  
+            double loss = 0.0;  
+            for (unsigned int j = 0; j < outputs.size(); j++) {  
+                double target = (j == correctLabel) ? 1.0 : 0.0;  
+                loss += (outputs[j] - target) * (outputs[j] - target);  
+            }  
+            totalLoss += loss;  
+            // Backward pass  
+            for (unsigned j = layers.size() - 1; j > 0; j--) {  
+                for (unsigned int k = 0; k < layers[j].neurons.size(); k++) {  
+                    double delta = 0.0;  
+                    if (j == layers.size() - 1) {  
+                        double output = layers[j].neurons[k].value;  
+                        double target = (k == correctLabel) ? 1.0 : 0.0;  
+                        delta = (output - target) * output * (1.0 - output);  
+                    } else {  
+                        // Calculate delta for hidden layers  
+                        for (unsigned int l = 0; l < layers[j + 1].neurons.size(); l++) {  
+                            delta += layers[j + 1].neurons[l].weights[k] * layers[j + 1].neurons[l].delta;  
+                        }  
+                        delta *= layers[j].neurons[k].value * (1.0 - layers[j].neurons[k].value);  
+                    }  
+                    // Update weights  
+                    for (unsigned int l = 0; l < layers[j - 1].neurons.size(); l++) {  
+                        double output = layers[j - 1].neurons[l].value;  
+                        layers[j].neurons[k].weights[l] -= learningRate * output * delta;  
+                    }  
+                    layers[j].neurons[k].delta = delta; // Store delta for next layer calculation  
+                }  
+            }  
+        }  
+        std::cout << "Epoch: " << epoch + 1 << " Loss: " << totalLoss / numTrainingSamples << std::endl;  
+    }  
+    // Save the model  
     std::ofstream outFile(file_path, std::ios::binary);  
-    if (!outFile.is_open()) {  
-        outFile.open(file_path, std::ios::binary);
+    if (!outFile) {  
+        std::cerr << "Error: Could not open file for saving the model." << std::endl;  
+        return;  // Exit if the file could not be opened  
     }  
     // Save the number of layers  
     unsigned int numLayers = layers.size();  
@@ -130,7 +127,7 @@ void libann::train(const std::vector<std::vector<double>>& trainingData,const st
     }  
     outFile.close();  
 }
-void libann::loadModel(const std::string& filename){
+void libann::loadModel(const std::string& filename) {  
     std::ifstream inFile(filename, std::ios::binary);  
     if (!inFile) {  
         std::cerr << "Error opening file for reading: " << filename << std::endl;  
@@ -140,25 +137,39 @@ void libann::loadModel(const std::string& filename){
     layers.clear();  
     // Load the number of layers  
     unsigned int numLayers;  
-    inFile.read(reinterpret_cast<char*>(&numLayers), sizeof(numLayers));  
+    if (!inFile.read(reinterpret_cast<char*>(&numLayers), sizeof(numLayers))) {  
+        std::cerr << "Error reading number of layers from file: " << filename << std::endl;  
+        return;  
+    }  
     // Load each layer's neurons and their weights  
     for (unsigned int i = 0; i < numLayers; i++) {  
         Layer layer;  
         unsigned int numNeurons;  
-        inFile.read(reinterpret_cast<char*>(&numNeurons), sizeof(numNeurons));  
+        if (!inFile.read(reinterpret_cast<char*>(&numNeurons), sizeof(numNeurons))) {  
+            std::cerr << "Error reading number of neurons for layer " << i << std::endl;  
+            return;  
+        }  
         for (unsigned int j = 0; j < numNeurons; j++) {  
             Neuron neuron;  
             // Load the value of the neuron  
-            inFile.read(reinterpret_cast<char*>(&neuron.value), sizeof(neuron.value));  
+            if (!inFile.read(reinterpret_cast<char*>(&neuron.value), sizeof(neuron.value))) {  
+                std::cerr << "Error reading value for neuron " << j << " in layer " << i << std::endl;  
+                return;  
+            }         
             // Load the weights  
             unsigned int numWeights;  
-            inFile.read(reinterpret_cast<char*>(&numWeights), sizeof(numWeights));  
+            if (!inFile.read(reinterpret_cast<char*>(&numWeights), sizeof(numWeights))) {  
+                std::cerr << "Error reading number of weights for neuron " << j << " in layer " << i << std::endl;  
+                return;  
+            }  
             neuron.weights.resize(numWeights);  
-            inFile.read(reinterpret_cast<char*>(neuron.weights.data()), numWeights * sizeof(double));  
-
+            if (!inFile.read(reinterpret_cast<char*>(neuron.weights.data()), numWeights * sizeof(double))) {  
+                std::cerr << "Error reading weights for neuron " << j << " in layer " << i << std::endl;  
+                return;  
+            }  
             layer.neurons.push_back(neuron);  
         }  
         layers.push_back(layer);  
     }  
     inFile.close();  
-}
+}  
