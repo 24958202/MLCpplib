@@ -3,7 +3,8 @@
 
 #include <iostream>  
 #include <vector>  
-
+#include <functional>
+#include <string>
 /*  
     ANN Library (Artificial Neural Networks) are a type of machine learning  
     algorithm that are designed to simulate the structure, function, and learning  
@@ -29,9 +30,34 @@ public:
     // Member functions  
     std::vector<double> feedForward(const std::vector<double>& inputs);  
     /*
-        the last parameter is the output model file path
+        para1: trainingData
+        para2: labels
+        para3: numEpochs
+        para4: learning rate
+        para5: model file
+        para6: callback function
+        Example:
+        std::vector<std::vector<double>> trainingData;  
+        std::vector<unsigned int> labels;  
+        LoadMNISTData("/Users/dengfengji/ronnieji/libs/mnist/train-images-idx3-ubyte",  
+                    "/Users/dengfengji/ronnieji/libs/mnist/train-labels-idx1-ubyte",   
+                    trainingData, labels);
+        //pass the trainingData and labels into train function
+        std::vector<unsigned int> layerSizes = {784, 100, 10};  
+        libann nn(layerSizes);  
+        nn.train(trainingData, labels, 10, 0.07, "/Users/dengfengji/ronnieji/libs/mnist/model.dat",   
+              [&nn, logFilePath](const std::string&logMessage,const std::string&) {  
+                  nn.callbackfun(logMessage, logFilePath); // Pass logMessage and logFilePath to the callback function  
+              });    
     */
-    void train(const std::vector<std::vector<double>>& trainingData, const std::vector<unsigned int>& labels, unsigned int numEpochs, double learningRate,const std::string& file_path);  
+    void train(
+        const std::vector<std::vector<double>>& trainingData, 
+        const std::vector<unsigned int>& labels, 
+        unsigned int numEpochs, 
+        double learningRate,
+        const std::string& file_path, 
+        const std::string& logFile_path,
+        std::function<void(const std::string&, const std::string&)> callback);  
     /*
         load the training model
         para1: model file path

@@ -1,9 +1,40 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <chrono>
+#include <thread>
+#include <sstream>
 #include <opencv2/opencv.hpp> 
 #include <unordered_map>
+#include <ctime>  
+#include <iomanip> // For std::put_time  
 #include "libann.h"
+struct CurrentDateTime {  
+    std::string current_date;  
+    std::string current_time;  
+};  
+void callbackfun(const std::string& strLog, const std::string& log_path) {  
+    auto current_time = std::chrono::system_clock::now();  
+    std::time_t current_time_t = std::chrono::system_clock::to_time_t(current_time);  
+    std::tm* current_time_tm = std::localtime(&current_time_t);  
+    CurrentDateTime currentDateTime;  
+    std::ostringstream dateStream, timeStream;  
+    dateStream << std::put_time(current_time_tm, "%Y-%m-%d");  
+    timeStream << std::put_time(current_time_tm, "%H:%M:%S");  
+    currentDateTime.current_date = dateStream.str();  
+    currentDateTime.current_time = timeStream.str();  
+    std::ostringstream ss;  
+    ss << currentDateTime.current_date << " " << currentDateTime.current_time << " --> " << strLog;  
+    std::string strMsg = ss.str();  
+    std::ofstream ofile(log_path, std::ios::app);  
+    if (!ofile) {  
+        std::cerr << "Failed to open log file: " << log_path << std::endl;  
+        return;  
+    }  
+    ofile << strMsg << '\n';  
+    ofile.close();  
+    std::cout << strMsg << std::endl;  
+}  
 void LoadMNISTData(const std::string& imagesFile, const std::string& labelsFile,   
                    std::vector<std::vector<double>>& trainingData, std::vector<unsigned int>& labels) {  
     std::ifstream images(imagesFile, std::ios::binary);  
@@ -42,12 +73,17 @@ int main(){
     LoadMNISTData("/Users/dengfengji/ronnieji/libs/mnist/train-images-idx3-ubyte",  
                    "/Users/dengfengji/ronnieji/libs/mnist/train-labels-idx1-ubyte",   
                    trainingData, labels);  
-    
-    // // Step 2: Set up and train the neural network  
+    std::string logFilePath = "/Users/dengfengji/ronnieji/libs/mnist/logFile.txt";  
+    // Step 2: Set up and train the neural network  
     std::vector<unsigned int> layerSizes = {784, 100, 10};  
     libann nn(layerSizes);  
-    nn.train(trainingData, labels, 10, 0.07,"/Users/dengfengji/ronnieji/libs/mnist/model.dat");  
-    
+    // Assuming `trainingData` and `labels` are defined and initialized  
+    nn.train(trainingData, labels, 10, 0.07,   
+          "/Users/dengfengji/ronnieji/libs/mnist/model.dat", // file_path  
+          logFilePath, // logFile_path  
+          [&nn, logFilePath](const std::string&logMessage,const std::string&) {  
+              callbackfun(logMessage, logFilePath); // Pass logMessage and logFilePath to the callback function  
+          });  
     // Model is saved within the train method  
     // Step 3: Load the trained model into a new instance  
     // Load the image  
