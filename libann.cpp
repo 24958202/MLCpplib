@@ -55,7 +55,7 @@ std::vector<double> libann::feedForward(const std::vector<double>& inputs) {
     }  
     return outputs;  
 }
-void libann::train(const std::vector<std::vector<double>>& trainingData, const std::vector<unsigned int>& labels, unsigned int numEpochs, double learningRate, const std::string& file_path, const std::string& logFile_path, std::function<void(const std::string&, const std::string&)> call_back) {  
+void libann::train(const std::vector<std::vector<double>>& trainingData, const std::vector<unsigned int>& labels, unsigned int numEpochs, double learningRate, const std::string& file_path, std::function<void(const std::string&)> call_back) {  
     if (trainingData.empty() || labels.empty()) {  
         return;  
     }  
@@ -63,13 +63,13 @@ void libann::train(const std::vector<std::vector<double>>& trainingData, const s
     unsigned int numTrainingSamples = trainingData.size();  
     ss << "Start training... Total sizes: " << std::to_string(numTrainingSamples);  
     if(call_back){
-        call_back(ss.str(),logFile_path);
+        call_back(ss.str());
     }
     for (unsigned int epoch = 0; epoch < numEpochs; epoch++) {  
         ss.str("");
         ss << "epoch: " << epoch;
         if(call_back){
-            call_back(ss.str(),logFile_path);
+            call_back(ss.str());
         }
         double totalLoss = 0.0;  
         for (unsigned int i = 0; i < numTrainingSamples; i++) {  
@@ -83,13 +83,6 @@ void libann::train(const std::vector<std::vector<double>>& trainingData, const s
                 loss += (outputs[j] - target) * (outputs[j] - target);  
             }  
             totalLoss += loss;  
-            ss.str("");
-            ss << "feedForward: == " << std::to_string(labels[i]) << "Calculate loss: " << std::to_string(totalLoss) << '\n';
-            ss << "Start backward pass...";
-            if(call_back){
-                call_back(ss.str(),logFile_path);
-            }
-            // Backward pass  
             for (unsigned j = layers.size() - 1; j > 0; j--) {  
                 for (unsigned int k = 0; k < layers[j].neurons.size(); k++) {  
                     double delta = 0.0;  
@@ -112,16 +105,11 @@ void libann::train(const std::vector<std::vector<double>>& trainingData, const s
                     layers[j].neurons[k].delta = delta; // Store delta for next layer calculation  
                 }  
             }  
-            ss.str("");
-            ss << "Lable: " << std::to_string(labels[i]) << " done backward pass.";
-            if(call_back){
-                call_back(ss.str(),logFile_path);
-            }
         }  
         ss.str("");
         ss << "Epoch: " << epoch + 1 << " Loss: " << totalLoss / numTrainingSamples; 
         if(call_back){
-            call_back(ss.str(),logFile_path);
+            call_back(ss.str());
         }
     }  
     // Save the model  

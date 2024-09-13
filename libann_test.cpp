@@ -13,7 +13,7 @@ struct CurrentDateTime {
     std::string current_date;  
     std::string current_time;  
 };  
-void callbackfun(const std::string& strLog, const std::string& log_path) {  
+void callbackfun(const std::string& strLog) {  
     auto current_time = std::chrono::system_clock::now();  
     std::time_t current_time_t = std::chrono::system_clock::to_time_t(current_time);  
     std::tm* current_time_tm = std::localtime(&current_time_t);  
@@ -26,13 +26,13 @@ void callbackfun(const std::string& strLog, const std::string& log_path) {
     std::ostringstream ss;  
     ss << currentDateTime.current_date << " " << currentDateTime.current_time << " --> " << strLog;  
     std::string strMsg = ss.str();  
-    std::ofstream ofile(log_path, std::ios::app);  
-    if (!ofile) {  
-        std::cerr << "Failed to open log file: " << log_path << std::endl;  
-        return;  
-    }  
-    ofile << strMsg << '\n';  
-    ofile.close();  
+    // std::ofstream ofile(log_path, std::ios::app);  
+    // if (!ofile) {  
+    //     std::cerr << "Failed to open log file: " << log_path << std::endl;  
+    //     return;  
+    // }  
+    // ofile << strMsg << '\n';  
+    // ofile.close();  
     std::cout << strMsg << std::endl;  
 }  
 void LoadMNISTData(const std::string& imagesFile, const std::string& labelsFile,   
@@ -80,9 +80,8 @@ int main(){
     // Assuming `trainingData` and `labels` are defined and initialized  
     nn.train(trainingData, labels, 10, 0.07,   
           "/Users/dengfengji/ronnieji/libs/mnist/model.dat", // file_path  
-          logFilePath, // logFile_path  
-          [&nn, logFilePath](const std::string&logMessage,const std::string&) {  
-              callbackfun(logMessage, logFilePath); // Pass logMessage and logFilePath to the callback function  
+          [](const std::string&logMessage) {  
+              callbackfun(logMessage); // Pass logMessage and logFilePath to the callback function  
           });  
     // Model is saved within the train method  
     // Step 3: Load the trained model into a new instance  

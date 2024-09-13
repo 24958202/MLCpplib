@@ -56,8 +56,7 @@ public:
         unsigned int numEpochs, 
         double learningRate,
         const std::string& file_path, 
-        const std::string& logFile_path,
-        std::function<void(const std::string&, const std::string&)> callback);  
+        std::function<void(const std::string&)> callback);  
     /*
         load the training model
         para1: model file path
