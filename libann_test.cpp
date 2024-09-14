@@ -5,6 +5,7 @@
 #include <thread>
 #include <sstream>
 #include <opencv2/opencv.hpp> 
+#include <opencv2/core.hpp>
 #include <unordered_map>
 #include <ctime>  
 #include <iomanip> // For std::put_time  
@@ -108,6 +109,9 @@ int main(){
             for (int j = 0; j < read_img.cols; ++j) {  
                 // Normalize pixel values to [0, 1]  
                 inputs.push_back(read_img.at<uchar>(i, j) / 255.0);  
+                // Convert back to the original pixel value  
+                //uchar original_value = static_cast<uchar>(normalized_value * 255.0);  
+                //std::cout << "Original pixel value at (" << i << ", " << j << "): " << static_cast<int>(original_value) << std::endl;  
             }  
         }  
         img_inputs[im] = inputs;  
