@@ -25,12 +25,24 @@
 #include <cstdint> 
 #include <functional>
 #include <cstdlib>
+#include <unordered_set>
+#include <utility>        // For std::pair  
+#include <boost/functional/hash.hpp> // For boost::hash 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include "cvLib.h"
 class subfunctions{
+    struct pair_hash {  
+        template <class T>  
+        std::size_t operator() (const std::pair<T, T>& pair) const {  
+            auto hash1 = std::hash<T>{}(pair.first);  
+            auto hash2 = std::hash<T>{}(pair.second);  
+            return hash1 ^ hash2; // Combine the two hash values  
+        }  
+    };  
+    using PairSet = std::unordered_set<std::pair<int, int>, pair_hash>;  
     public:
         void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<RGB>>&);
         // Function to convert a dataset to cv::Mat  
@@ -111,23 +123,22 @@ bool subfunctions::isPointInPolygon(int x, int y, const std::vector<std::pair<in
     return inside;  
 }  
 std::vector<std::vector<RGB>> subfunctions::getPixelsInsideObject(const std::vector<std::vector<RGB>>& image_rgb, const std::vector<std::pair<int, int>>& objEdges) {  
-    std::vector<std::vector<RGB>> pixelsInside;  
-    int minX = std::numeric_limits<int>::max(), minY = std::numeric_limits<int>::max();  
-    int maxX = std::numeric_limits<int>::min(), maxY = std::numeric_limits<int>::min();  
-    for (const auto& point : objEdges) {  
-        minX = std::min(minX, point.first);  
-        minY = std::min(minY, point.second);  
-        maxX = std::max(maxX, point.first);  
-        maxY = std::max(maxY, point.second);  
+    std::vector<std::vector<RGB>> output_objs = image_rgb; // Start with a copy of the original image  
+    if (output_objs.empty() || output_objs[0].empty() || objEdges.empty()) {  
+        return output_objs; // Return the original image if data or edges are empty  
     }  
-    for (int x = minX; x <= maxX; x++) {  
-        for (int y = minY; y <= maxY; y++) {  
-            if (x >= 0 && x < image_rgb.size() && y >= 0 && y < image_rgb[0].size() && this->isPointInPolygon(x, y, objEdges)) {  
-                pixelsInside.push_back({image_rgb[x][y]});  
+    // Create a set of object coordinates for quick lookup  
+    std::unordered_set<std::pair<int, int>, boost::hash<std::pair<int, int>>> objSet(objEdges.begin(), objEdges.end());  
+    // Iterate through the image and modify pixels  
+    for (int x = 0; x < output_objs.size(); ++x) {  
+        for (int y = 0; y < output_objs[x].size(); ++y) {  
+            // If the current pixel is not in the object edges, set it to white  
+            if (objSet.find({x, y}) == objSet.end()) {  
+                output_objs[x][y] = {255, 255, 255}; // Set to white  
             }  
         }  
     }  
-    return pixelsInside;  
+    return output_objs; // Return the modified image  
 }
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<RGB>> dataset
