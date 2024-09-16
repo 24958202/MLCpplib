@@ -159,14 +159,20 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset_color(const cv::Mat& genI
     std::vector<std::vector<RGB>> datasets(genImg.rows, std::vector<RGB>(genImg.cols));  
     for (int i = 0; i < genImg.rows; ++i) {  // rows  
         for (int j = 0; j < genImg.cols; ++j) {  // cols  
-            // Get the BGR values  
-            cv::Vec3b bgr = genImg.at<cv::Vec3b>(i, j);  
-            // Populate the RGB struct  
-            datasets[i][j] = {static_cast<int>(bgr[2]), static_cast<int>(bgr[1]), static_cast<int>(bgr[0])}; // Convert BGR to RGB  
+            // Check if the image is still in color:  
+            if (genImg.channels() == 3) {  
+                cv::Vec3b bgr = genImg.at<cv::Vec3b>(i, j);  
+                // Populate the RGB struct  
+                datasets[i][j] = {static_cast<int>(bgr[2]), static_cast<int>(bgr[1]), static_cast<int>(bgr[0])}; // Convert BGR to RGB  
+            } else if (genImg.channels() == 1) {  
+                // Handle grayscale images  
+                uchar intensity = genImg.at<uchar>(i, j);  
+                datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)}; // Grayscale to RGB  
+            }   
         }  
     }  
     return datasets;  
-}
+}  
 imgSize cvLib::get_image_size(const std::string& imgPath) {  
     imgSize im_s = {0, 0}; // Initialize width and height to 0  
     if (imgPath.empty()) {  
@@ -663,22 +669,21 @@ bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, in
     }  
     return false;  
 }  
-std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, int gradientMagnitude_threshold){
-    std::vector<std::vector<RGB>> objects_detect;
-    if(imgPath.empty()){
-        return objects_detect;
-    }
-    subfunctions subfun;
-    std::vector<RGB> pixelToPaint;
-    imgSize img_size = this->get_image_size(imgPath);
-    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix_color(imgPath,img_size.height,img_size.width);  
-    if(!image_rgb.empty()){
+std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, int gradientMagnitude_threshold) {  
+    std::vector<std::vector<RGB>> objects_detect;  
+    if (imgPath.empty()) {  
+        return objects_detect;  
+    }  
+    subfunctions subfun;  
+    imgSize img_size = this->get_image_size(imgPath);  
+    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix_color(imgPath, img_size.height, img_size.width);  
+    if (!image_rgb.empty()) {  
         // Find outliers (edges)  
-        auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold); 
-        objects_detect = subfun.getPixelsInsideObject(image_rgb,outliers);
-    }
-    return objects_detect;
-}
+        auto outliers = this->findOutlierEdges(image_rgb, gradientMagnitude_threshold);   
+        objects_detect = subfun.getPixelsInsideObject(image_rgb, outliers);  
+    }  
+    return objects_detect;  
+}  
 char* cvLib::read_image_detect_text(const std::string& imgPath){
     if(imgPath.empty()){
         return nullptr;
@@ -769,6 +774,7 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
         for (const auto& box : mergedBoxes) {  
             cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2); // Draw rectangle  
         }  
+
         /*
             end marking video
         */
