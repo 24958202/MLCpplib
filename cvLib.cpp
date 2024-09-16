@@ -3,9 +3,9 @@
 */
 #include <opencv2/opencv.hpp>  
 #include <opencv2/features2d.hpp> 
+#include <opencv2/video.hpp> 
 #include <tesseract/baseapi.h>  
 #include <tesseract/publictypes.h>  
-#include <Eigen/Dense> 
 #include "authorinfo/author_info.h" 
 #include <vector>  
 #include <iostream>  
@@ -36,7 +36,11 @@ class subfunctions{
         // Function to convert a dataset to cv::Mat  
         cv::Mat convertDatasetToMat(const std::vector<std::vector<RGB>>&);
         void markVideo(cv::Mat&, const cv::Scalar&,const cv::Scalar&);
-        void drawRectangles();
+        // Function to check if a point is inside a polygon  
+        //para1:x, para2:y , para3: polygon
+        bool isPointInPolygon(int, int, const std::vector<std::pair<int, int>>&);
+        // Function to get all pixels inside the object defined by A  
+        std::vector<std::vector<RGB>> getPixelsInsideObject(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&); 
         
 };
 void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
@@ -94,8 +98,36 @@ void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const
         }
     }
 }
-void subfunctions::drawRectangles(){
-
+// Function to check if a point is inside a polygon  
+bool subfunctions::isPointInPolygon(int x, int y, const std::vector<std::pair<int, int>>& polygon) {  
+    bool inside = false;  
+    int n = polygon.size();  
+    for (int i = 0, j = n - 1; i < n; j = i++) {  
+        if ((polygon[i].second > y) != (polygon[j].second > y) &&  
+            (x < (polygon[j].first - polygon[i].first) * (y - polygon[i].second) / (polygon[j].second - polygon[i].second) + polygon[i].first)) {  
+            inside = !inside;  
+        }  
+    }  
+    return inside;  
+}  
+std::vector<std::vector<RGB>> subfunctions::getPixelsInsideObject(const std::vector<std::vector<RGB>>& image_rgb, const std::vector<std::pair<int, int>>& objEdges) {  
+    std::vector<std::vector<RGB>> pixelsInside;  
+    int minX = std::numeric_limits<int>::max(), minY = std::numeric_limits<int>::max();  
+    int maxX = std::numeric_limits<int>::min(), maxY = std::numeric_limits<int>::min();  
+    for (const auto& point : objEdges) {  
+        minX = std::min(minX, point.first);  
+        minY = std::min(minY, point.second);  
+        maxX = std::max(maxX, point.first);  
+        maxY = std::max(maxY, point.second);  
+    }  
+    for (int x = minX; x <= maxX; x++) {  
+        for (int y = minY; y <= maxY; y++) {  
+            if (x >= 0 && x < image_rgb.size() && y >= 0 && y < image_rgb[0].size() && this->isPointInPolygon(x, y, objEdges)) {  
+                pixelsInside.push_back({image_rgb[x][y]});  
+            }  
+        }  
+    }  
+    return pixelsInside;  
 }
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<RGB>> dataset
@@ -112,15 +144,20 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     }  
     return datasets;
 }
-imgSize cvLib::get_image_size(const std::string& imgPath){
-    imgSize im_s;
-    if(imgPath.empty()){
-        return im_s;
-    }
-    cv::Mat img = cv::imread(imgPath);
-    im_s.width = img.cols;
-    im_s.height = img.rows;
-    return im_s; 
+imgSize cvLib::get_image_size(const std::string& imgPath) {  
+    imgSize im_s = {0, 0}; // Initialize width and height to 0  
+    if (imgPath.empty()) {  
+        std::cerr << "Error: Image path is empty." << std::endl;  
+        return im_s; // Return default initialized size  
+    }  
+    cv::Mat img = cv::imread(imgPath);  
+    if (img.empty()) { // Check if the image was loaded successfully  
+        std::cerr << "Error: Could not open or find the image at " << imgPath << std::endl;  
+        return im_s; // Return default initialized size  
+    }  
+    im_s.width = img.cols;  
+    im_s.height = img.rows;  
+    return im_s;   
 }
 /*
     cv::Scalar markerColor(0,255,0);
@@ -167,23 +204,18 @@ void cvLib::saveVectorRGB(const std::vector<std::vector<RGB>>& img, int width, i
     }  
     out.close();  
 }
-std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, int img_rows, int img_cols){
-    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols)); // Create a vector of vectors for RGB values  
-    // Read the image using imread function  
+std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, int img_rows, int img_cols) {  
+    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols)); // Create vector of vectors for RGB values  
     cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);  
-    if(image.empty()){  
+    if (image.empty()) {  
         std::cerr << "Error: Could not open or find the image." << std::endl;  
         return datasets;   
     }  
     cv::Mat resized_image;  
-    cv::resize(image, resized_image, cv::Size(img_rows, img_cols));  
+    cv::resize(image, resized_image, cv::Size(img_cols, img_rows)); // Corrected dimensions  
     cv::Mat gray_image;  
-    cv::cvtColor(resized_image,gray_image,cv::COLOR_BGR2GRAY); 
-    /*---------------------------------------------------------*/
-    // std::string output_folder = "/home/ronnieji/lib/images/output/grayscale_image.jpg";
-    // cv::imwrite(output_folder,gray_image);
-    /*---------------------------------------------------------*/ 
-    datasets = cv_mat_to_dataset(gray_image);
+    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);   
+    datasets = cv_mat_to_dataset(gray_image); // Ensure cv_mat_to_dataset handles this correctly  
     return datasets;  
 }
 std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& folderPath){  
@@ -216,22 +248,24 @@ std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& fol
 // Function to find outlier edges using a simple gradient method  
 std::vector<std::pair<int, int>> cvLib::findOutlierEdges(const std::vector<std::vector<RGB>>& data, int gradientMagnitude_threshold) {  
     std::vector<std::pair<int, int>> outliers;  
+    if (data.empty() || data[0].empty()) { // Check for empty data  
+        return outliers; // Return early if no data  
+    }  
     int height = data.size();  
     int width = data[0].size();  
     for (int i = 1; i < height - 1; ++i) {  
         for (int j = 1; j < width - 1; ++j) {  
-            // Get pixel values  
-            const RGB& pixel = data[i][j];  
-            // Calculate the gradient  
+            // Calculate gradient using all channels  
             int gx = -data[i-1][j-1].r + data[i+1][j+1].r +  
                      -2 * data[i][j-1].r + 2 * data[i][j+1].r +  
                      -data[i-1][j+1].r + data[i+1][j-1].r;  
+
             int gy = data[i-1][j-1].r + 2 * data[i-1][j].r + data[i-1][j+1].r -  
                      (data[i+1][j-1].r + 2 * data[i+1][j].r + data[i+1][j+1].r);  
-            // Calculate the gradient magnitude  
+
             double gradientMagnitude = std::sqrt(gx * gx + gy * gy);  
-            // Define a threshold for detecting edges  
-            if (gradientMagnitude > gradientMagnitude_threshold) { // Adjust threshold as needed  
+
+            if (gradientMagnitude > gradientMagnitude_threshold) {  
                 outliers.emplace_back(i, j);  
             }  
         }  
@@ -239,27 +273,36 @@ std::vector<std::pair<int, int>> cvLib::findOutlierEdges(const std::vector<std::
     return outliers;  
 }
 bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::string& filename){ 
-     if (data.empty() || data[0].empty()){   
+    if (data.empty() || data[0].empty()) {  
         std::cerr << "Error: Image data is empty." << std::endl;  
         return false;  
-    }
+    }  
     std::ofstream file(filename);  
-    if (!file.is_open()){   
+    if (!file) {  
         std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;  
-        return false; // Return false if the file couldn't be opened  
-    }
-    int width = data[0].size(); // Corrected width and height calculation  
-    int height = data.size();   
+        return false;  
+    }  
+    int width = data[0].size();  
+    int height = data.size();  
     file << "P3\n" << width << " " << height << "\n255\n"; // PPM header  
-    for (int i = 0; i < height; ++i){   
-        for (int j = 0; j < width; ++j){   
-            const RGB& rgb = data[i][j];  
-            file << rgb.r << " " << rgb.g << " " << rgb.b << "\n";  
-        }
-    }
+    try {  
+        for (int i = 0; i < height; ++i) {  
+            for (int j = 0; j < width; ++j) {  
+                const RGB& rgb = data.at(i).at(j);  // Use at() for safety  
+                // Ensure RGB values are within valid range  
+                if (rgb.r > 255 || rgb.g > 255 || rgb.b > 255) {  
+                    throw std::runtime_error("RGB values must be in the range [0, 255]");  
+                }  
+                file << static_cast<int>(rgb.r) << " " << static_cast<int>(rgb.g) << " " << static_cast<int>(rgb.b) << "\n";  
+            }  
+        }  
+    } catch (const std::exception& e) {  
+        std::cerr << "Error: " << e.what() << std::endl;  
+        return false;  
+    }  
     file.close();  
     std::cout << "Image saved as " << filename << std::endl;  
-    return true; // Return true if saving was successful
+    return true; // Return true if saving was successful  
 }
 void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<std::pair<int, int>>& outliers, const cv::Scalar& markerColor) {  
     if (data.empty() || data[0].empty()) {  
@@ -340,7 +383,7 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
         return;
     }
     std::vector<RGB> pixelToPaint;
-    imgSize img_size = get_image_size(imagePath);
+    imgSize img_size = this->get_image_size(imagePath);
     std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imagePath,img_size.width,img_size.height);  
     // Find outliers (edges)  
     auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold); 
@@ -585,6 +628,22 @@ bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, in
     }  
     return false;  
 }  
+std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, int gradientMagnitude_threshold){
+    std::vector<std::vector<RGB>> objects_detect;
+    if(imgPath.empty()){
+        return objects_detect;
+    }
+    subfunctions subfun;
+    std::vector<RGB> pixelToPaint;
+    imgSize img_size = this->get_image_size(imgPath);
+    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imgPath,img_size.width,img_size.height);  
+    if(!image_rgb.empty()){
+        // Find outliers (edges)  
+        auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold); 
+        objects_detect = subfun.getPixelsInsideObject(image_rgb,outliers);
+    }
+    return objects_detect;
+}
 char* cvLib::read_image_detect_text(const std::string& imgPath){
     if(imgPath.empty()){
         return nullptr;
@@ -625,7 +684,7 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
     //cv::Mat frame, gray, blurred, thresh;  // To hold each frame captured from the webcam  
     //cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2(); 
     cv::Mat frame, thresh;  
-    cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2(500, 16, true);  
+    cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2(500, 16, true); 
     std::vector<cv::Rect> detectedBoxes;  
     // Capture frames in a loop 
     subfunctions sub_j; 
@@ -679,7 +738,9 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
             end marking video
         */
         // Invoke the callback with the captured frame  
-        callback(frame);  
+        if(callback){
+            callback(frame);  
+        }
         // Display the frame in the created window  
         //cv::imshow(winTitle, frame);  
         // Exit the loop if the user presses the 'q' key  
@@ -692,3 +753,4 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
     cap.release();  
     cv::destroyAllWindows();  
 }
+

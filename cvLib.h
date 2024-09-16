@@ -4,7 +4,6 @@
 #include <vector>
 #include <map>
 #include <opencv2/opencv.hpp>  
-#include <Eigen/Dense> 
 #include <functional>
 struct RGB {  
     int r;  
@@ -172,6 +171,12 @@ class cvLib{
         */
         bool isObjectInImage(const std::string&, const std::string&, int featureCount = 500, float ratioThresh = 0.7f, int deThreshold = 10);
         /*
+            This function will return all the object as std::vector<std::vector<RGB>> in an image
+            para1: image path
+            para2 : gradientMagnitude threshold 0-100, better result with small digits
+        */
+        std::vector<std::vector<RGB>> objectsInImage(const std::string&, int);
+        /*
             This function can recognize text in an image
             para1: the image path
             return: text1, text2... in the image
@@ -211,5 +216,6 @@ class cvLib{
             }  
         */
         void StartWebCam(int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
-};  
+            
+};      
 #endif
