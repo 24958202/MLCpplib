@@ -23,9 +23,13 @@ enum class brushColor{
 class cvLib{
     public:
         /*
-            Input an image path, will return an RGB dataset std::vector<std::vector<RGB>>
+            Input an image path, will return an RGB dataset std::vector<std::vector<RGB>> -gray
         */
         std::vector<std::vector<RGB>> cv_mat_to_dataset(const cv::Mat&);
+        /*
+            Input an image path, will return an RGB dataset - color
+        */
+        std::vector<std::vector<RGB>> cv_mat_to_dataset_color(const cv::Mat&);
         /*
             para1: input an image path, will return the image size 
             struct imgSize{
@@ -61,6 +65,14 @@ class cvLib{
             para3: output matrix columns number(width)
         */
         std::vector<std::vector<RGB>> get_img_matrix(const std::string&, int,int);
+         /*
+            1.read an image, 2.resize the image to expected size, (keep image colors)
+            Turn into a std::vector<std::vector<RGB>> dataset (matrix: dimention-rows: dataset.size(), dimention-columns: std::vector<RGB> size())
+            para1: image path
+            para2: output matrix rows number(height)
+            para3: output matrix columns number(width)
+        */
+        std::vector<std::vector<RGB>> get_img_matrix_color(const std::string&, int,int);
         /*
             read all images in a folder to a std::vector<std::vector<RGB>> dataset
             para1: folder path

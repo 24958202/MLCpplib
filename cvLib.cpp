@@ -155,6 +155,18 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     }  
     return datasets;
 }
+std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset_color(const cv::Mat& genImg) {  
+    std::vector<std::vector<RGB>> datasets(genImg.rows, std::vector<RGB>(genImg.cols));  
+    for (int i = 0; i < genImg.rows; ++i) {  // rows  
+        for (int j = 0; j < genImg.cols; ++j) {  // cols  
+            // Get the BGR values  
+            cv::Vec3b bgr = genImg.at<cv::Vec3b>(i, j);  
+            // Populate the RGB struct  
+            datasets[i][j] = {static_cast<int>(bgr[2]), static_cast<int>(bgr[1]), static_cast<int>(bgr[0])}; // Convert BGR to RGB  
+        }  
+    }  
+    return datasets;  
+}
 imgSize cvLib::get_image_size(const std::string& imgPath) {  
     imgSize im_s = {0, 0}; // Initialize width and height to 0  
     if (imgPath.empty()) {  
@@ -226,7 +238,19 @@ std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, 
     cv::resize(image, resized_image, cv::Size(img_cols, img_rows)); // Corrected dimensions  
     cv::Mat gray_image;  
     cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);   
-    datasets = cv_mat_to_dataset(gray_image); // Ensure cv_mat_to_dataset handles this correctly  
+    datasets = this->cv_mat_to_dataset(gray_image); // Ensure cv_mat_to_dataset handles this correctly  
+    return datasets;  
+}
+std::vector<std::vector<RGB>> cvLib::get_img_matrix_color(const std::string& imgPath, int img_rows, int img_cols) {  
+    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols)); // Create vector of vectors for RGB values  
+    cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);  
+    if (image.empty()) {  
+        std::cerr << "Error: Could not open or find the image." << std::endl;  
+        return datasets;   
+    }  
+    cv::Mat resized_image;  
+    cv::resize(image, resized_image, cv::Size(img_cols, img_rows)); // Corrected dimensions  
+    datasets = this->cv_mat_to_dataset_color(image); // Ensure cv_mat_to_dataset handles this correctly  
     return datasets;  
 }
 std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& folderPath){  
@@ -647,7 +671,7 @@ std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, 
     subfunctions subfun;
     std::vector<RGB> pixelToPaint;
     imgSize img_size = this->get_image_size(imgPath);
-    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imgPath,img_size.width,img_size.height);  
+    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix_color(imgPath,img_size.height,img_size.width);  
     if(!image_rgb.empty()){
         // Find outliers (edges)  
         auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold); 
