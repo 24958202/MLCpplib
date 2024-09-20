@@ -56,6 +56,8 @@ class subfunctions{
         std::vector<std::vector<RGB>> getPixelsInsideObject(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&); 
         cv::Mat getObjectsInVideo(const cv::Mat&);
         void saveModel(const std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&);
+        unsigned int count_occurrences(const std::vector<uint32_t>&, const std::vector<uint32_t>&);
+        void merge_without_duplicates(std::vector<uint32_t>&, const std::vector<uint32_t>&);
 };
 void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
     for (int i = 0; i < image.rows; ++i) {  
@@ -176,6 +178,30 @@ void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<u
     }  
     ofs.close();  
 }
+unsigned int subfunctions::count_occurrences(const std::vector<uint32_t>& main_data, const std::vector<uint32_t>& sub_data) {  
+    if (sub_data.empty()) return 0;  // Return zero if sub_data is empty  
+    // Use std::search and std::ranges to count occurrences  
+    unsigned int count = 0;  
+    auto it = std::search(main_data.begin(), main_data.end(),   
+                          sub_data.begin(), sub_data.end());  
+    while (it != main_data.end()) {  
+        ++count;  // Found one occurrence  
+        // Search for the next occurrence  
+        it = std::search(std::next(it), main_data.end(), sub_data.begin(), sub_data.end());  
+    }  
+    return count;  
+}  
+void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, const std::vector<uint32_t>& data_append) {  
+    // Create a set to track unique elements  
+    std::unordered_set<uint32_t> unique_elements(data_main.begin(), data_main.end());  
+    // Iterate through data_append and add to data_main if not already present  
+    for (const auto& item : data_append) {  
+        // Attempt to insert the item into the set  
+        if (unique_elements.insert(item).second) { // Only if it was not already in the set  
+            data_main.push_back(item); // Append the unique item to data_main  
+        }  
+    }  
+}  
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
@@ -863,7 +889,6 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
         for (const auto& box : mergedBoxes) {  
             cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2); // Draw rectangle  
         }  
-
         //cv::Mat oframe = sub_j.getObjectsInVideo(frame);
 
         /*
@@ -888,7 +913,7 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
 std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {  
     std::vector<uint32_t> img_matrix;  
     if (image_path.empty()) {  
-        return img_matrix;  
+        return {};  // Return an empty map instead of img_matrix  
     }  
     cv::Mat img = cv::imread(image_path, cv::IMREAD_UNCHANGED);  
     if (img.empty()) {  
@@ -917,24 +942,12 @@ std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {
                 std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
                 throw std::runtime_error("Unsupported image format.");  
             }  
+
             ptr[y * img.cols + x] = packedPixel; // Assign directly in resized vector  
         }  
     }  
-    std::map<std::vector<uint32_t>, unsigned int> imgCount;  
-    for (unsigned int i = 0; i < img_matrix.size(); i++) {  
-        unsigned int imgs_score = 0;  
-        if (i + 1 < img_matrix.size()) {  
-            for (unsigned int j = 0; j < img_matrix.size() - 1; j++) { // Avoid out-of-bounds  
-                if (j != i && img_matrix[j] == img_matrix[i] && img_matrix[j + 1] == img_matrix[i + 1]) {  
-                    imgs_score++;  
-                }  
-            }  
-            imgCount[{img_matrix[i], img_matrix[i + 1]}] = imgs_score;  
-            std::cout << "Test image: " << img_matrix[i] << " and " << img_matrix[i + 1] << " count: " << imgs_score << std::endl;  
-        }  
-    }  
-    return img_matrix;  
-}  
+    return img_matrix;
+}   
 std::unordered_map<std::string, std::vector<uint32_t>> cvLib::get_img_in_folder(const std::string& folder_path) {  
     std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
     if (folder_path.empty()) {  
@@ -1052,6 +1065,47 @@ std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_in_folde
     sub_j.saveModel(content_in_imgs, model_output_path);  
     return content_in_imgs;  
 }  
+std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_occurrences(const std::string& images_folder_path, const std::string& model_output_path){
+    std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
+    if (images_folder_path.empty()) {  
+        return dataset;  
+    }  
+    subfunctions sub_j;
+    try {  
+        for (const auto& entryMainFolder : std::filesystem::directory_iterator(images_folder_path)) {  
+            if (entryMainFolder.is_directory()) { // Check if the entry is a directory  
+                std::string sub_folder_name = entryMainFolder.path().filename().string();  
+                std::string sub_folder_path = entryMainFolder.path();  
+                std::vector<uint32_t> sub_folder_all_images;  
+                // Accumulate pixel count for memory reservation  
+                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
+                    if (entrySubFolder.is_regular_file()) {  
+                        std::string imgFolderPath = entrySubFolder.path();  
+                        std::vector<std::vector<RGB>> get_img = this->objectsInImage(imgFolderPath,1);
+                        if(!get_img.empty()){
+                            std::vector<uint32_t> get_img_uint = this->convertToPacked(get_img);
+                            if(sub_folder_all_images.empty()){//if it's empty insert get_img_uint
+                                sub_folder_all_images.insert(sub_folder_all_images.end(),get_img_uint.begin(),get_img_uint.end());
+                            }
+                            else{// merge get_img_uint
+                                sub_j.merge_without_duplicates(sub_folder_all_images,get_img_uint);
+                            }
+                        }
+                    }  
+                }  
+             
+                dataset[sub_folder_name] = sub_folder_all_images;  
+                std::cout << sub_folder_name << " is done!" << std::endl;  
+            }  
+        }  
+    } catch (const std::filesystem::filesystem_error& e) {  
+        std::cerr << "Filesystem error: " << e.what() << std::endl;  
+        return dataset; // Return an empty dataset in case of filesystem error  
+    }  
+    std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
+    sub_j.saveModel(dataset, model_output_path);  
+    return dataset;  
+}
 void cvLib::loadModel(std::unordered_map<std::string, std::vector<uint32_t>>& content_in_imgs, const std::string& filename){
     std::ifstream ifs(filename, std::ios::binary);  
     if (!ifs) {  

@@ -264,7 +264,7 @@ class cvLib{
             read an image and return std::vector<uint32_t>
             para1: image path
         */
-        std::vector<uint32_t> get_one_image(const std::string&);
+        std::vector<uint32_t> get_one_image(const std::string&);  
         /*
             get the image in a folder 
             Train images
@@ -283,6 +283,11 @@ class cvLib{
             para2: input model file output path path/to/yourdat.dat
         */
         std::unordered_map<std::string,std::vector<uint32_t>> train_img_in_folder(const std::unordered_map<std::string,std::vector<uint32_t>>&,const std::string&);
+        /*
+            para1: train images folder
+            para2: output model file path/output.dat
+        */
+        std::unordered_map<std::string, std::vector<uint32_t>> train_img_occurrences(const std::string&, const std::string&);
         /*
             para1: return a pre-defined std::unordered_map<std::string, std::vector<uint32_t>>
             para2: the model's file path
