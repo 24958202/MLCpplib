@@ -26,10 +26,10 @@ g++ -std=c++20 \
 #include <unordered_map>
 #include <stdint.h>
 #include <filesystem>
-#include "cvLib_uint32.h"
+#include "cvLib.h"
 void find_img1_in_img2() {  
     cvLib cv_j;  
-    std::string img1_path = "/Users/dengfengji/ronnieji/lib/images/sample3.jpg";  
+    std::string img1_path = "/Users/dengfengji/ronnieji/lib/images/sample4.jpg";  
     std::string img2_path = "/Users/dengfengji/ronnieji/lib/images/sample1.jpg";  
     // Check if the images exist  
     if (!std::filesystem::exists(img1_path) || !std::filesystem::exists(img2_path)) {  
@@ -68,13 +68,13 @@ void startMacWebCam(){
 }
 void mark_edge_image(const std::string& imgPath){
     cvLib cvl_j;
-    std::vector<uint32_t> frame_to_mark = cvl_j.get_img_matrix(imgPath,886,1560);
+    std::vector<std::vector<RGB>> frame_to_mark = cvl_j.get_img_matrix(imgPath,1560,886);
     if(!frame_to_mark.empty()){
-        std::vector<std::pair<int, int>> outliers_found = cvl_j.findOutlierEdges(frame_to_mark,886,1560,70);
+        std::vector<std::pair<int, int>> outliers_found = cvl_j.findOutlierEdges(frame_to_mark,10);
         if(!outliers_found.empty()){
             cv::Scalar brush_color(0,255,0);
-            cvl_j.markOutliers(frame_to_mark,outliers_found,brush_color,886);
-            cvl_j.saveImage(frame_to_mark,"/Users/dengfengji/ronnieji/lib/images/sample3_output.ppm",886,1560);
+            cvl_j.markOutliers(frame_to_mark,outliers_found,brush_color); 
+            cvl_j.saveImage(frame_to_mark,"/Users/dengfengji/ronnieji/lib/images/sample2_edge_output.ppm");
             std::cout << "Successfully saved the marked image." << std::endl;
         }
     }
@@ -82,13 +82,14 @@ void mark_edge_image(const std::string& imgPath){
 }
 void getObjectInImgs(){
     cvLib cvl_j;
-    std::vector<uint32_t> obj_output =  cvl_j.objectsInImage("/Users/dengfengji/ronnieji/lib/images/sample15.jpg",20);
+    std::vector<std::vector<RGB>> obj_output =  cvl_j.objectsInImage("/Users/dengfengji/ronnieji/lib/images/sample15.jpg",20);
     //cvl_j.createOutlierImage();
     if(!obj_output.empty()){
-        if(cvl_j.saveImage(obj_output,"/Users/dengfengji/ronnieji/lib/images/objects_in_sample2.ppm",600,726)){
+        if(cvl_j.saveImage(obj_output,"/Users/dengfengji/ronnieji/lib/images/objects_in_sample2.ppm")){
             std::cout << "Successfully output the objects in image." << std::endl;
         }
     }
+
     else{
         std::cout << "obj_output is empty!" << std::endl;
     }
@@ -120,7 +121,7 @@ void getImageDataset(){
 int main(){
     find_img1_in_img2();
     //startMacWebCam();
-    //mark_edge_image("/Users/dengfengji/ronnieji/lib/images/sample3.jpg");
+    //mark_edge_image("/Users/dengfengji/ronnieji/lib/images/sample2.jpg");
     //getObjectInImgs();
     //getImageDataset();
     return 0;
