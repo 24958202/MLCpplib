@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <unordered_set>
 #include <utility>        // For std::pair  
+#include <execution> // for parallel execution policies (C++17)
 #include <boost/functional/hash.hpp> // For boost::hash 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -53,7 +54,8 @@ class subfunctions{
         bool isPointInPolygon(int, int, const std::vector<std::pair<int, int>>&);
         // Function to get all pixels inside the object defined by A  
         std::vector<std::vector<RGB>> getPixelsInsideObject(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&); 
-        
+        cv::Mat getObjectsInVideo(const cv::Mat&);
+        void saveModel(const std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&);
 };
 void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
     for (int i = 0; i < image.rows; ++i) {  
@@ -140,6 +142,93 @@ std::vector<std::vector<RGB>> subfunctions::getPixelsInsideObject(const std::vec
     }  
     return output_objs; // Return the modified image  
 }
+cv::Mat subfunctions::getObjectsInVideo(const cv::Mat& inVideo){
+    cvLib cv_j;
+    std::vector<std::vector<RGB>> objects_detect;
+    std::vector<std::vector<RGB>> image_rgb = cv_j.cv_mat_to_dataset_color(inVideo);  
+    if (!image_rgb.empty()) {  
+        // Find outliers (edges)  
+        auto outliers = cv_j.findOutlierEdges(image_rgb, 5);   
+        objects_detect = this->getPixelsInsideObject(image_rgb, outliers);  
+    }  
+    cv::Mat finalV = this->convertDatasetToMat(objects_detect);
+    return finalV;  
+}
+void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<uint32_t>>& content_in_imgs, const std::string& filename){
+    std::ofstream ofs(filename, std::ios::binary);  
+    if (!ofs) {  
+        std::cerr << "Error opening file for writing: " << filename << std::endl;  
+        return;  
+    }  
+    // Write the size of the unordered_map  
+    size_t mapSize = content_in_imgs.size();  
+    ofs.write(reinterpret_cast<const char*>(&mapSize), sizeof(mapSize));  
+    // Write each key-value pair  
+    for (const auto& pair : content_in_imgs) {  
+        // Write the size of the string key  
+        size_t keySize = pair.first.size();  
+        ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));  
+        ofs.write(pair.first.c_str(), keySize);  
+        // Write the size of the vector  
+        size_t vecSize = pair.second.size();  
+        ofs.write(reinterpret_cast<const char*>(&vecSize), sizeof(vecSize));  
+        ofs.write(reinterpret_cast<const char*>(pair.second.data()), vecSize * sizeof(uint32_t));  
+    }  
+    ofs.close();  
+}
+/*
+    Start cvLib -----------------------------------------------------------------------------------------------------
+*/
+// Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>>  
+std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint32_t>& pixels, int width, int height) {  
+    std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));  
+    for (int y = 0; y < height; ++y) {  
+        for (int x = 0; x < width; ++x) {  
+            uint32_t packedPixel = pixels[y * width + x];  
+            uint8_t r = (packedPixel >> 16) & 0xFF; // Extract red  
+            uint8_t g = (packedPixel >> 8) & 0xFF;  // Extract green  
+            uint8_t b = packedPixel & 0xFF;         // Extract blue  
+            image[y][x] = RGB(r, g, b); // Assign to 2D vector  
+        }  
+    }  
+    return image; // Return the resulting 2D RGB vector  
+}  
+// Function to convert std::vector<std::vector<RGB>> back to std::vector<uint32_t>  
+std::vector<uint32_t> cvLib::convertToPacked(const std::vector<std::vector<RGB>>& image) {  
+    int height = image.size();  
+    int width = (height > 0) ? image[0].size() : 0;  
+    std::vector<uint32_t> pixels(height * width);  
+    for (int y = 0; y < height; ++y) {  
+        for (int x = 0; x < width; ++x) {  
+            const RGB& rgb = image[y][x];  
+            // Pack the RGB into a uint32_t  
+            pixels[y * width + x] = (static_cast<uint32_t>(rgb.r) << 16) |  
+                                     (static_cast<uint32_t>(rgb.g) << 8) |  
+                                     (static_cast<uint32_t>(rgb.b));  
+        }  
+    }  
+    return pixels; // Return the resulting packed pixel vector  
+}  
+// Function to convert std::vector<uint32_t> to cv::Mat  
+cv::Mat cvLib::vectorToImage(const std::vector<uint32_t>& pixels, int width, int height) {  
+    // Create a cv::Mat object with the specified dimensions and type (CV_8UC3 for BGR)  
+    cv::Mat image(height, width, CV_8UC3);  
+    // Iterate through each pixel in the vector  
+    for (int y = 0; y < height; ++y) {  
+        for (int x = 0; x < width; ++x) {  
+            // Get the packed pixel from the vector  
+            uint32_t packedPixel = pixels[y * width + x];  
+            // Unpack the pixel components  
+            uint8_t b = (packedPixel & 0xFF);            // Blue component  
+            uint8_t g = (packedPixel >> 8) & 0xFF;       // Green component  
+            uint8_t r = (packedPixel >> 16) & 0xFF;      // Red component  
+            // uint8_t a = (packedPixel >> 24) & 0xFF;    // Alpha component (if needed)  
+            // Set the pixel value in the cv::Mat (OpenCV uses BGR format)  
+            image.at<cv::Vec3b>(y, x) = cv::Vec3b(b, g, r);  
+        }  
+    }  
+    return image;  // Return the created image  
+}  
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<RGB>> dataset
 */
@@ -775,6 +864,8 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
             cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2); // Draw rectangle  
         }  
 
+        //cv::Mat oframe = sub_j.getObjectsInVideo(frame);
+
         /*
             end marking video
         */
@@ -794,4 +885,196 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
     cap.release();  
     cv::destroyAllWindows();  
 }
+std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {  
+    std::vector<uint32_t> img_matrix;  
+    if (image_path.empty()) {  
+        return img_matrix;  
+    }  
+    cv::Mat img = cv::imread(image_path, cv::IMREAD_UNCHANGED);  
+    if (img.empty()) {  
+        throw std::runtime_error("Failed to load image: " + image_path);  
+    }  
+    // Prepare the vector to store the pixel data  
+    img_matrix.resize(img.rows * img.cols); // Allocate enough space once  
+    uint32_t* ptr = img_matrix.data(); // Pointer to write directly  
+    // Read the image data  
+    for (int y = 0; y < img.rows; ++y) {  
+        for (int x = 0; x < img.cols; ++x) {  
+            uint32_t packedPixel = 0;  
+            if (img.channels() == 4) {  
+                cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA  
+                packedPixel = (pixel[2] << 24) |  // Red  
+                              (pixel[1] << 16) |  // Green  
+                              (pixel[0] << 8) |  // Blue  
+                              (pixel[3]);         // Alpha  
+            } else if (img.channels() == 3) {  
+                cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR  
+                packedPixel = (pixel[2] << 24) |  // Red  
+                              (pixel[1] << 16) |  // Green  
+                              (pixel[0] << 8) |  // Blue  
+                              0xFF;               // Alpha (set to 255)  
+            } else {  
+                std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
+                throw std::runtime_error("Unsupported image format.");  
+            }  
+            ptr[y * img.cols + x] = packedPixel; // Assign directly in resized vector  
+        }  
+    }  
+    std::map<std::vector<uint32_t>, unsigned int> imgCount;  
+    for (unsigned int i = 0; i < img_matrix.size(); i++) {  
+        unsigned int imgs_score = 0;  
+        if (i + 1 < img_matrix.size()) {  
+            for (unsigned int j = 0; j < img_matrix.size() - 1; j++) { // Avoid out-of-bounds  
+                if (j != i && img_matrix[j] == img_matrix[i] && img_matrix[j + 1] == img_matrix[i + 1]) {  
+                    imgs_score++;  
+                }  
+            }  
+            imgCount[{img_matrix[i], img_matrix[i + 1]}] = imgs_score;  
+            std::cout << "Test image: " << img_matrix[i] << " and " << img_matrix[i + 1] << " count: " << imgs_score << std::endl;  
+        }  
+    }  
+    return img_matrix;  
+}  
+std::unordered_map<std::string, std::vector<uint32_t>> cvLib::get_img_in_folder(const std::string& folder_path) {  
+    std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
+    if (folder_path.empty()) {  
+        return dataset;  
+    }  
+    try {  
+        for (const auto& entryMainFolder : std::filesystem::directory_iterator(folder_path)) {  
+            if (entryMainFolder.is_directory()) { // Check if the entry is a directory  
+                std::string sub_folder_name = entryMainFolder.path().filename().string();  
+                std::string sub_folder_path = entryMainFolder.path();  
+                std::vector<uint32_t> sub_folder_all_images;  
+                // Accumulate pixel count for memory reservation  
+                size_t totalPixels = 0;  
+                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
+                    if (entrySubFolder.is_regular_file()) {  
+                        std::string imgFolderPath = entrySubFolder.path();  
+                        // Load the image using OpenCV  
+                        cv::Mat img = cv::imread(imgFolderPath, cv::IMREAD_UNCHANGED);  
+                        if (img.empty()) {  
+                            throw std::runtime_error("Failed to load image: " + imgFolderPath);  
+                        }  
+                        totalPixels += img.rows * img.cols; // Calculate the total number of pixels  
+                    }  
+                }  
+                // Reserve space for pixel data  
+                sub_folder_all_images.reserve(totalPixels);  
+                // Reload the images to fill pixel data  
+                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
+                    if (entrySubFolder.is_regular_file()) {  
+                        std::string imgFolderPath = entrySubFolder.path();  
+                        cv::Mat img = cv::imread(imgFolderPath, cv::IMREAD_UNCHANGED);  
+                        if (img.empty()) {  
+                            throw std::runtime_error("Failed to load image: " + imgFolderPath);  
+                        }  
+                        // Read the image data  
+                        for (int y = 0; y < img.rows; ++y) {  
+                            for (int x = 0; x < img.cols; ++x) {  
+                                uint32_t packedPixel = 0;  
+                                if (img.channels() == 4) {  
+                                    cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA  
+                                    packedPixel = (pixel[2] << 24) |  // Red  
+                                                  (pixel[1] << 16) |  // Green  
+                                                  (pixel[0] << 8) |  // Blue  
+                                                  (pixel[3]);         // Alpha  
+                                } else if (img.channels() == 3) {  
+                                    cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR  
+                                    packedPixel = (pixel[2] << 24) |  // Red  
+                                                  (pixel[1] << 16) |  // Green  
+                                                  (pixel[0] << 8) |  // Blue  
+                                                  0xFF;               // Alpha (set to 255)  
+                                } else {  
+                                    std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
+                                    throw std::runtime_error("Unsupported image format.");  
+                                }  
+                                sub_folder_all_images.push_back(packedPixel);  
+                            }  
+                        }  
+                    }  
+                }  
+                dataset[sub_folder_name] = sub_folder_all_images;  
+                std::cout << sub_folder_name << " is done!" << std::endl;  
+            }  
+        }  
+    } catch (const std::filesystem::filesystem_error& e) {  
+        std::cerr << "Filesystem error: " << e.what() << std::endl;  
+        return dataset; // Return an empty dataset in case of filesystem error  
+    }  
+    std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
+    return dataset;  
+}  
+std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_in_folder(const std::unordered_map<std::string, std::vector<uint32_t>>& img_dataset, const std::string& model_output_path) {  
+    std::unordered_map<std::string, std::vector<uint32_t>> content_in_imgs;  
+    // Check for empty dataset or model path  
+    if (img_dataset.empty() || model_output_path.empty()) {  
+        return content_in_imgs;  
+    }  
+    std::cout << "Start training..." << std::endl;  
+    for (const auto& item : img_dataset) {  
+        std::string img_label = item.first;  
+        std::vector<uint32_t> imgs_data = item.second;  
+        // Create an unordered_map with the custom hash function  
+        std::unordered_map<std::vector<uint32_t>, unsigned int, VectorHash> imgCount;   
+        for (unsigned int i = 0; i < imgs_data.size(); i++) {  
+            unsigned int imgs_score = 0;  
+            // Check if the next element exists  
+            if (i + 1 < imgs_data.size()) {  
+                for (unsigned int j = 0; j < imgs_data.size(); j++) {  
+                    if (j != i && j + 1 < imgs_data.size()) {  
+                        // Compare adjacent elements  
+                        if (imgs_data[j] == imgs_data[i] && imgs_data[j + 1] == imgs_data[i + 1]) {  
+                            imgs_score++;  
+                        }  
+                    }  
+                }  
+                // Use the custom hashable pair as a key  
+                imgCount[{imgs_data[i], imgs_data[i + 1]}] = imgs_score;  
+                std::cout << imgs_data[i] << " and " << imgs_data[i + 1] << " count: " << imgs_score << std::endl;  
+            }  
+        }  
+        // Sort imgCount into a vector of pairs  
+        std::vector<std::pair<std::vector<uint32_t>, unsigned int>> sortedImgCount(imgCount.begin(), imgCount.end());  
+        std::sort(sortedImgCount.begin(), sortedImgCount.end(), [](const auto& a, const auto& b) {  
+            return a.second > b.second;  
+        });  
+        // Reorganize the results into content_in_imgs  
+        for (const auto& entry : sortedImgCount) {  
+            const auto& vec = entry.first;  
+            // Since we are using img_label as key and we want the latest vector of uint32_t for that label  
+            content_in_imgs[img_label] = vec; // Store the latest sorted vector  
+        }  
+        std::cout << img_label << " training is done!" << std::endl;  
+    }  
+    // Save the model using subfunctions  
+    subfunctions sub_j;  
+    sub_j.saveModel(content_in_imgs, model_output_path);  
+    return content_in_imgs;  
+}  
+void cvLib::loadModel(std::unordered_map<std::string, std::vector<uint32_t>>& content_in_imgs, const std::string& filename){
+    std::ifstream ifs(filename, std::ios::binary);  
+    if (!ifs) {  
+        std::cerr << "Error opening file for reading: " << filename << std::endl;  
+        return;  
+    }  
+    // Read the size of the unordered_map  
+    size_t mapSize;  
+    ifs.read(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));  
+    // Read each key-value pair  
+    for (size_t i = 0; i < mapSize; ++i) {  
+        // Read the size of the string key  
+        size_t keySize;  
+        ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));  
+        std::string key(keySize, '\0');  
+        ifs.read(&key[0], keySize);  
+        // Read the size of the vector  
+        size_t vecSize;  
+        ifs.read(reinterpret_cast<char*>(&vecSize), sizeof(vecSize));  
+        std::vector<uint32_t> values(vecSize);  
+        ifs.read(reinterpret_cast<char*>(values.data()), vecSize * sizeof(uint32_t));  
+        content_in_imgs[key] = std::move(values);  
+    }  
+    ifs.close();  
+}  
 

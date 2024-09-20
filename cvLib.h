@@ -2,14 +2,30 @@
 #define CVLIB_H
 #include <iostream> 
 #include <vector>
+#include <unordered_map>
 #include <map>
 #include <opencv2/opencv.hpp>  
 #include <functional>
+#include <stdint.h>
 struct RGB {  
-    int r;  
-    int g;  
-    int b;  
-};  
+    int r; // Red  
+    int g; // Green  
+    int b; // Blue  
+    // Default constructor  
+    RGB() : r(0), g(0), b(0) {} // Initializes RGB to black (0, 0, 0)  
+    // Parameterized constructor  
+    RGB(int red, int green, int blue) : r(red), g(green), b(blue) {}  
+};   
+struct VectorHash {  
+    template <typename T>  
+    std::size_t operator()(const std::vector<T>& vec) const {  
+        std::size_t seed = vec.size(); // Start with the size of vector  
+        for (const auto& i : vec) {  
+            seed ^= std::hash<T>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2); // Combining hashes  
+        }  
+        return seed;  
+    }  
+}; 
 struct imgSize{
     int width;
     int height;
@@ -22,6 +38,21 @@ enum class brushColor{
 };
 class cvLib{
     public:
+        /*
+            Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>> 
+        */
+        std::vector<std::vector<RGB>> convertToRGB(const std::vector<uint32_t>&, int, int);
+        /*
+            Function to convert std::vector<std::vector<RGB>> back to std::vector<uint32_t> 
+        */
+        std::vector<uint32_t> convertToPacked(const std::vector<std::vector<RGB>>&);
+        /*
+            Function to convert std::vector<uint32_t> to cv::Mat 
+            para1: packed pixel data
+            para2: width
+            para3: height
+        */
+        cv::Mat vectorToImage(const std::vector<uint32_t>&, int, int); 
         /*
             Input an image path, will return an RGB dataset std::vector<std::vector<RGB>> -gray
         */
@@ -203,6 +234,7 @@ class cvLib{
             }  
         */
         char* read_image_detect_text(const std::string&);
+        
         /*
             This function can open the default webcam and pass the 
             video to a callback function
@@ -228,6 +260,33 @@ class cvLib{
             }  
         */
         void StartWebCam(int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
-            
+        /*
+            read an image and return std::vector<uint32_t>
+            para1: image path
+        */
+        std::vector<uint32_t> get_one_image(const std::string&);
+        /*
+            get the image in a folder 
+            Train images
+            /apple
+                image1,image2....
+            /orange
+                image1,image2...
+            Return std::unordered_map<std::string,std::vector<std::vector<uint32_t>>>
+            first: folder's name : apple, orange...
+            second: every image was stored in a std::vector<uint32_t>, std::vector<std::vector<uint32_t>> are all the images in the folder
+            std::unordered_map<std::string,std::vector<uint32_t>> are all the images in the folder in one std::vector 
+        */
+        std::unordered_map<std::string,std::vector<uint32_t>> get_img_in_folder(const std::string&);
+        /*
+            prar1: input get_img_in_folder dataset and return content only images dataset
+            para2: input model file output path path/to/yourdat.dat
+        */
+        std::unordered_map<std::string,std::vector<uint32_t>> train_img_in_folder(const std::unordered_map<std::string,std::vector<uint32_t>>&,const std::string&);
+        /*
+            para1: return a pre-defined std::unordered_map<std::string, std::vector<uint32_t>>
+            para2: the model's file path
+        */
+        void loadModel(std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&);
 };      
 #endif
