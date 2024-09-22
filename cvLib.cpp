@@ -26,6 +26,7 @@
 #include <functional>
 #include <cstdlib>
 #include <unordered_set>
+#include <iterator> 
 #include <utility>        // For std::pair  
 #include <execution> // for parallel execution policies (C++17)
 #include <boost/functional/hash.hpp> // For boost::hash 
@@ -56,39 +57,51 @@ class subfunctions{
         std::vector<std::vector<RGB>> getPixelsInsideObject(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&); 
         cv::Mat getObjectsInVideo(const cv::Mat&);
         void saveModel(const std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&);
-        unsigned int count_occurrences(const std::vector<uint32_t>&, const std::vector<uint32_t>&);
         void merge_without_duplicates(std::vector<uint32_t>&, const std::vector<uint32_t>&);
 };
-void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {   
-    for (int i = 0; i < image.rows; ++i) {  
-        for (int j = 0; j < image.cols; ++j) {  
-            // Access the pixel and its RGB values  
-            cv::Vec3b& pixel = image.at<cv::Vec3b>(i, j);  
-            int r = pixel[2];  
-            int g = pixel[1];  
-            int b = pixel[0];  
-            // Calculate the grayscale value using the luminance method  
-            int grayValue = static_cast<int>(0.299 * r + 0.587 * g + 0.114 * b);  
-            // Determine the binary value with thresholding  
-            int bwValue = (grayValue < 128) ? 0 : 255;  
-            // Assign the calculated binary value to the image  
-            pixel[0] = bwValue;  
-            pixel[1] = bwValue;  
-            pixel[2] = bwValue;  
-            // Update the corresponding dataset  
-            datasets[i][j] = {bwValue, bwValue, bwValue};  
-        }  
-    }  
-}  
+void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {
+    if(datasets.empty() || datasets[C_0].empty()){
+        std::cerr << "Error: datasets is empty!" << std::endl;
+        return;
+    }
+    // Ensure datasets has the same dimensions as the image
+    if (datasets.size() != image.rows) {
+        std::cerr << "Error: The dataset's row count does not match the image row count.\n";
+        return;
+    }
+    for (unsigned int i = 0; i < image.rows; ++i) {
+        if (datasets[i].size() != image.cols) {
+            std::cerr << "Error: The dataset's column count does not match the image column count.\n";
+            return;
+        }
+        for (unsigned int j = 0; j < image.cols; ++j) {
+            // Access the pixel and its RGB values
+            cv::Vec3b& pixel = image.at<cv::Vec3b>(i, j);
+            uint32_t r = pixel[C_2];
+            uint32_t g = pixel[C_1];
+            uint32_t b = pixel[C_0];
+            // Calculate the grayscale value using the luminance method
+            uint32_t grayValue = static_cast<uint32_t>(0.299 * r + 0.587 * g + 0.114 * b);
+            // Determine the binary value with thresholding
+            uint32_t bwValue = (grayValue < 128) ? 0 : 255;
+            // Assign the calculated binary value to the image
+            pixel[C_0] = bwValue;
+            pixel[C_1] = bwValue;
+            pixel[C_2] = bwValue;
+            // Update the corresponding dataset
+            datasets[i][j] = {bwValue, bwValue, bwValue};
+        }
+    }
+}
 cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& dataset) { 
-    if (dataset.empty() || dataset[0].empty()) {  
+    if (dataset.empty() || dataset[C_0].empty()) {  
         throw std::runtime_error("Dataset is empty or has no columns.");  
     }   
-    int rows = dataset.size();  
-    int cols = dataset[0].size();  
+    unsigned int rows = dataset.size();  
+    unsigned int cols = dataset[0].size();  
     cv::Mat image(rows, cols, CV_8UC3); // Create a Mat with 3 channels (BGR)  
-    for (int i = 0; i < rows; ++i) {  
-        for (int j = 0; j < cols; ++j) {  
+    for (unsigned int i = 0; i < rows; ++i) {  
+        for (unsigned int j = 0; j < cols; ++j) {  
             // Access the RGB values from the dataset  
             const RGB& rgb = dataset[i][j];  
             // Set the pixel in the cv::Mat  
@@ -127,22 +140,19 @@ bool subfunctions::isPointInPolygon(int x, int y, const std::vector<std::pair<in
     return inside;  
 }  
 std::vector<std::vector<RGB>> subfunctions::getPixelsInsideObject(const std::vector<std::vector<RGB>>& image_rgb, const std::vector<std::pair<int, int>>& objEdges) {  
-    std::vector<std::vector<RGB>> output_objs = image_rgb; // Start with a copy of the original image  
-    if (output_objs.empty() || output_objs[0].empty() || objEdges.empty()) {  
-        return output_objs; // Return the original image if data or edges are empty  
-    }  
-    // Create a set of object coordinates for quick lookup  
-    std::unordered_set<std::pair<int, int>, boost::hash<std::pair<int, int>>> objSet(objEdges.begin(), objEdges.end());  
-    // Iterate through the image and modify pixels  
+    if(image_rgb.empty() || image_rgb[C_0].empty() || objEdges.empty()) {  
+        return {}; // Return an empty image if no data or edges
+    }
+    std::vector<std::vector<RGB>> output_objs = image_rgb;
+    std::unordered_set<std::pair<int, int>, boost::hash<std::pair<int, int>>> objSet(objEdges.begin(), objEdges.end());
     for (int x = 0; x < output_objs.size(); ++x) {  
         for (int y = 0; y < output_objs[x].size(); ++y) {  
-            // If the current pixel is not in the object edges, set it to white  
             if (objSet.find({x, y}) == objSet.end()) {  
-                output_objs[x][y] = {255, 255, 255}; // Set to white  
-            }  
-        }  
-    }  
-    return output_objs; // Return the modified image  
+                output_objs[x][y] = {255, 255, 255}; // Set to white
+            }
+        }
+    }
+    return output_objs;
 }
 cv::Mat subfunctions::getObjectsInVideo(const cv::Mat& inVideo){
     cvLib cv_j;
@@ -178,19 +188,6 @@ void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<u
     }  
     ofs.close();  
 }
-unsigned int subfunctions::count_occurrences(const std::vector<uint32_t>& main_data, const std::vector<uint32_t>& sub_data) {  
-    if (sub_data.empty()) return 0;  // Return zero if sub_data is empty  
-    // Use std::search and std::ranges to count occurrences  
-    unsigned int count = 0;  
-    auto it = std::search(main_data.begin(), main_data.end(),   
-                          sub_data.begin(), sub_data.end());  
-    while (it != main_data.end()) {  
-        ++count;  // Found one occurrence  
-        // Search for the next occurrence  
-        it = std::search(std::next(it), main_data.end(), sub_data.begin(), sub_data.end());  
-    }  
-    return count;  
-}  
 void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, const std::vector<uint32_t>& data_append) {  
     // Create a set to track unique elements  
     std::unordered_set<uint32_t> unique_elements(data_main.begin(), data_main.end());  
@@ -205,15 +202,28 @@ void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, co
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
+unsigned int cvLib::count_occurrences(const std::vector<uint32_t>& main_data, const std::vector<uint32_t>& sub_data) {  
+    if (sub_data.empty()) return 0;  // Return zero if sub_data is empty  
+    // Use std::search and std::ranges to count occurrences  
+    unsigned int count = 0;  
+    auto it = std::search(main_data.begin(), main_data.end(),   
+                          sub_data.begin(), sub_data.end());  
+    while (it != main_data.end()) {  
+        ++count;  // Found one occurrence  
+        // Search for the next occurrence  
+        it = std::search(std::next(it), main_data.end(), sub_data.begin(), sub_data.end());  
+    }  
+    return count;  
+}  
 // Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>>  
-std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint32_t>& pixels, int width, int height) {  
+std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint32_t>& pixels, unsigned int width, unsigned int height) {  
     std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));  
-    for (int y = 0; y < height; ++y) {  
-        for (int x = 0; x < width; ++x) {  
+    for (unsigned int y = 0; y < height; ++y) {  
+        for (unsigned int x = 0; x < width; ++x) {  
             uint32_t packedPixel = pixels[y * width + x];  
-            uint8_t r = (packedPixel >> 16) & 0xFF; // Extract red  
-            uint8_t g = (packedPixel >> 8) & 0xFF;  // Extract green  
-            uint8_t b = packedPixel & 0xFF;         // Extract blue  
+            uint32_t r = (packedPixel >> 16) & 0xFF; // Extract red  
+            uint32_t g = (packedPixel >> 8) & 0xFF;  // Extract green  
+            uint32_t b = packedPixel & 0xFF;         // Extract blue  
             image[y][x] = RGB(r, g, b); // Assign to 2D vector  
         }  
     }  
@@ -221,11 +231,11 @@ std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint32_t>& p
 }  
 // Function to convert std::vector<std::vector<RGB>> back to std::vector<uint32_t>  
 std::vector<uint32_t> cvLib::convertToPacked(const std::vector<std::vector<RGB>>& image) {  
-    int height = image.size();  
-    int width = (height > 0) ? image[0].size() : 0;  
+    unsigned int height = image.size();  
+    unsigned int width = (height > 0) ? image[0].size() : 0;  
     std::vector<uint32_t> pixels(height * width);  
-    for (int y = 0; y < height; ++y) {  
-        for (int x = 0; x < width; ++x) {  
+    for (unsigned int y = 0; y < height; ++y) {  
+        for (unsigned int x = 0; x < width; ++x) {  
             const RGB& rgb = image[y][x];  
             // Pack the RGB into a uint32_t  
             pixels[y * width + x] = (static_cast<uint32_t>(rgb.r) << 16) |  
@@ -236,19 +246,19 @@ std::vector<uint32_t> cvLib::convertToPacked(const std::vector<std::vector<RGB>>
     return pixels; // Return the resulting packed pixel vector  
 }  
 // Function to convert std::vector<uint32_t> to cv::Mat  
-cv::Mat cvLib::vectorToImage(const std::vector<uint32_t>& pixels, int width, int height) {  
+cv::Mat cvLib::vectorToImage(const std::vector<uint32_t>& pixels, unsigned int width, unsigned int height) {  
     // Create a cv::Mat object with the specified dimensions and type (CV_8UC3 for BGR)  
     cv::Mat image(height, width, CV_8UC3);  
     // Iterate through each pixel in the vector  
-    for (int y = 0; y < height; ++y) {  
-        for (int x = 0; x < width; ++x) {  
+    for (unsigned int y = 0; y < height; ++y) {  
+        for (unsigned int x = 0; x < width; ++x) {  
             // Get the packed pixel from the vector  
             uint32_t packedPixel = pixels[y * width + x];  
             // Unpack the pixel components  
-            uint8_t b = (packedPixel & 0xFF);            // Blue component  
-            uint8_t g = (packedPixel >> 8) & 0xFF;       // Green component  
-            uint8_t r = (packedPixel >> 16) & 0xFF;      // Red component  
-            // uint8_t a = (packedPixel >> 24) & 0xFF;    // Alpha component (if needed)  
+            uint32_t b = (packedPixel & 0xFF);            // Blue component  
+            uint32_t g = (packedPixel >> 8) & 0xFF;       // Green component  
+            uint32_t r = (packedPixel >> 16) & 0xFF;      // Red component  
+            // uint32_t a = (packedPixel >> 24) & 0xFF;    // Alpha component (if needed)  
             // Set the pixel value in the cv::Mat (OpenCV uses BGR format)  
             image.at<cv::Vec3b>(y, x) = cv::Vec3b(b, g, r);  
         }  
@@ -260,29 +270,29 @@ cv::Mat cvLib::vectorToImage(const std::vector<uint32_t>& pixels, int width, int
 */
 std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     std::vector<std::vector<RGB>> datasets(genImg.rows,std::vector<RGB>(genImg.cols));
-    for (int i = 0; i < genImg.rows; ++i) {  //rows
-        for (int j = 0; j < genImg.cols; ++j) {  //cols
+    for (unsigned int i = 0; i < genImg.rows; ++i) {  //rows
+        for (unsigned int j = 0; j < genImg.cols; ++j) {  //cols
             // Get the intensity value  
             uchar intensity = genImg.at<uchar>(i, j);  
             // Populate the RGB struct for grayscale  
-            datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)};  
+            datasets[i][j] = {static_cast<uint32_t>(intensity), static_cast<uint32_t>(intensity), static_cast<uint32_t>(intensity)};  
         }  
     }  
     return datasets;
 }
 std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset_color(const cv::Mat& genImg) {  
     std::vector<std::vector<RGB>> datasets(genImg.rows, std::vector<RGB>(genImg.cols));  
-    for (int i = 0; i < genImg.rows; ++i) {  // rows  
-        for (int j = 0; j < genImg.cols; ++j) {  // cols  
+    for (unsigned int i = 0; i < genImg.rows; ++i) {  // rows  
+        for (unsigned int j = 0; j < genImg.cols; ++j) {  // cols  
             // Check if the image is still in color:  
             if (genImg.channels() == 3) {  
                 cv::Vec3b bgr = genImg.at<cv::Vec3b>(i, j);  
                 // Populate the RGB struct  
-                datasets[i][j] = {static_cast<int>(bgr[2]), static_cast<int>(bgr[1]), static_cast<int>(bgr[0])}; // Convert BGR to RGB  
+                datasets[i][j] = {static_cast<uint32_t>(bgr[2]), static_cast<uint32_t>(bgr[1]), static_cast<uint32_t>(bgr[0])}; // Convert BGR to RGB  
             } else if (genImg.channels() == 1) {  
                 // Handle grayscale images  
                 uchar intensity = genImg.at<uchar>(i, j);  
-                datasets[i][j] = {static_cast<int>(intensity), static_cast<int>(intensity), static_cast<int>(intensity)}; // Grayscale to RGB  
+                datasets[i][j] = {static_cast<uint32_t>(intensity), static_cast<uint32_t>(intensity), static_cast<uint32_t>(intensity)}; // Grayscale to RGB  
             }   
         }  
     }  
@@ -309,7 +319,7 @@ imgSize cvLib::get_image_size(const std::string& imgPath) {
     rec_thickness = 2;
 */
 // Function to draw a green rectangle on an image  
-void cvLib::drawRectangleWithText(cv::Mat& image, int x, int y, int width, int height, const std::string& text, int rec_thickness, const cv::Scalar& markerColor, const cv::Scalar& txtColor) {  
+void cvLib::drawRectangleWithText(cv::Mat& image, int x, int y, unsigned int width, unsigned int height, const std::string& text, unsigned int rec_thickness, const cv::Scalar& markerColor, const cv::Scalar& txtColor) {  
     // Define rectangle vertices  
     cv::Point top_left(x, y);  
     cv::Point bottom_right(x + width, y + height);  
@@ -329,7 +339,7 @@ void cvLib::savePPM(const cv::Mat& image, const std::string& filename) {
     ofs << "P6\n" << image.cols << ' ' << image.rows << "\n255\n";  
     ofs.write(reinterpret_cast<const char*>(image.data), image.total() * image.elemSize());  
 }  
-void cvLib::saveVectorRGB(const std::vector<std::vector<RGB>>& img, int width, int height, const std::string& filename){
+void cvLib::saveVectorRGB(const std::vector<std::vector<RGB>>& img, unsigned int width, unsigned int height, const std::string& filename){
     std::ofstream out(filename);  
     if (!out) {  
         std::cerr << "Error opening file for writing: " << filename << std::endl;  
@@ -348,30 +358,37 @@ void cvLib::saveVectorRGB(const std::vector<std::vector<RGB>>& img, int width, i
     }  
     out.close();  
 }
-std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, int img_rows, int img_cols) {  
-    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols)); // Create vector of vectors for RGB values  
+std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, unsigned int img_rows, unsigned int img_cols) {  
+    if(imgPath.empty()){
+        return {};
+    }
+    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols));  
     cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);  
     if (image.empty()) {  
         std::cerr << "Error: Could not open or find the image." << std::endl;  
         return datasets;   
     }  
-    cv::Mat resized_image;  
-    cv::resize(image, resized_image, cv::Size(img_cols, img_rows)); // Corrected dimensions  
-    cv::Mat gray_image;  
-    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);   
-    datasets = this->cv_mat_to_dataset(gray_image); // Ensure cv_mat_to_dataset handles this correctly  
+    cv::Mat resized_image, gray_image;  
+    cv::resize(image, resized_image, cv::Size(img_cols, img_rows));
+    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
+    // Assume cv_mat_to_dataset(gray_image) is implemented correctly
+    datasets = cv_mat_to_dataset(gray_image);
     return datasets;  
 }
-std::vector<std::vector<RGB>> cvLib::get_img_matrix_color(const std::string& imgPath, int img_rows, int img_cols) {  
-    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols)); // Create vector of vectors for RGB values  
+std::vector<std::vector<RGB>> cvLib::get_img_matrix_color(const std::string& imgPath, unsigned int img_rows, unsigned int img_cols) {  
+    if(imgPath.empty()){
+        return {};
+    }
+    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols));  
     cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);  
     if (image.empty()) {  
         std::cerr << "Error: Could not open or find the image." << std::endl;  
         return datasets;   
     }  
-    cv::Mat resized_image;  
-    cv::resize(image, resized_image, cv::Size(img_cols, img_rows)); // Corrected dimensions  
-    datasets = this->cv_mat_to_dataset_color(image); // Ensure cv_mat_to_dataset handles this correctly  
+    cv::Mat resized_image;
+    cv::resize(image, resized_image, cv::Size(img_cols, img_rows));
+    // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
+    datasets = this->cv_mat_to_dataset_color(resized_image);
     return datasets;  
 }
 std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& folderPath){  
@@ -402,34 +419,30 @@ std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& fol
     return datasets;  
 }
 // Function to find outlier edges using a simple gradient method  
-std::vector<std::pair<int, int>> cvLib::findOutlierEdges(const std::vector<std::vector<RGB>>& data, int gradientMagnitude_threshold) {  
-    std::vector<std::pair<int, int>> outliers;  
-    if (data.empty() || data[0].empty()) { // Check for empty data  
-        return outliers; // Return early if no data  
-    }  
-    int height = data.size();  
-    int width = data[0].size();  
-    for (int i = 1; i < height - 1; ++i) {  
-        for (int j = 1; j < width - 1; ++j) {  
-            // Calculate gradient using all channels  
+std::vector<std::pair<int, int>> cvLib::findOutlierEdges(const std::vector<std::vector<RGB>>& data, unsigned int gradientMagnitude_threshold) {
+    std::vector<std::pair<int, int>> outliers;
+    if (data.empty() || data[C_0].empty()) {
+        return outliers;
+    }
+    unsigned int height = data.size();
+    unsigned int width = data[C_0].size();
+    for (unsigned int i = 1; i < height - 1; ++i) {
+        for (unsigned int j = 1; j < width - 1; ++j) {
             int gx = -data[i-1][j-1].r + data[i+1][j+1].r +  
                      -2 * data[i][j-1].r + 2 * data[i][j+1].r +  
                      -data[i-1][j+1].r + data[i+1][j-1].r;  
-
             int gy = data[i-1][j-1].r + 2 * data[i-1][j].r + data[i-1][j+1].r -  
                      (data[i+1][j-1].r + 2 * data[i+1][j].r + data[i+1][j+1].r);  
-
-            double gradientMagnitude = std::sqrt(gx * gx + gy * gy);  
-
-            if (gradientMagnitude > gradientMagnitude_threshold) {  
-                outliers.emplace_back(i, j);  
-            }  
-        }  
-    }  
-    return outliers;  
+            double gradientMagnitude = std::sqrt(gx * gx + gy * gy);
+            if (gradientMagnitude > gradientMagnitude_threshold) {
+                outliers.emplace_back(i, j);
+            }
+        }
+    }
+    return outliers;
 }
 bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::string& filename){ 
-    if (data.empty() || data[0].empty()) {  
+    if (data.empty() || data[C_0].empty()) {  
         std::cerr << "Error: Image data is empty." << std::endl;  
         return false;  
     }  
@@ -438,18 +451,18 @@ bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::stri
         std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;  
         return false;  
     }  
-    int width = data[0].size();  
-    int height = data.size();  
+    unsigned int width = data[0].size();  
+    unsigned int height = data.size();  
     file << "P3\n" << width << " " << height << "\n255\n"; // PPM header  
     try {  
-        for (int i = 0; i < height; ++i) {  
-            for (int j = 0; j < width; ++j) {  
+        for (unsigned int i = 0; i < height; ++i) {  
+            for (unsigned int j = 0; j < width; ++j) {  
                 const RGB& rgb = data.at(i).at(j);  // Use at() for safety  
                 // Ensure RGB values are within valid range  
                 if (rgb.r > 255 || rgb.g > 255 || rgb.b > 255) {  
                     throw std::runtime_error("RGB values must be in the range [0, 255]");  
                 }  
-                file << static_cast<int>(rgb.r) << " " << static_cast<int>(rgb.g) << " " << static_cast<int>(rgb.b) << "\n";  
+                file << static_cast<uint32_t>(rgb.r) << " " << static_cast<uint32_t>(rgb.g) << " " << static_cast<uint32_t>(rgb.b) << "\n";  
             }  
         }  
     } catch (const std::exception& e) {  
@@ -460,81 +473,74 @@ bool cvLib::saveImage(const std::vector<std::vector<RGB>>& data, const std::stri
     std::cout << "Image saved as " << filename << std::endl;  
     return true; // Return true if saving was successful  
 }
-void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<std::pair<int, int>>& outliers, const cv::Scalar& markerColor) {  
-    if (data.empty() || data[0].empty()) {  
-        return;  
-    }  
-    // Find the bounding rectangle for drawing  
-    if (outliers.empty()) return;  
-    bool isEmpty = (markerColor[0]==0 && markerColor[1]==0 && markerColor[2]==0);
-    if (isEmpty) return;
-    int minX = std::numeric_limits<int>::max();  
-    int minY = std::numeric_limits<int>::max();  
-    int maxX = std::numeric_limits<int>::min();  
-    int maxY = std::numeric_limits<int>::min();  
-    for (const auto& outlier : outliers) {  
-        /*
-            //Mark the green line around the edge of the object
+void cvLib::markOutliers(std::vector<std::vector<RGB>>& data, const std::vector<std::pair<int, int>>& outliers, const cv::Scalar& markerColor) {
+        if (data.empty() || data[C_0].empty()) {  
+            return;  
+        }  
+        if (outliers.empty()) return;  
+
+        // Ensure markerColor checks correctly correspond to RGB
+        bool isEmpty = (markerColor[C_0] == 0 && markerColor[C_1] == 0 && markerColor[C_2] == 0);
+        if (isEmpty) return;
+        int minX = std::numeric_limits<int>::max();  
+        int minY = std::numeric_limits<int>::max();  
+        int maxX = std::numeric_limits<int>::min();  
+        int maxY = std::numeric_limits<int>::min();  
+        for (const auto& outlier : outliers) {
             int x = outlier.first;  
             int y = outlier.second;  
-            data[x][y] = {0, 255, 0}; // Mark in green  
-        */
-        /*
-            Check if the outlier is within the selections rectangle
-            draw a rectangle around the object
-        */
-        int x = outlier.first;  
-        int y = outlier.second;  
-        minX = std::min(minX, x);  
-        minY = std::min(minY, y);  
-        maxX = std::max(maxX, x);  
-        maxY = std::max(maxY, y);  
-        // Mark the outlier in green  
-        data[x][y] = {static_cast<int>(markerColor[0]), static_cast<int>(markerColor[1]), static_cast<int>(markerColor[2])}; // Mark in green   
-    }  
+            // Ensure x and y are within bounds
+            if (x >= 0 && x < data.size() && y >= 0 && y < data[x].size()) {
+                // Update bounding box calculations
+                minX = std::min(minX, x);  
+                minY = std::min(minY, y);  
+                maxX = std::max(maxX, x);  
+                maxY = std::max(maxY, y);
+                // Mark the outlier as specified by markerColor
+                data[x][y] = {static_cast<uint32_t>(markerColor[C_0]), static_cast<uint32_t>(markerColor[C_1]), static_cast<uint32_t>(markerColor[C_2])};
+            }
+        }
+        // [Optional] Use minX, minY, maxX, maxY for further bounding box logic
 }
-void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData, const std::vector<std::pair<int, int>>& outliers, const std::string& outImgPath, const cv::Scalar& bgColor){
-    // Calculate the minimum and maximum coordinates of the outliers  
+void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData, const std::vector<std::pair<int, int>>& outliers, const std::string& outImgPath, const cv::Scalar& bgColor) {
+    if (originalData.empty() || originalData[C_0].empty()) {
+        std::cerr << "Original data is empty, nothing to process." << std::endl;
+        return;  
+    }
     if (outliers.empty()) {  
         std::cerr << "No outliers provided." << std::endl;  
         return;  
     }  
-    int minX = INT_MAX, minY = INT_MAX, maxX = INT_MIN, maxY = INT_MIN;  
+    int minX = std::numeric_limits<int>::max();
+    int minY = std::numeric_limits<int>::max();
+    int maxX = std::numeric_limits<int>::min();
+    int maxY = std::numeric_limits<int>::min();
     for (const auto& outlier : outliers) {  
         minX = std::min(minX, outlier.first);  
         minY = std::min(minY, outlier.second);  
         maxX = std::max(maxX, outlier.first);  
         maxY = std::max(maxY, outlier.second);  
     }  
-    // Calculate width and height based on outliers  
-    int outputWidth = maxY - minY + 1;  // Width of the rectangle  
-    int outputHeight = maxX - minX + 1; // Height of the rectangle  
-    // Create a blank image with a black background  
-    cv::Mat outputImage(outputHeight, outputWidth, CV_8UC3, bgColor); // Black background  
-    // Draw outliers in the output image  
+    int outputWidth = maxY - minY + 1;  
+    int outputHeight = maxX - minX + 1;  
+    cv::Mat outputImage(outputHeight, outputWidth, CV_8UC3, cv::Scalar(bgColor[C_0], bgColor[C_1], bgColor[C_2]));
     for (const auto& outlier : outliers) {  
-        int outlierX = outlier.first; // original image x-coordinate  
-        int outlierY = outlier.second; // original image y-coordinate  
-        // Ensure the outlier is within the bounds of the original image  
-        if (outlierX < originalData.size() && outlierY < originalData[0].size()) {  
-            // Calculate position in the output image  
-            int newX = outlierY - minY; // Adjusted X for output image  
-            int newY = outlierX - minX; // Adjusted Y for output image  
-            // Get the RGB values from the original data  
+        int outlierX = outlier.first;  
+        int outlierY = outlier.second;  
+        if (outlierX < originalData.size() && outlierY < originalData[C_0].size()) {  
+            int newX = outlierY - minY;  
+            int newY = outlierX - minX;  
             RGB pixel = originalData[outlierX][outlierY];  
-            outputImage.at<cv::Vec3b>(newY, newX) = cv::Vec3b(pixel.b, pixel.g, pixel.r); // BGR format for OpenCV  
-        }  
+            outputImage.at<cv::Vec3b>(newY, newX) = cv::Vec3b(pixel.b, pixel.g, pixel.r);
+        }
     }  
-    // Save the output image in various formats  
-    this->savePPM(outputImage, outImgPath); 
-    this->saveImage(originalData,outImgPath + "_orig.ppm");
-    cv::imwrite(outImgPath, outputImage);  
-    // cv::imwrite("/home/ronnieji/lib/images/output/outlier_uncompressed_image.png", outputImage, {cv::IMWRITE_PNG_COMPRESSION, 0});  
-    // cv::imwrite("/home/ronnieji/lib/images/output/outlier_compressed9_image.png", outputImage, {cv::IMWRITE_PNG_COMPRESSION, 9});  
-    // cv::imwrite("/home/ronnieji/lib/images/output/outlier_image.bmp", outputImage);  
-    std::cout << "Outlier image saved successfully." << std::endl;  
+    cv::imwrite(outImgPath, outputImage);
+    // Example usage for saving the output or processing as expected within defined functions in cvLib:
+    // this->savePPM(outputImage, outImgPath); 
+    // this->saveImage(originalData, outImgPath + "_orig.ppm");
+    std::cout << "Outlier image saved successfully." << std::endl;
 }
-void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMagnitude_threshold,const std::string& outImgPath,const brushColor& markerColor, const brushColor& bgColor){
+void cvLib::read_image_detect_edges(const std::string& imagePath,unsigned int gradientMagnitude_threshold,const std::string& outImgPath,const brushColor& markerColor, const brushColor& bgColor){
     if(imagePath.empty()){
         return;
     }
@@ -585,60 +591,61 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,int gradientMag
     }    
     this->createOutlierImage(image_rgb, outliers,outImgPath,brushbgColor);
 }
-void cvLib::convertToBlackAndWhite(const std::string& filename, std::vector<std::vector<RGB>>& datasets, int width, int height) {   
-    if (filename.empty()) {  
-        return;  
-    }   
-    cv::Mat image = cv::imread(filename, cv::IMREAD_COLOR);  
-    if (image.empty()) {  
-        std::cerr << "Error: Could not open or find the image." << std::endl;  
-        return;   
-    }  
-    for (int i = 0; i < image.rows; ++i) {  
-        for (int j = 0; j < image.cols; ++j) {  
-            // Access the pixel and its RGB values  
-            cv::Vec3b& pixel = image.at<cv::Vec3b>(i, j);  
-            int r = pixel[2];  
-            int g = pixel[1];  
-            int b = pixel[0];  
-            // Calculate the grayscale value using the luminance method  
-            int grayValue = static_cast<int>(0.299 * r + 0.587 * g + 0.114 * b);       
-            // Determine the binary value with thresholding  
-            int bwValue = (grayValue < 128) ? 0 : 255;   
-            // Assign the calculated binary value to the image  
-            pixel[0] = bwValue;  
-            pixel[1] = bwValue;  
-            pixel[2] = bwValue;  
-            // Update the corresponding dataset  
-            datasets[i][j] = {bwValue, bwValue, bwValue};  
-        }  
-    }  
-}  
-bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, int featureCount, float ratioThresh, int de_threshold) {  
+void cvLib::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {
+        // Ensure datasets has the same dimensions as the image
+        if (datasets.size() != image.rows) {
+            std::cerr << "Error: The dataset's row count does not match the image row count.\n";
+            return;
+        }
+        for (unsigned int i = 0; i < image.rows; ++i) {
+            if (datasets[i].size() != image.cols) {
+                std::cerr << "Error: The dataset's column count does not match the image column count.\n";
+                return;
+            }
+            for (unsigned int j = 0; j < image.cols; ++j) {
+                // Access the pixel and its RGB values
+                cv::Vec3b& pixel = image.at<cv::Vec3b>(i, j);
+                uint32_t r = pixel[C_2];
+                uint32_t g = pixel[C_1];
+                uint32_t b = pixel[C_0];
+                // Calculate the grayscale value using the luminance method
+                uint32_t grayValue = static_cast<uint32_t>(0.299 * r + 0.587 * g + 0.114 * b);
+                // Determine the binary value with thresholding
+                uint32_t bwValue = (grayValue < 128) ? 0 : 255;
+                // Assign the calculated binary value to the image
+                pixel[C_0] = bwValue;
+                pixel[C_1] = bwValue;
+                pixel[C_2] = bwValue;
+                // Update the corresponding dataset
+                datasets[i][j] = {bwValue, bwValue, bwValue};
+            }
+        }
+}
+bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& img2, unsigned int featureCount, float ratioThresh, unsigned int de_threshold) {  
     if (img1.empty() || img2.empty()) {  
         std::cerr << "Image paths are empty." << std::endl;  
         return false;  
     }  
     cv::Mat m_img1 = cv::imread(img1);  
-    cv::Mat m_img2 = cv::imread(img2);  
+    cv::Mat m_img2 = cv::imread(img2); 
     if (m_img1.empty() || m_img2.empty()) {  
         std::cerr << "Failed to read one or both images." << std::endl;  
         return false;  
     }  
-    // Convert to grayscale  
+    // Convert to grayscale
     cv::Mat gray1, gray2;  
-    if (m_img1.channels() == 3) {  
+    if (m_img1.channels() > 1) {  
         cv::cvtColor(m_img1, gray1, cv::COLOR_BGR2GRAY);  
     } else {  
         gray1 = m_img1;  
     }  
-    if (m_img2.channels() == 3) {  
+    if (m_img2.channels() > 1) {  
         cv::cvtColor(m_img2, gray2, cv::COLOR_BGR2GRAY);  
     } else {  
         gray2 = m_img2;  
     }  
-    // Use ORB for keypoint detection and description  
-    cv::Ptr<cv::ORB> detector = cv::ORB::create(featureCount); // Adjust number of features as needed  
+    // Use ORB for keypoint detection and description
+    cv::Ptr<cv::ORB> detector = cv::ORB::create(featureCount);  
     std::vector<cv::KeyPoint> keypoints1, keypoints2;  
     cv::Mat descriptors1, descriptors2;  
     std::cout << "Start processing..." << std::endl;  
@@ -648,12 +655,11 @@ bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& i
     cv::BFMatcher matcher(cv::NORM_HAMMING);  
     std::vector<std::vector<cv::DMatch>> knnMatches;  
     matcher.knnMatch(descriptors1, descriptors2, knnMatches, 2);  
-    // Apply the ratio test as per Lowe's paper  
-    const float ratio_thresh = ratioThresh;  
+    // Apply the ratio test
     std::vector<cv::DMatch> goodMatches;  
     for (size_t i = 0; i < knnMatches.size(); i++) {  
-        if (knnMatches[i][0].distance < ratio_thresh * knnMatches[i][1].distance) {  
-            goodMatches.push_back(knnMatches[i][0]);  
+        if (knnMatches[i].size() > 1 && knnMatches[i][C_0].distance < ratioThresh * knnMatches[i][C_1].distance) {  
+            goodMatches.push_back(knnMatches[i][C_0]);  
         }  
     }  
     // Calculate the duration  
@@ -677,6 +683,10 @@ bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& i
         cv::Mat H;  
         try {  
             H = cv::findHomography(img1Points, img2Points, cv::RANSAC, 5.0);  
+            if (H.empty()) {
+                std::cerr << "Homography could not be calculated." << std::endl;
+                return false;
+            }
         } catch (const cv::Exception& e) {  
             std::cerr << "OpenCV error: " << e.what() << std::endl;  
             return false;  
@@ -687,21 +697,19 @@ bool cvLib::read_image_detect_objs(const std::string& img1, const std::string& i
             std::cerr << "Unknown exception occurred." << std::endl;  
             return false;  
         }  
-        if (!H.empty()) {  
-            // Optionally visualize matches  
-            cv::Mat img_matches;  
-            cv::drawMatches(m_img1, keypoints1, m_img2, keypoints2, goodMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);  
-            cv::imshow("Matches", img_matches);
-            std::string strimgout = img1;
-            strimgout.append("_output.jpg");
-            cv::imwrite(strimgout, img_matches);
-            //cv::waitKey(0);  
-            return true;  
-        }  
+        // Optionally visualize matches  
+        cv::Mat img_matches;  
+        cv::drawMatches(m_img1, keypoints1, m_img2, keypoints2, goodMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);  
+        cv::imshow("Matches", img_matches);
+        std::string strimgout = img1;
+        strimgout.append("_output.jpg");
+        cv::imwrite(strimgout, img_matches);
+        //cv::waitKey(0); // Uncomment this line to display the window interactively.
+        return true;  
     }  
     return false;  
-}  
-bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, int featureCount, float ratioThresh, int deThreshold) {  
+}
+bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, unsigned int featureCount, float ratioThresh, unsigned int deThreshold) {  
     if (img1.empty() || img2.empty()) {  
         std::cerr << "Image paths are empty." << std::endl;  
         return false;  
@@ -784,21 +792,20 @@ bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, in
     }  
     return false;  
 }  
-std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, int gradientMagnitude_threshold) {  
-    std::vector<std::vector<RGB>> objects_detect;  
-    if (imgPath.empty()) {  
-        return objects_detect;  
-    }  
+std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, unsigned int gradientMagnitude_threshold) {  
+    if (imgPath.empty()) {
+        std::cerr << "Error: Image path is empty." << std::endl;
+        return {};
+    }
     subfunctions subfun;  
     imgSize img_size = this->get_image_size(imgPath);  
-    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix_color(imgPath, img_size.height, img_size.width);  
-    if (!image_rgb.empty()) {  
-        // Find outliers (edges)  
-        auto outliers = this->findOutlierEdges(image_rgb, gradientMagnitude_threshold);   
-        objects_detect = subfun.getPixelsInsideObject(image_rgb, outliers);  
-    }  
-    return objects_detect;  
-}  
+    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imgPath, img_size.height, img_size.width);  
+    if (!image_rgb.empty()) {
+        auto outliers = this->findOutlierEdges(image_rgb, gradientMagnitude_threshold);
+        return subfun.getPixelsInsideObject(image_rgb, outliers);
+    }
+    return {};
+}
 char* cvLib::read_image_detect_text(const std::string& imgPath){
     if(imgPath.empty()){
         return nullptr;
@@ -825,7 +832,7 @@ char* cvLib::read_image_detect_text(const std::string& imgPath){
     ocr->End(); // Cleanup Tesseract object  
     return text; // Return the recognized text  
 }
-void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std::vector<std::string>& imageListToFind,const cv::Scalar& brush_color,std::function<void(cv::Mat&)> callback){
+void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,const std::vector<std::string>& imageListToFind,const cv::Scalar& brush_color,std::function<void(cv::Mat&)> callback){
     // Open the default camera (usually the first camera, index 0)  
     cv::VideoCapture cap(webcame_index);  
     // Check if the camera opened successfully  
@@ -858,9 +865,7 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
         // Find contours  
         std::vector<std::vector<cv::Point>> contours;  
         cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
-
         detectedBoxes.clear(); // Clear previous detections  
-
         for (const auto& contour : contours) {  
             double area = cv::contourArea(contour);  
             if (area > 1000) { // Minimum area threshold  
@@ -868,7 +873,6 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
                 detectedBoxes.push_back(boundingBox);  
             }  
         }  
-
         // Merge overlapping rectangles  
         std::vector<cv::Rect> mergedBoxes;  
         for (const auto& box : detectedBoxes) {  
@@ -884,13 +888,11 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
                 mergedBoxes.push_back(box);  
             }  
         }  
-
         // Draw merged rectangles  
         for (const auto& box : mergedBoxes) {  
             cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2); // Draw rectangle  
         }  
         //cv::Mat oframe = sub_j.getObjectsInVideo(frame);
-
         /*
             end marking video
         */
@@ -910,114 +912,102 @@ void cvLib::StartWebCam(int webcame_index,const std::string& winTitle,const std:
     cap.release();  
     cv::destroyAllWindows();  
 }
-std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {  
-    std::vector<uint32_t> img_matrix;  
-    if (image_path.empty()) {  
-        return {};  // Return an empty map instead of img_matrix  
-    }  
-    cv::Mat img = cv::imread(image_path, cv::IMREAD_UNCHANGED);  
-    if (img.empty()) {  
-        throw std::runtime_error("Failed to load image: " + image_path);  
-    }  
-    // Prepare the vector to store the pixel data  
-    img_matrix.resize(img.rows * img.cols); // Allocate enough space once  
-    uint32_t* ptr = img_matrix.data(); // Pointer to write directly  
-    // Read the image data  
-    for (int y = 0; y < img.rows; ++y) {  
-        for (int x = 0; x < img.cols; ++x) {  
-            uint32_t packedPixel = 0;  
-            if (img.channels() == 4) {  
-                cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA  
-                packedPixel = (pixel[2] << 24) |  // Red  
-                              (pixel[1] << 16) |  // Green  
-                              (pixel[0] << 8) |  // Blue  
-                              (pixel[3]);         // Alpha  
-            } else if (img.channels() == 3) {  
-                cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR  
-                packedPixel = (pixel[2] << 24) |  // Red  
-                              (pixel[1] << 16) |  // Green  
-                              (pixel[0] << 8) |  // Blue  
-                              0xFF;               // Alpha (set to 255)  
-            } else {  
-                std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
-                throw std::runtime_error("Unsupported image format.");  
-            }  
-
-            ptr[y * img.cols + x] = packedPixel; // Assign directly in resized vector  
-        }  
-    }  
-    return img_matrix;
-}   
+std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {
+        std::vector<uint32_t> img_matrix;
+        if (image_path.empty()) {
+            return {};  // Return an empty vector
+        }
+        cv::Mat img = cv::imread(image_path, cv::IMREAD_UNCHANGED);
+        if (img.empty()) {
+            throw std::runtime_error("Failed to load image: " + image_path);
+        }
+        img_matrix.reserve(img.rows * img.cols * img.channels());
+        for (int y = 0; y < img.rows; ++y) {
+            for (int x = 0; x < img.cols; ++x) {
+                if (img.channels() == 4) {
+                    cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA
+                    img_matrix.push_back(pixel[C_0]); // Blue
+                    img_matrix.push_back(pixel[C_1]); // Green
+                    img_matrix.push_back(pixel[C_2]); // Red
+                    img_matrix.push_back(pixel[C_3]); // Alpha
+                } else if (img.channels() == 3) {
+                    cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR
+                    img_matrix.push_back(pixel[C_0]); // Blue
+                    img_matrix.push_back(pixel[C_1]); // Green
+                    img_matrix.push_back(pixel[C_2]); // Red
+                    // Optionally: img_matrix.push_back(255); // Add Alpha if needed (assumed fully opaque)
+                } else if (img.channels() == 1) { // Handle grayscale
+                    uint32_t pixel = img.at<uint32_t>(y, x);
+                    img_matrix.push_back(pixel); // Red as grayscale
+                    img_matrix.push_back(pixel); // Green as grayscale
+                    img_matrix.push_back(pixel); // Blue as grayscale
+                    // Optionally: img_matrix.push_back(255); // Add Alpha if needed
+                } else {
+                    std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;
+                    throw std::runtime_error("Unsupported image format.");
+                }
+            }
+        }
+        return img_matrix;
+}
 std::unordered_map<std::string, std::vector<uint32_t>> cvLib::get_img_in_folder(const std::string& folder_path) {  
-    std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
-    if (folder_path.empty()) {  
-        return dataset;  
-    }  
-    try {  
-        for (const auto& entryMainFolder : std::filesystem::directory_iterator(folder_path)) {  
-            if (entryMainFolder.is_directory()) { // Check if the entry is a directory  
-                std::string sub_folder_name = entryMainFolder.path().filename().string();  
-                std::string sub_folder_path = entryMainFolder.path();  
-                std::vector<uint32_t> sub_folder_all_images;  
-                // Accumulate pixel count for memory reservation  
-                size_t totalPixels = 0;  
-                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
-                    if (entrySubFolder.is_regular_file()) {  
-                        std::string imgFolderPath = entrySubFolder.path();  
-                        // Load the image using OpenCV  
-                        cv::Mat img = cv::imread(imgFolderPath, cv::IMREAD_UNCHANGED);  
-                        if (img.empty()) {  
-                            throw std::runtime_error("Failed to load image: " + imgFolderPath);  
-                        }  
-                        totalPixels += img.rows * img.cols; // Calculate the total number of pixels  
-                    }  
-                }  
-                // Reserve space for pixel data  
-                sub_folder_all_images.reserve(totalPixels);  
-                // Reload the images to fill pixel data  
-                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
-                    if (entrySubFolder.is_regular_file()) {  
-                        std::string imgFolderPath = entrySubFolder.path();  
-                        cv::Mat img = cv::imread(imgFolderPath, cv::IMREAD_UNCHANGED);  
-                        if (img.empty()) {  
-                            throw std::runtime_error("Failed to load image: " + imgFolderPath);  
-                        }  
-                        // Read the image data  
-                        for (int y = 0; y < img.rows; ++y) {  
-                            for (int x = 0; x < img.cols; ++x) {  
-                                uint32_t packedPixel = 0;  
-                                if (img.channels() == 4) {  
-                                    cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA  
-                                    packedPixel = (pixel[2] << 24) |  // Red  
-                                                  (pixel[1] << 16) |  // Green  
-                                                  (pixel[0] << 8) |  // Blue  
-                                                  (pixel[3]);         // Alpha  
-                                } else if (img.channels() == 3) {  
-                                    cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR  
-                                    packedPixel = (pixel[2] << 24) |  // Red  
-                                                  (pixel[1] << 16) |  // Green  
-                                                  (pixel[0] << 8) |  // Blue  
-                                                  0xFF;               // Alpha (set to 255)  
-                                } else {  
-                                    std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
-                                    throw std::runtime_error("Unsupported image format.");  
+        std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
+        if (folder_path.empty()) {  
+            return dataset;  
+        }  
+        try {  
+            for (const auto& entryMainFolder : std::filesystem::directory_iterator(folder_path)) {  
+                if (entryMainFolder.is_directory()) {  
+                    std::string sub_folder_name = entryMainFolder.path().filename().string();  
+                    std::vector<uint32_t> sub_folder_all_images;  
+                    for (const auto& entrySubFolder : std::filesystem::directory_iterator(entryMainFolder.path())) {  
+                        if (entrySubFolder.is_regular_file()) {  
+                            std::string imgFolderPath = entrySubFolder.path().string();  
+                            cv::Mat img = cv::imread(imgFolderPath, cv::IMREAD_UNCHANGED);  
+                            if (img.empty()) {  
+                                throw std::runtime_error("Failed to load image: " + imgFolderPath);  
+                            }  
+                            // Read the image data  
+                            for (int y = 0; y < img.rows; ++y) {  
+                                for (int x = 0; x < img.cols; ++x) {  
+                                    if (img.channels() == 4) {  
+                                        cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA  
+                                        // Append all channels to vector
+                                        sub_folder_all_images.push_back(pixel[C_0]); // Blue  
+                                        sub_folder_all_images.push_back(pixel[C_1]); // Green  
+                                        sub_folder_all_images.push_back(pixel[C_2]); // Red  
+                                        sub_folder_all_images.push_back(pixel[C_3]); // Alpha  
+                                    } else if (img.channels() == 3) {  
+                                        cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR  
+                                        // Append all channels to vector with assumed Alpha of 255
+                                        sub_folder_all_images.push_back(pixel[C_0]); // Blue  
+                                        sub_folder_all_images.push_back(pixel[C_1]); // Green  
+                                        sub_folder_all_images.push_back(pixel[C_2]); // Red  
+                                    } else if (img.channels() == 1) {  // Grayscale  
+                                        uint32_t pixel = img.at<uint32_t>(y, x);
+                                        // Append the grayscale value to all RGB channels with Alpha
+                                        sub_folder_all_images.push_back(pixel); // Red  
+                                        sub_folder_all_images.push_back(pixel); // Green  
+                                        sub_folder_all_images.push_back(pixel); // Blue  
+                                    } else {  
+                                        std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
+                                        throw std::runtime_error("Unsupported image format.");  
+                                    }  
                                 }  
-                                sub_folder_all_images.push_back(packedPixel);  
                             }  
                         }  
                     }  
+                    dataset[sub_folder_name] = sub_folder_all_images;  
+                    std::cout << sub_folder_name << " is done!" << std::endl;  
                 }  
-                dataset[sub_folder_name] = sub_folder_all_images;  
-                std::cout << sub_folder_name << " is done!" << std::endl;  
             }  
+        } catch (const std::filesystem::filesystem_error& e) {  
+            std::cerr << "Filesystem error: " << e.what() << std::endl;  
+            return dataset;  
         }  
-    } catch (const std::filesystem::filesystem_error& e) {  
-        std::cerr << "Filesystem error: " << e.what() << std::endl;  
-        return dataset; // Return an empty dataset in case of filesystem error  
-    }  
-    std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
-    return dataset;  
-}  
+        std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
+        return dataset;  
+}
 std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_in_folder(const std::unordered_map<std::string, std::vector<uint32_t>>& img_dataset, const std::string& model_output_path) {  
     std::unordered_map<std::string, std::vector<uint32_t>> content_in_imgs;  
     // Check for empty dataset or model path  
@@ -1093,7 +1083,6 @@ std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_occurren
                         }
                     }  
                 }  
-             
                 dataset[sub_folder_name] = sub_folder_all_images;  
                 std::cout << sub_folder_name << " is done!" << std::endl;  
             }  

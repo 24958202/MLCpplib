@@ -7,14 +7,20 @@
 #include <opencv2/opencv.hpp>  
 #include <functional>
 #include <stdint.h>
+#define ImageWidth 120
+#define ImageHeight 120
+const uint32_t C_0 = 0;
+const uint32_t C_1 = 1;
+const uint32_t C_2 = 2;
+const uint32_t C_3 = 3;
 struct RGB {  
-    int r; // Red  
-    int g; // Green  
-    int b; // Blue  
+    uint32_t r; // Red  
+    uint32_t g; // Green  
+    uint32_t b; // Blue  
     // Default constructor  
     RGB() : r(0), g(0), b(0) {} // Initializes RGB to black (0, 0, 0)  
     // Parameterized constructor  
-    RGB(int red, int green, int blue) : r(red), g(green), b(blue) {}  
+    RGB(uint32_t red, uint32_t green, uint32_t blue) : r(red), g(green), b(blue) {}  
 };   
 struct VectorHash {  
     template <typename T>  
@@ -27,8 +33,8 @@ struct VectorHash {
     }  
 }; 
 struct imgSize{
-    int width;
-    int height;
+    unsigned int width;
+    unsigned int height;
 };
 enum class brushColor{
     Green,
@@ -39,9 +45,14 @@ enum class brushColor{
 class cvLib{
     public:
         /*
+            para1: main dataset 
+            para2: sub dataset
+        */
+        unsigned int count_occurrences(const std::vector<uint32_t>&, const std::vector<uint32_t>&);
+        /*
             Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>> 
         */
-        std::vector<std::vector<RGB>> convertToRGB(const std::vector<uint32_t>&, int, int);
+        std::vector<std::vector<RGB>> convertToRGB(const std::vector<uint32_t>&, unsigned int,  unsigned int);
         /*
             Function to convert std::vector<std::vector<RGB>> back to std::vector<uint32_t> 
         */
@@ -52,7 +63,7 @@ class cvLib{
             para2: width
             para3: height
         */
-        cv::Mat vectorToImage(const std::vector<uint32_t>&, int, int); 
+        cv::Mat vectorToImage(const std::vector<uint32_t>&, unsigned int, unsigned int); 
         /*
             Input an image path, will return an RGB dataset std::vector<std::vector<RGB>> -gray
         */
@@ -75,7 +86,7 @@ class cvLib{
             rec_thickness = 2;
         */
         // Function to draw a green rectangle on an image  
-        void drawRectangleWithText(cv::Mat&, int, int, int, int, const std::string&, int, const cv::Scalar&, const cv::Scalar&);
+        void drawRectangleWithText(cv::Mat&, int, int, unsigned int, unsigned int, const std::string&, unsigned int, const cv::Scalar&, const cv::Scalar&);
         /*
             save cv::Mat to a file, para1: input a cv::Mat file, para2: output file path *.ppm
         */
@@ -87,7 +98,7 @@ class cvLib{
             para3: image height
             para4: output file path *.ppm
         */
-        void saveVectorRGB(const std::vector<std::vector<RGB>>&, int, int, const std::string&);
+        void saveVectorRGB(const std::vector<std::vector<RGB>>&, unsigned int, unsigned int, const std::string&);
         /*
             1.read an image, 2.resize the image to expected size, 3. remove image colors
             Turn into a std::vector<std::vector<RGB>> dataset (matrix: dimention-rows: dataset.size(), dimention-columns: std::vector<RGB> size())
@@ -95,7 +106,7 @@ class cvLib{
             para2: output matrix rows number(height)
             para3: output matrix columns number(width)
         */
-        std::vector<std::vector<RGB>> get_img_matrix(const std::string&, int,int);
+        std::vector<std::vector<RGB>> get_img_matrix(const std::string&, unsigned int,unsigned int);
          /*
             1.read an image, 2.resize the image to expected size, (keep image colors)
             Turn into a std::vector<std::vector<RGB>> dataset (matrix: dimention-rows: dataset.size(), dimention-columns: std::vector<RGB> size())
@@ -103,7 +114,7 @@ class cvLib{
             para2: output matrix rows number(height)
             para3: output matrix columns number(width)
         */
-        std::vector<std::vector<RGB>> get_img_matrix_color(const std::string&, int,int);
+        std::vector<std::vector<RGB>> get_img_matrix_color(const std::string&, unsigned int,unsigned int);
         /*
             read all images in a folder to a std::vector<std::vector<RGB>> dataset
             para1: folder path
@@ -114,7 +125,7 @@ class cvLib{
              para1: input the std::vector<std::vector<RGB>> from "get_img_matrix" function
              para2: Define a threshold for detecting edges, 0-100;
         */
-        std::vector<std::pair<int, int>> findOutlierEdges(const std::vector<std::vector<RGB>>&, int);
+        std::vector<std::pair<int, int>> findOutlierEdges(const std::vector<std::vector<RGB>>&, unsigned int);
         /*
             Function to mark outliers in the image data
             para1: std::vector<std::vector<RGB>>& data from "get_img_matrix"
@@ -144,16 +155,14 @@ class cvLib{
             para4: marker color
             para5: background color
         */
-        void read_image_detect_edges(const std::string&,int,const std::string&, const brushColor&, const brushColor&);
+        void read_image_detect_edges(const std::string&,unsigned int,const std::string&, const brushColor&, const brushColor&);
         /*
             this function to normalize function to preprocess images  
             to turn images to black and white
             prar1: input image path
             para2:  return a black-and-white std::vector<RGB> dataset
-            para3: image width
-            para4: image height
         */
-        void convertToBlackAndWhite(const std::string&, std::vector<std::vector<RGB>>&, int, int);
+        void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<RGB>>&);
          /*
             This function can read two images and return true if imgage1 is in image2
             para1: the image1 path
@@ -180,7 +189,7 @@ class cvLib{
             Whether images have significant occlusions or scale differences.
             Typical Usage: Start by experimenting with values around 10 to 30. If you need higher confidence, increase deThreshold.
         */
-        bool read_image_detect_objs(const std::string&,const std::string&, int featureCount = 500, float ratioThresh = 0.7f, int de_threshold = 10);
+        bool read_image_detect_objs(const std::string&,const std::string&, unsigned int featureCount = 500, float ratioThresh = 0.7f, unsigned int de_threshold = 10);
         /*
             This function turn both images to gray before comparing the image.
             para1: the image1 path
@@ -212,13 +221,13 @@ class cvLib{
             Typical Usage: Start by experimenting with values around 10 to 30. If you need higher confidence, increase deThreshold.
 
         */
-        bool isObjectInImage(const std::string&, const std::string&, int featureCount = 500, float ratioThresh = 0.7f, int deThreshold = 10);
+        bool isObjectInImage(const std::string&, const std::string&, unsigned int featureCount = 500, float ratioThresh = 0.7f, unsigned int deThreshold = 10);
         /*
             This function will return all the object as std::vector<std::vector<RGB>> in an image
             para1: image path
             para2 : gradientMagnitude threshold 0-100, better result with small digits
         */
-        std::vector<std::vector<RGB>> objectsInImage(const std::string&, int);
+        std::vector<std::vector<RGB>> objectsInImage(const std::string&, unsigned int);
         /*
             This function can recognize text in an image
             para1: the image path
@@ -259,12 +268,12 @@ class cvLib{
                 return 0;  
             }  
         */
-        void StartWebCam(int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
+        void StartWebCam(unsigned int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
         /*
             read an image and return std::vector<uint32_t>
             para1: image path
         */
-        std::vector<uint32_t> get_one_image(const std::string&);  
+        std::vector<uint32_t>get_one_image(const std::string&);
         /*
             get the image in a folder 
             Train images
@@ -277,7 +286,7 @@ class cvLib{
             second: every image was stored in a std::vector<uint32_t>, std::vector<std::vector<uint32_t>> are all the images in the folder
             std::unordered_map<std::string,std::vector<uint32_t>> are all the images in the folder in one std::vector 
         */
-        std::unordered_map<std::string,std::vector<uint32_t>> get_img_in_folder(const std::string&);
+        std::unordered_map<std::string, std::vector<uint32_t>> get_img_in_folder(const std::string&);
         /*
             prar1: input get_img_in_folder dataset and return content only images dataset
             para2: input model file output path path/to/yourdat.dat
