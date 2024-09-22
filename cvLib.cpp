@@ -792,14 +792,20 @@ bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, un
     }  
     return false;  
 }  
-std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, unsigned int gradientMagnitude_threshold) {  
+std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, unsigned int gradientMagnitude_threshold, const outputImgMode& out_mode) {  
     if (imgPath.empty()) {
         std::cerr << "Error: Image path is empty." << std::endl;
         return {};
     }
     subfunctions subfun;  
     imgSize img_size = this->get_image_size(imgPath);  
-    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imgPath, img_size.height, img_size.width);  
+    std::vector<std::vector<RGB>> image_rgb;
+    if(out_mode == outputImgMode::Color){
+        image_rgb = this->get_img_matrix_color(imgPath, img_size.height, img_size.width);  
+    }
+    else if(out_mode == outputImgMode::Gray){
+        image_rgb = this->get_img_matrix(imgPath, img_size.height, img_size.width);
+    }
     if (!image_rgb.empty()) {
         auto outliers = this->findOutlierEdges(image_rgb, gradientMagnitude_threshold);
         return subfun.getPixelsInsideObject(image_rgb, outliers);
@@ -1071,7 +1077,7 @@ std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_occurren
                 for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
                     if (entrySubFolder.is_regular_file()) {  
                         std::string imgFolderPath = entrySubFolder.path();  
-                        std::vector<std::vector<RGB>> get_img = this->objectsInImage(imgFolderPath,1);
+                        std::vector<std::vector<RGB>> get_img = this->objectsInImage(imgFolderPath,1,outputImgMode::Color);
                         if(!get_img.empty()){
                             std::vector<uint32_t> get_img_uint = this->convertToPacked(get_img);
                             if(sub_folder_all_images.empty()){//if it's empty insert get_img_uint

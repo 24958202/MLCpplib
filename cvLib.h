@@ -42,6 +42,10 @@ enum class brushColor{
     White,
     Black
 };
+enum class outputImgMode{
+    Gray,
+    Color
+};
 class cvLib{
     public:
         /*
@@ -227,7 +231,7 @@ class cvLib{
             para1: image path
             para2 : gradientMagnitude threshold 0-100, better result with small digits
         */
-        std::vector<std::vector<RGB>> objectsInImage(const std::string&, unsigned int);
+        std::vector<std::vector<RGB>> objectsInImage(const std::string&, unsigned int, const outputImgMode&);
         /*
             This function can recognize text in an image
             para1: the image path
