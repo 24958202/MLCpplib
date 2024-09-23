@@ -49,6 +49,17 @@ enum class outputImgMode{
 class cvLib{
     public:
         /*
+            para1: image path
+            para2: outputImgMode (Gray or Color)
+            This function will open an image and convert it to type CV_32F
+        */
+        cv::Mat preprocessImage(const std::string&, const outputImgMode&);
+        /*
+            para1: image path
+            open an image, resize to 120x120 pixels, remove image colors
+        */
+        std::vector<std::vector<RGB>> get_img_120_gray_for_ML(const std::string&);
+        /*
             para1: main dataset 
             para2: sub dataset
         */
@@ -247,7 +258,6 @@ class cvLib{
             }  
         */
         char* read_image_detect_text(const std::string&);
-        
         /*
             This function can open the default webcam and pass the 
             video to a callback function
@@ -279,32 +289,27 @@ class cvLib{
         */
         std::vector<uint32_t>get_one_image(const std::string&);
         /*
-            get the image in a folder 
-            Train images
-            /apple
-                image1,image2....
-            /orange
-                image1,image2...
-            Return std::unordered_map<std::string,std::vector<std::vector<uint32_t>>>
-            first: folder's name : apple, orange...
-            second: every image was stored in a std::vector<uint32_t>, std::vector<std::vector<uint32_t>> are all the images in the folder
-            std::unordered_map<std::string,std::vector<uint32_t>> are all the images in the folder in one std::vector 
+            get the key point of an image
+            para1: cv::Mat input image
+            para2: cv::Mat descriptors
         */
-        std::unordered_map<std::string, std::vector<uint32_t>> get_img_in_folder(const std::string&);
-        /*
-            prar1: input get_img_in_folder dataset and return content only images dataset
-            para2: input model file output path path/to/yourdat.dat
-        */
-        std::unordered_map<std::string,std::vector<uint32_t>> train_img_in_folder(const std::unordered_map<std::string,std::vector<uint32_t>>&,const std::string&);
+        std::vector<cv::KeyPoint> extractORBFeatures(const cv::Mat&, cv::Mat&);
         /*
             para1: train images folder
             para2: output model file path/output.dat
+            para3: output model_keypoints file path/output_key.dat
         */
-        std::unordered_map<std::string, std::vector<uint32_t>> train_img_occurrences(const std::string&, const std::string&);
+        void train_img_occurrences(const std::string&, const std::string&,const std::string&);
         /*
-            para1: return a pre-defined std::unordered_map<std::string, std::vector<uint32_t>>
+            para1: return a pre-defined std::unordered_map<std::string, std::vector<cv::Mat>>
             para2: the model's file path
         */
-        void loadModel(std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&);
+        void loadModel(std::unordered_map<std::string, std::vector<cv::Mat>>&, const std::string&);
+        /*
+            load keypoints
+            para1: return a pre-defined std::unordered_map<std::string, std::vector<KeyPoint>>
+        */
+       void loadModel_keypoint(std::unordered_map<std::string, std::vector<cv::KeyPoint>>&, const std::string&);
+
 };      
 #endif

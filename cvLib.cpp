@@ -46,6 +46,11 @@ class subfunctions{
     };  
     using PairSet = std::unordered_set<std::pair<int, int>, pair_hash>;  
     public:
+        /*
+            Update std::unordered_map<std::string, std::vector<uint32_t>> value, if the first key exists, append data to second value
+            otherwise,create a new key.
+        */
+        void updateMap(std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&, const std::vector<uint32_t>&);
         void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<RGB>>&);
         // Function to convert a dataset to cv::Mat  
         cv::Mat convertDatasetToMat(const std::vector<std::vector<RGB>>&);
@@ -56,9 +61,21 @@ class subfunctions{
         // Function to get all pixels inside the object defined by A  
         std::vector<std::vector<RGB>> getPixelsInsideObject(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&); 
         cv::Mat getObjectsInVideo(const cv::Mat&);
-        void saveModel(const std::unordered_map<std::string, std::vector<uint32_t>>&, const std::string&);
+        void saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>&, const std::string&);
+        void saveModel_keypoint(const std::unordered_map<std::string, std::vector<cv::KeyPoint>>&, const std::string&);
         void merge_without_duplicates(std::vector<uint32_t>&, const std::vector<uint32_t>&);
 };
+void subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint32_t>>& myMap, const std::string& key, const std::vector<uint32_t>& get_img_uint) {
+    // Use find to check if the key exists
+    auto it = myMap.find(key);
+    if (it != myMap.end()) {
+        // Key exists, append the vector
+        it->second.insert(it->second.end(), get_img_uint.begin(), get_img_uint.end());
+    } else {
+        // Key does not exist, insert a new key-value pair
+        myMap[key] = get_img_uint;
+    }
+}
 void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<RGB>>& datasets) {
     if(datasets.empty() || datasets[C_0].empty()){
         std::cerr << "Error: datasets is empty!" << std::endl;
@@ -117,7 +134,7 @@ void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const
     cvLib cvl_j;
     std::vector<std::vector<RGB>> frame_to_mark = cvl_j.cv_mat_to_dataset(frame);
     if(!frame_to_mark.empty()){
-        std::vector<std::pair<int, int>> outliers_found = cvl_j.findOutlierEdges(frame_to_mark, 90);
+        std::vector<std::pair<int, int>> outliers_found = cvl_j.findOutlierEdges(frame_to_mark, 9);
         if(!outliers_found.empty()){
             cvl_j.markOutliers(frame_to_mark,outliers_found,brush_color);
             // Create a blank image with a black background  
@@ -166,42 +183,138 @@ cv::Mat subfunctions::getObjectsInVideo(const cv::Mat& inVideo){
     cv::Mat finalV = this->convertDatasetToMat(objects_detect);
     return finalV;  
 }
-void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<uint32_t>>& content_in_imgs, const std::string& filename){
-    std::ofstream ofs(filename, std::ios::binary);  
-    if (!ofs) {  
-        std::cerr << "Error opening file for writing: " << filename << std::endl;  
-        return;  
-    }  
-    // Write the size of the unordered_map  
-    size_t mapSize = content_in_imgs.size();  
-    ofs.write(reinterpret_cast<const char*>(&mapSize), sizeof(mapSize));  
-    // Write each key-value pair  
-    for (const auto& pair : content_in_imgs) {  
-        // Write the size of the string key  
-        size_t keySize = pair.first.size();  
-        ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));  
-        ofs.write(pair.first.c_str(), keySize);  
-        // Write the size of the vector  
-        size_t vecSize = pair.second.size();  
-        ofs.write(reinterpret_cast<const char*>(&vecSize), sizeof(vecSize));  
-        ofs.write(reinterpret_cast<const char*>(pair.second.data()), vecSize * sizeof(uint32_t));  
-    }  
-    ofs.close();  
+void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>& featureMap, const std::string& filename){
+    if(filename.empty()){
+        return;
+    }
+    std::ofstream ofs(filename, std::ios::binary);
+    if (!ofs.is_open()) {
+        throw std::runtime_error("Unable to open file for writing.");
+    }
+    size_t mapSize = featureMap.size();
+    ofs.write(reinterpret_cast<const char*>(&mapSize), sizeof(mapSize));
+    for (const auto& [className, features] : featureMap) {
+        size_t keySize = className.size();
+        ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
+        ofs.write(className.c_str(), keySize);
+        size_t featureCount = features.size();
+        ofs.write(reinterpret_cast<const char*>(&featureCount), sizeof(featureCount));
+        for (const auto& desc : features) {
+            int rows = desc.rows;
+            int cols = desc.cols;
+            int type = desc.type();
+            ofs.write(reinterpret_cast<const char*>(&rows), sizeof(int));
+            ofs.write(reinterpret_cast<const char*>(&cols), sizeof(int));
+            ofs.write(reinterpret_cast<const char*>(&type), sizeof(int));
+            ofs.write(reinterpret_cast<const char*>(desc.data), desc.elemSize() * rows * cols);
+        }
+    }
+    ofs.close();
+}
+void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std::vector<cv::KeyPoint>>& featureMap, const std::string& filename) {
+    if (filename.empty()) {
+        return;
+    }
+    std::ofstream ofs(filename, std::ios::binary);
+    if (!ofs.is_open()) {
+        throw std::runtime_error("Unable to open file for writing.");
+    }
+    try {
+        size_t mapSize = featureMap.size();
+        ofs.write(reinterpret_cast<const char*>(&mapSize), sizeof(mapSize));
+        for (const auto& [className, keypoints] : featureMap) {
+            size_t keySize = className.size();
+            ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
+            ofs.write(className.data(), keySize);
+            size_t keypointCount = keypoints.size();
+            ofs.write(reinterpret_cast<const char*>(&keypointCount), sizeof(keypointCount));
+            for (const auto& kp : keypoints) {
+                ofs.write(reinterpret_cast<const char*>(&kp.pt.x), sizeof(kp.pt.x));
+                ofs.write(reinterpret_cast<const char*>(&kp.pt.y), sizeof(kp.pt.y));
+                ofs.write(reinterpret_cast<const char*>(&kp.size), sizeof(kp.size));
+                ofs.write(reinterpret_cast<const char*>(&kp.angle), sizeof(kp.angle));
+                ofs.write(reinterpret_cast<const char*>(&kp.response), sizeof(kp.response));
+                ofs.write(reinterpret_cast<const char*>(&kp.octave), sizeof(kp.octave));
+                ofs.write(reinterpret_cast<const char*>(&kp.class_id), sizeof(kp.class_id));
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error writing to file: " << e.what() << std::endl;
+    }
+    ofs.close();
 }
 void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, const std::vector<uint32_t>& data_append) {  
-    // Create a set to track unique elements  
-    std::unordered_set<uint32_t> unique_elements(data_main.begin(), data_main.end());  
-    // Iterate through data_append and add to data_main if not already present  
-    for (const auto& item : data_append) {  
-        // Attempt to insert the item into the set  
-        if (unique_elements.insert(item).second) { // Only if it was not already in the set  
-            data_main.push_back(item); // Append the unique item to data_main  
-        }  
-    }  
+    if(data_main.empty() || data_append.empty()){
+        return;
+    }
+    std::map<uint32_t,unsigned int> mNoDup;
+    for (const auto& key : data_main) {
+        mNoDup[key] = 0;
+    }
+    for (const auto& subItem : data_append) {
+        // Check if subItem already exists in the map
+        if (mNoDup.find(subItem) != mNoDup.end()) {
+            // If it exists, increment the value by 1
+            mNoDup[subItem]++;
+        } else {
+            // If it does not exist, add it to the map with a value of 0
+            mNoDup[subItem] = 0;
+        }
+    }
+    // Create a vector of pairs from the map
+    std::vector<std::pair<uint32_t, unsigned int>> vec(mNoDup.begin(), mNoDup.end());
+    // Sort the vector by the values in descending order
+    std::sort(vec.begin(), vec.end(), [](const auto& a, const auto& b) {
+        return a.second > b.second;
+    });
+    data_main.clear();
+    for(const auto& item : vec){
+        data_main.push_back(item.first);
+    }
 }  
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
+cv::Mat cvLib::preprocessImage(const std::string& imgPath, const outputImgMode& img_mode) {
+    // Step 1: Open the image using cv::imread
+    cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);
+    if (image.empty()) {
+        std::cerr << "Error: Could not open or find the image." << std::endl;
+        return cv::Mat();
+    }
+    // Step 2: Resize the image to 120x120 pixels
+    cv::Mat resizedImage;
+    cv::resize(image, resizedImage, cv::Size(120, 120));
+    if(img_mode == outputImgMode::Color){
+        return resizedImage;
+    }
+    else if(img_mode == outputImgMode::Gray){
+        cv::Mat gray_image;
+        cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
+        return gray_image;
+    }
+    // Step 3: Convert the image to CV_32F and normalize
+    // cv::Mat floatImage;
+    // resizedImage.convertTo(floatImage, CV_32F);
+    // floatImage /= 255.0; // Normalize to [0, 1] for machine learning applications
+}
+std::vector<std::vector<RGB>> cvLib::get_img_120_gray_for_ML(const std::string& imgPath) {  
+    if(imgPath.empty()){
+        return {};
+    }
+    std::vector<std::vector<RGB>> datasets;  
+    cv::Mat image = this->preprocessImage(imgPath,outputImgMode::Gray); 
+    if (image.empty()) {  
+        std::cerr << "Error: Could not open or find the image." << std::endl;  
+        return datasets;   
+    }  
+    cv::Mat resized_image,gray_image;
+    cv::resize(image, resized_image, cv::Size(120, 120));
+    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
+    // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
+    datasets = this->cv_mat_to_dataset_color(gray_image);
+    return datasets;  
+}
 unsigned int cvLib::count_occurrences(const std::vector<uint32_t>& main_data, const std::vector<uint32_t>& sub_data) {  
     if (sub_data.empty()) return 0;  // Return zero if sub_data is empty  
     // Use std::search and std::ranges to count occurrences  
@@ -281,23 +394,30 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg){
     return datasets;
 }
 std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset_color(const cv::Mat& genImg) {  
-    std::vector<std::vector<RGB>> datasets(genImg.rows, std::vector<RGB>(genImg.cols));  
-    for (unsigned int i = 0; i < genImg.rows; ++i) {  // rows  
-        for (unsigned int j = 0; j < genImg.cols; ++j) {  // cols  
+    // Create a copy of the input image to apply noise reduction
+    cv::Mat processedImg;
+    // Noise reduction step using Gaussian blur
+    cv::GaussianBlur(genImg, processedImg, cv::Size(5, 5), 0);
+    // Or alternatively, use median blur (uncomment if you want to use this instead)
+    // cv::medianBlur(genImg, processedImg, 5);
+    // Initialize the dataset with the processed image
+    std::vector<std::vector<RGB>> datasets(processedImg.rows, std::vector<RGB>(processedImg.cols));  
+    for (unsigned int i = 0; i < processedImg.rows; ++i) {  // rows  
+        for (unsigned int j = 0; j < processedImg.cols; ++j) {  // cols  
             // Check if the image is still in color:  
-            if (genImg.channels() == 3) {  
-                cv::Vec3b bgr = genImg.at<cv::Vec3b>(i, j);  
+            if (processedImg.channels() == 3) {  
+                cv::Vec3b bgr = processedImg.at<cv::Vec3b>(i, j);  
                 // Populate the RGB struct  
-                datasets[i][j] = {static_cast<uint32_t>(bgr[2]), static_cast<uint32_t>(bgr[1]), static_cast<uint32_t>(bgr[0])}; // Convert BGR to RGB  
-            } else if (genImg.channels() == 1) {  
+                datasets[i][j] = {static_cast<uint32_t>(bgr[C_2]), static_cast<uint32_t>(bgr[C_1]), static_cast<uint32_t>(bgr[C_0])}; // Convert BGR to RGB  
+            } else if (processedImg.channels() == 1) {  
                 // Handle grayscale images  
-                uchar intensity = genImg.at<uchar>(i, j);  
+                uchar intensity = processedImg.at<uchar>(i, j);  
                 datasets[i][j] = {static_cast<uint32_t>(intensity), static_cast<uint32_t>(intensity), static_cast<uint32_t>(intensity)}; // Grayscale to RGB  
             }   
         }  
     }  
     return datasets;  
-}  
+}
 imgSize cvLib::get_image_size(const std::string& imgPath) {  
     imgSize im_s = {0, 0}; // Initialize width and height to 0  
     if (imgPath.empty()) {  
@@ -372,7 +492,7 @@ std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, 
     cv::resize(image, resized_image, cv::Size(img_cols, img_rows));
     cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
     // Assume cv_mat_to_dataset(gray_image) is implemented correctly
-    datasets = cv_mat_to_dataset(gray_image);
+    datasets = this->cv_mat_to_dataset(gray_image);
     return datasets;  
 }
 std::vector<std::vector<RGB>> cvLib::get_img_matrix_color(const std::string& imgPath, unsigned int img_rows, unsigned int img_cols) {  
@@ -865,8 +985,9 @@ void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,c
             start marking on the input frame
         */
         //cv::Scalar bgColor(0,0,0);
-        //sub_j.markVideo(frame,brush_color,bgColor);
-        // Apply background subtraction  
+        // sub_j.markVideo(frame,brush_color,bgColor);
+        // cv::Mat oframe = sub_j.getObjectsInVideo(frame);
+        // // Apply background subtraction  
         pBackSub->apply(frame, thresh);  
         // Find contours  
         std::vector<std::vector<cv::Point>> contours;  
@@ -898,7 +1019,6 @@ void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,c
         for (const auto& box : mergedBoxes) {  
             cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2); // Draw rectangle  
         }  
-        //cv::Mat oframe = sub_j.getObjectsInVideo(frame);
         /*
             end marking video
         */
@@ -923,207 +1043,209 @@ std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {
         if (image_path.empty()) {
             return {};  // Return an empty vector
         }
-        cv::Mat img = cv::imread(image_path, cv::IMREAD_UNCHANGED);
-        if (img.empty()) {
+        cv::Mat img = this->preprocessImage(image_path,outputImgMode::Gray);//this->get_img_120_gray_for_ML(imgFolderPath);
+        cv::Mat gray_image;
+        cv::cvtColor(img, gray_image, cv::COLOR_BGR2GRAY);
+        if (gray_image.empty()) {
             throw std::runtime_error("Failed to load image: " + image_path);
         }
-        img_matrix.reserve(img.rows * img.cols * img.channels());
-        for (int y = 0; y < img.rows; ++y) {
-            for (int x = 0; x < img.cols; ++x) {
-                if (img.channels() == 4) {
-                    cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA
+        img_matrix.reserve(gray_image.rows * gray_image.cols * gray_image.channels());
+        for (int y = 0; y < gray_image.rows; ++y) {
+            for (int x = 0; x < gray_image.cols; ++x) {
+                if (gray_image.channels() == 4) {
+                    cv::Vec4b pixel = gray_image.at<cv::Vec4b>(y, x); // BGRA
                     img_matrix.push_back(pixel[C_0]); // Blue
                     img_matrix.push_back(pixel[C_1]); // Green
                     img_matrix.push_back(pixel[C_2]); // Red
                     img_matrix.push_back(pixel[C_3]); // Alpha
-                } else if (img.channels() == 3) {
-                    cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR
+                } else if (gray_image.channels() == 3) {
+                    cv::Vec3b pixel = gray_image.at<cv::Vec3b>(y, x); // BGR
                     img_matrix.push_back(pixel[C_0]); // Blue
                     img_matrix.push_back(pixel[C_1]); // Green
                     img_matrix.push_back(pixel[C_2]); // Red
                     // Optionally: img_matrix.push_back(255); // Add Alpha if needed (assumed fully opaque)
-                } else if (img.channels() == 1) { // Handle grayscale
-                    uint32_t pixel = img.at<uint32_t>(y, x);
+                } else if (gray_image.channels() == 1) { // Handle grayscale
+                    uint32_t pixel = gray_image.at<uint32_t>(y, x);
                     img_matrix.push_back(pixel); // Red as grayscale
                     img_matrix.push_back(pixel); // Green as grayscale
                     img_matrix.push_back(pixel); // Blue as grayscale
                     // Optionally: img_matrix.push_back(255); // Add Alpha if needed
                 } else {
-                    std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;
+                    std::cerr << "Unsupported image format: " << gray_image.channels() << " channels." << std::endl;
                     throw std::runtime_error("Unsupported image format.");
                 }
             }
         }
         return img_matrix;
 }
-std::unordered_map<std::string, std::vector<uint32_t>> cvLib::get_img_in_folder(const std::string& folder_path) {  
-        std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
-        if (folder_path.empty()) {  
-            return dataset;  
-        }  
-        try {  
-            for (const auto& entryMainFolder : std::filesystem::directory_iterator(folder_path)) {  
-                if (entryMainFolder.is_directory()) {  
-                    std::string sub_folder_name = entryMainFolder.path().filename().string();  
-                    std::vector<uint32_t> sub_folder_all_images;  
-                    for (const auto& entrySubFolder : std::filesystem::directory_iterator(entryMainFolder.path())) {  
-                        if (entrySubFolder.is_regular_file()) {  
-                            std::string imgFolderPath = entrySubFolder.path().string();  
-                            cv::Mat img = cv::imread(imgFolderPath, cv::IMREAD_UNCHANGED);  
-                            if (img.empty()) {  
-                                throw std::runtime_error("Failed to load image: " + imgFolderPath);  
-                            }  
-                            // Read the image data  
-                            for (int y = 0; y < img.rows; ++y) {  
-                                for (int x = 0; x < img.cols; ++x) {  
-                                    if (img.channels() == 4) {  
-                                        cv::Vec4b pixel = img.at<cv::Vec4b>(y, x); // BGRA  
-                                        // Append all channels to vector
-                                        sub_folder_all_images.push_back(pixel[C_0]); // Blue  
-                                        sub_folder_all_images.push_back(pixel[C_1]); // Green  
-                                        sub_folder_all_images.push_back(pixel[C_2]); // Red  
-                                        sub_folder_all_images.push_back(pixel[C_3]); // Alpha  
-                                    } else if (img.channels() == 3) {  
-                                        cv::Vec3b pixel = img.at<cv::Vec3b>(y, x); // BGR  
-                                        // Append all channels to vector with assumed Alpha of 255
-                                        sub_folder_all_images.push_back(pixel[C_0]); // Blue  
-                                        sub_folder_all_images.push_back(pixel[C_1]); // Green  
-                                        sub_folder_all_images.push_back(pixel[C_2]); // Red  
-                                    } else if (img.channels() == 1) {  // Grayscale  
-                                        uint32_t pixel = img.at<uint32_t>(y, x);
-                                        // Append the grayscale value to all RGB channels with Alpha
-                                        sub_folder_all_images.push_back(pixel); // Red  
-                                        sub_folder_all_images.push_back(pixel); // Green  
-                                        sub_folder_all_images.push_back(pixel); // Blue  
-                                    } else {  
-                                        std::cerr << "Unsupported image format: " << img.channels() << " channels." << std::endl;  
-                                        throw std::runtime_error("Unsupported image format.");  
-                                    }  
-                                }  
-                            }  
-                        }  
-                    }  
-                    dataset[sub_folder_name] = sub_folder_all_images;  
-                    std::cout << sub_folder_name << " is done!" << std::endl;  
-                }  
-            }  
-        } catch (const std::filesystem::filesystem_error& e) {  
-            std::cerr << "Filesystem error: " << e.what() << std::endl;  
-            return dataset;  
-        }  
-        std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
-        return dataset;  
+std::vector<cv::KeyPoint> cvLib::extractORBFeatures(const cv::Mat& img, cv::Mat& descriptors) {
+    cv::Ptr<cv::ORB> orb = cv::ORB::create();
+    std::vector<cv::KeyPoint> keypoints;
+    orb->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+    return keypoints;
 }
-std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_in_folder(const std::unordered_map<std::string, std::vector<uint32_t>>& img_dataset, const std::string& model_output_path) {  
-    std::unordered_map<std::string, std::vector<uint32_t>> content_in_imgs;  
-    // Check for empty dataset or model path  
-    if (img_dataset.empty() || model_output_path.empty()) {  
-        return content_in_imgs;  
-    }  
-    std::cout << "Start training..." << std::endl;  
-    for (const auto& item : img_dataset) {  
-        std::string img_label = item.first;  
-        std::vector<uint32_t> imgs_data = item.second;  
-        // Create an unordered_map with the custom hash function  
-        std::unordered_map<std::vector<uint32_t>, unsigned int, VectorHash> imgCount;   
-        for (unsigned int i = 0; i < imgs_data.size(); i++) {  
-            unsigned int imgs_score = 0;  
-            // Check if the next element exists  
-            if (i + 1 < imgs_data.size()) {  
-                for (unsigned int j = 0; j < imgs_data.size(); j++) {  
-                    if (j != i && j + 1 < imgs_data.size()) {  
-                        // Compare adjacent elements  
-                        if (imgs_data[j] == imgs_data[i] && imgs_data[j + 1] == imgs_data[i + 1]) {  
-                            imgs_score++;  
-                        }  
-                    }  
-                }  
-                // Use the custom hashable pair as a key  
-                imgCount[{imgs_data[i], imgs_data[i + 1]}] = imgs_score;  
-                std::cout << imgs_data[i] << " and " << imgs_data[i + 1] << " count: " << imgs_score << std::endl;  
-            }  
-        }  
-        // Sort imgCount into a vector of pairs  
-        std::vector<std::pair<std::vector<uint32_t>, unsigned int>> sortedImgCount(imgCount.begin(), imgCount.end());  
-        std::sort(sortedImgCount.begin(), sortedImgCount.end(), [](const auto& a, const auto& b) {  
-            return a.second > b.second;  
-        });  
-        // Reorganize the results into content_in_imgs  
-        for (const auto& entry : sortedImgCount) {  
-            const auto& vec = entry.first;  
-            // Since we are using img_label as key and we want the latest vector of uint32_t for that label  
-            content_in_imgs[img_label] = vec; // Store the latest sorted vector  
-        }  
-        std::cout << img_label << " training is done!" << std::endl;  
-    }  
-    // Save the model using subfunctions  
-    subfunctions sub_j;  
-    sub_j.saveModel(content_in_imgs, model_output_path);  
-    return content_in_imgs;  
-}  
-std::unordered_map<std::string, std::vector<uint32_t>> cvLib::train_img_occurrences(const std::string& images_folder_path, const std::string& model_output_path){
-    std::unordered_map<std::string, std::vector<uint32_t>> dataset;  
+void cvLib::train_img_occurrences(const std::string& images_folder_path, const std::string& model_output_path, const std::string& model_output_key_path){
+    std::unordered_map<std::string, std::vector<cv::Mat>> dataset; 
+    std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>> dataset_keypoint;  
     if (images_folder_path.empty()) {  
-        return dataset;  
+        return;  
     }  
     subfunctions sub_j;
     try {  
         for (const auto& entryMainFolder : std::filesystem::directory_iterator(images_folder_path)) {  
             if (entryMainFolder.is_directory()) { // Check if the entry is a directory  
                 std::string sub_folder_name = entryMainFolder.path().filename().string();  
-                std::string sub_folder_path = entryMainFolder.path();  
-                std::vector<uint32_t> sub_folder_all_images;  
+                std::string sub_folder_path = entryMainFolder.path().string();  
+                std::vector<cv::Mat> sub_folder_all_images;  
+                std::vector<std::vector<cv::KeyPoint>> sub_folder_keypoints;
                 // Accumulate pixel count for memory reservation  
                 for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
                     if (entrySubFolder.is_regular_file()) {  
-                        std::string imgFolderPath = entrySubFolder.path();  
-                        std::vector<std::vector<RGB>> get_img = this->objectsInImage(imgFolderPath,1,outputImgMode::Color);
+                        std::string imgFilePath = entrySubFolder.path().string();  
+                        cv::Mat get_img = this->preprocessImage(imgFilePath,outputImgMode::Color);
                         if(!get_img.empty()){
-                            std::vector<uint32_t> get_img_uint = this->convertToPacked(get_img);
-                            if(sub_folder_all_images.empty()){//if it's empty insert get_img_uint
-                                sub_folder_all_images.insert(sub_folder_all_images.end(),get_img_uint.begin(),get_img_uint.end());
-                            }
-                            else{// merge get_img_uint
-                                sub_j.merge_without_duplicates(sub_folder_all_images,get_img_uint);
-                            }
+                            cv::Mat descriptors;
+                            std::vector<cv::KeyPoint> sub_key = this->extractORBFeatures(get_img,descriptors);
+                            sub_folder_all_images.push_back(descriptors);
+                            sub_folder_keypoints.push_back(sub_key);
                         }
+                        else{
+                            std::cout << imgFilePath << " (get_img is empty)!" << std::endl;
+                        } 
                     }  
                 }  
-                dataset[sub_folder_name] = sub_folder_all_images;  
+                dataset[sub_folder_name] = sub_folder_all_images;
+                dataset_keypoint[sub_folder_name] = sub_folder_keypoints;
                 std::cout << sub_folder_name << " is done!" << std::endl;  
             }  
         }  
     } catch (const std::filesystem::filesystem_error& e) {  
         std::cerr << "Filesystem error: " << e.what() << std::endl;  
-        return dataset; // Return an empty dataset in case of filesystem error  
+        return; // Return an empty dataset in case of filesystem error  
     }  
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return;
+    }
+    /*
+        Summarize the dataset
+    */
+    std::cout << "Machine learning..." << std::endl;
+    std::unordered_map<std::string, cv::Mat> summarizedDataset;
+    for (const auto& [category, descriptors] : dataset) {
+        if (descriptors.empty()) continue;
+        cv::Mat sum = descriptors[C_0].clone();
+        for (size_t i = 1; i < descriptors.size(); ++i) {
+            sum += descriptors[i];
+        }
+        cv::Mat average = sum / static_cast<double>(descriptors.size());
+        summarizedDataset[category] = average;
+    }
+    std::unordered_map<std::string, std::vector<cv::KeyPoint>> summarizedKeypoints;
+    for (const auto& [category, keypointSets] : dataset_keypoint) {
+        if (keypointSets.empty()) continue;
+        // Accumulators for keypoint properties
+        std::vector<double> xSum, ySum, sizeSum, angleSum;
+        for (const auto& keypoints : keypointSets) {
+            for (size_t i = 0; i < keypoints.size(); ++i) {
+                if (i >= xSum.size()) {
+                    // Initialize
+                    xSum.push_back(0);
+                    ySum.push_back(0);
+                    sizeSum.push_back(0);
+                    angleSum.push_back(0);
+                }
+                xSum[i] += keypoints[i].pt.x;
+                ySum[i] += keypoints[i].pt.y;
+                sizeSum[i] += keypoints[i].size;
+                angleSum[i] += keypoints[i].angle;
+            }
+        }
+        // Compute averages
+        std::vector<cv::KeyPoint> averagedKeypoints;
+        for (size_t i = 0; i < xSum.size(); ++i) {
+            cv::KeyPoint kp;
+            kp.pt.x = xSum[i] / keypointSets.size();
+            kp.pt.y = ySum[i] / keypointSets.size();
+            kp.size = sizeSum[i] / keypointSets.size();
+            kp.angle = angleSum[i] / keypointSets.size();
+            averagedKeypoints.push_back(kp);
+        }
+        summarizedKeypoints[category] = averagedKeypoints;  
+    }
     std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
-    sub_j.saveModel(dataset, model_output_path);  
-    return dataset;  
+    sub_j.saveModel(dataset, model_output_path); 
+    sub_j.saveModel_keypoint(summarizedKeypoints,model_output_key_path); 
 }
-void cvLib::loadModel(std::unordered_map<std::string, std::vector<uint32_t>>& content_in_imgs, const std::string& filename){
-    std::ifstream ifs(filename, std::ios::binary);  
-    if (!ifs) {  
-        std::cerr << "Error opening file for reading: " << filename << std::endl;  
-        return;  
-    }  
-    // Read the size of the unordered_map  
-    size_t mapSize;  
-    ifs.read(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));  
-    // Read each key-value pair  
-    for (size_t i = 0; i < mapSize; ++i) {  
-        // Read the size of the string key  
-        size_t keySize;  
-        ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));  
-        std::string key(keySize, '\0');  
-        ifs.read(&key[0], keySize);  
-        // Read the size of the vector  
-        size_t vecSize;  
-        ifs.read(reinterpret_cast<char*>(&vecSize), sizeof(vecSize));  
-        std::vector<uint32_t> values(vecSize);  
-        ifs.read(reinterpret_cast<char*>(values.data()), vecSize * sizeof(uint32_t));  
-        content_in_imgs[key] = std::move(values);  
-    }  
-    ifs.close();  
+void cvLib::loadModel(std::unordered_map<std::string, std::vector<cv::Mat>>& featureMap, const std::string& filename){
+   if(filename.empty()){
+        return;
+   }
+   std::ifstream ifs(filename, std::ios::binary);
+    if (!ifs.is_open()) {
+        std::cerr << "Error: Unable to open file for reading." << std::endl;
+        return;
+    }
+    size_t mapSize;
+    ifs.read(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));
+    for (size_t i = 0; i < mapSize; ++i) {
+        size_t keySize;
+        ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));
+        std::string className(keySize, ' ');
+        ifs.read(&className[C_0], keySize);
+        size_t featureCount;
+        ifs.read(reinterpret_cast<char*>(&featureCount), sizeof(featureCount));
+        std::vector<cv::Mat> features;
+        for (size_t j = 0; j < featureCount; ++j) {
+            int rows, cols, type;
+            ifs.read(reinterpret_cast<char*>(&rows), sizeof(rows));
+            ifs.read(reinterpret_cast<char*>(&cols), sizeof(cols));
+            ifs.read(reinterpret_cast<char*>(&type), sizeof(type));
+            cv::Mat desc(rows, cols, type);
+            ifs.read(reinterpret_cast<char*>(desc.data), desc.elemSize() * rows * cols);
+            features.push_back(desc);
+        }
+        featureMap[className] = features;
+    }
+    ifs.close();
 }  
+void cvLib::loadModel_keypoint(std::unordered_map<std::string, std::vector<cv::KeyPoint>>& featureMap, const std::string& filename) {
+    if (filename.empty()) {
+        return;
+    }
+    std::ifstream ifs(filename, std::ios::binary);
+    if (!ifs.is_open()) {
+        std::cerr << "Error: Unable to open file for reading." << std::endl;
+        return;
+    }
+    try {
+        size_t mapSize;
+        ifs.read(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));
+        for (size_t i = 0; i < mapSize; ++i) {
+            size_t keySize;
+            ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));
+            std::string className(keySize, '\0');  // Use '\0' to ensure proper string initialization
+            ifs.read(&className[C_0], keySize);
+            size_t keypointCount;
+            ifs.read(reinterpret_cast<char*>(&keypointCount), sizeof(keypointCount));
+            std::vector<cv::KeyPoint> keypoints(keypointCount);
+            for (size_t j = 0; j < keypointCount; ++j) {
+                cv::KeyPoint kp;
+                ifs.read(reinterpret_cast<char*>(&kp.pt.x), sizeof(kp.pt.x));
+                ifs.read(reinterpret_cast<char*>(&kp.pt.y), sizeof(kp.pt.y));
+                ifs.read(reinterpret_cast<char*>(&kp.size), sizeof(kp.size));
+                ifs.read(reinterpret_cast<char*>(&kp.angle), sizeof(kp.angle));
+                ifs.read(reinterpret_cast<char*>(&kp.response), sizeof(kp.response));
+                ifs.read(reinterpret_cast<char*>(&kp.octave), sizeof(kp.octave));
+                ifs.read(reinterpret_cast<char*>(&kp.class_id), sizeof(kp.class_id));
+                keypoints[j] = kp;
+            }
+            featureMap[className] = keypoints;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error reading from file: " << e.what() << std::endl;
+    }
+    ifs.close();
+}
+
 
