@@ -49,17 +49,6 @@ enum class outputImgMode{
 class cvLib{
     public:
         /*
-            para1: image path
-            para2: outputImgMode (Gray or Color)
-            This function will open an image and convert it to type CV_32F
-        */
-        cv::Mat preprocessImage(const std::string&, const outputImgMode&);
-        /*
-            para1: image path
-            open an image, resize to 120x120 pixels, remove image colors
-        */
-        std::vector<std::vector<RGB>> get_img_120_gray_for_ML(const std::string&);
-        /*
             para1: main dataset 
             para2: sub dataset
         */
@@ -283,11 +272,25 @@ class cvLib{
             }  
         */
         void StartWebCam(unsigned int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
+         /*
+            para1: image path
+            para2: outputImgMode (Gray or Color)
+            para3: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
+            This function will open an image and convert it to type CV_32F
+        */
+        cv::Mat preprocessImage(const std::string&, const outputImgMode&, const unsigned int);
+        /*
+            para1: image path
+            para2: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
+            open an image, resize to 120x120 pixels, remove image colors
+        */
+        std::vector<std::vector<RGB>> get_img_120_gray_for_ML(const std::string&, const unsigned int);
         /*
             read an image and return std::vector<uint32_t>
             para1: image path
+            para2: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
         */
-        std::vector<uint32_t>get_one_image(const std::string&);
+        std::vector<uint32_t>get_one_image(const std::string&, const unsigned int);
         /*
             get the key point of an image
             para1: cv::Mat input image
@@ -298,8 +301,11 @@ class cvLib{
             para1: train images folder
             para2: output model file path/output.dat
             para3: output model_keypoints file path/output_key.dat
+            para4: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
         */
-        void train_img_occurrences(const std::string&, const std::string&,const std::string&);
+        void train_img_occurrences(const std::string&, const std::string&,const std::string&,const unsigned int);
+        void machine_learning_result(const std::unordered_map<std::string, cv::Mat>&, 
+        std::unordered_map<std::string, std::vector<cv::KeyPoint>>&);
         /*
             para1: return a pre-defined std::unordered_map<std::string, std::vector<cv::Mat>>
             para2: the model's file path
@@ -309,7 +315,7 @@ class cvLib{
             load keypoints
             para1: return a pre-defined std::unordered_map<std::string, std::vector<KeyPoint>>
         */
-       void loadModel_keypoint(std::unordered_map<std::string, std::vector<cv::KeyPoint>>&, const std::string&);
+       void loadModel_keypoint(std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&, const std::string&);
 
 };      
 #endif

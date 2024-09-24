@@ -62,7 +62,7 @@ class subfunctions{
         std::vector<std::vector<RGB>> getPixelsInsideObject(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&); 
         cv::Mat getObjectsInVideo(const cv::Mat&);
         void saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>&, const std::string&);
-        void saveModel_keypoint(const std::unordered_map<std::string, std::vector<cv::KeyPoint>>&, const std::string&);
+        void saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&, const std::string&);
         void merge_without_duplicates(std::vector<uint32_t>&, const std::vector<uint32_t>&);
 };
 void subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint32_t>>& myMap, const std::string& key, const std::vector<uint32_t>& get_img_uint) {
@@ -211,7 +211,7 @@ void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<c
     }
     ofs.close();
 }
-void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std::vector<cv::KeyPoint>>& featureMap, const std::string& filename) {
+void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>& featureMap, const std::string& filename) {
     if (filename.empty()) {
         return;
     }
@@ -222,20 +222,25 @@ void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std:
     try {
         size_t mapSize = featureMap.size();
         ofs.write(reinterpret_cast<const char*>(&mapSize), sizeof(mapSize));
-        for (const auto& [className, keypoints] : featureMap) {
+        for (const auto& [className, keypointSets] : featureMap) {
             size_t keySize = className.size();
             ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
             ofs.write(className.data(), keySize);
-            size_t keypointCount = keypoints.size();
-            ofs.write(reinterpret_cast<const char*>(&keypointCount), sizeof(keypointCount));
-            for (const auto& kp : keypoints) {
-                ofs.write(reinterpret_cast<const char*>(&kp.pt.x), sizeof(kp.pt.x));
-                ofs.write(reinterpret_cast<const char*>(&kp.pt.y), sizeof(kp.pt.y));
-                ofs.write(reinterpret_cast<const char*>(&kp.size), sizeof(kp.size));
-                ofs.write(reinterpret_cast<const char*>(&kp.angle), sizeof(kp.angle));
-                ofs.write(reinterpret_cast<const char*>(&kp.response), sizeof(kp.response));
-                ofs.write(reinterpret_cast<const char*>(&kp.octave), sizeof(kp.octave));
-                ofs.write(reinterpret_cast<const char*>(&kp.class_id), sizeof(kp.class_id));
+            
+            size_t setCount = keypointSets.size();
+            ofs.write(reinterpret_cast<const char*>(&setCount), sizeof(setCount));
+            for (const auto& keypoints : keypointSets) {
+                size_t keypointCount = keypoints.size();
+                ofs.write(reinterpret_cast<const char*>(&keypointCount), sizeof(keypointCount));
+                for (const auto& kp : keypoints) {
+                    ofs.write(reinterpret_cast<const char*>(&kp.pt.x), sizeof(kp.pt.x));
+                    ofs.write(reinterpret_cast<const char*>(&kp.pt.y), sizeof(kp.pt.y));
+                    ofs.write(reinterpret_cast<const char*>(&kp.size), sizeof(kp.size));
+                    ofs.write(reinterpret_cast<const char*>(&kp.angle), sizeof(kp.angle));
+                    ofs.write(reinterpret_cast<const char*>(&kp.response), sizeof(kp.response));
+                    ofs.write(reinterpret_cast<const char*>(&kp.octave), sizeof(kp.octave));
+                    ofs.write(reinterpret_cast<const char*>(&kp.class_id), sizeof(kp.class_id));
+                }
             }
         }
     } catch (const std::exception& e) {
@@ -275,46 +280,6 @@ void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, co
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
-cv::Mat cvLib::preprocessImage(const std::string& imgPath, const outputImgMode& img_mode) {
-    // Step 1: Open the image using cv::imread
-    cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);
-    if (image.empty()) {
-        std::cerr << "Error: Could not open or find the image." << std::endl;
-        return cv::Mat();
-    }
-    // Step 2: Resize the image to 120x120 pixels
-    cv::Mat resizedImage;
-    cv::resize(image, resizedImage, cv::Size(120, 120));
-    if(img_mode == outputImgMode::Color){
-        return resizedImage;
-    }
-    else if(img_mode == outputImgMode::Gray){
-        cv::Mat gray_image;
-        cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
-        return gray_image;
-    }
-    // Step 3: Convert the image to CV_32F and normalize
-    // cv::Mat floatImage;
-    // resizedImage.convertTo(floatImage, CV_32F);
-    // floatImage /= 255.0; // Normalize to [0, 1] for machine learning applications
-}
-std::vector<std::vector<RGB>> cvLib::get_img_120_gray_for_ML(const std::string& imgPath) {  
-    if(imgPath.empty()){
-        return {};
-    }
-    std::vector<std::vector<RGB>> datasets;  
-    cv::Mat image = this->preprocessImage(imgPath,outputImgMode::Gray); 
-    if (image.empty()) {  
-        std::cerr << "Error: Could not open or find the image." << std::endl;  
-        return datasets;   
-    }  
-    cv::Mat resized_image,gray_image;
-    cv::resize(image, resized_image, cv::Size(120, 120));
-    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
-    // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
-    datasets = this->cv_mat_to_dataset_color(gray_image);
-    return datasets;  
-}
 unsigned int cvLib::count_occurrences(const std::vector<uint32_t>& main_data, const std::vector<uint32_t>& sub_data) {  
     if (sub_data.empty()) return 0;  // Return zero if sub_data is empty  
     // Use std::search and std::ranges to count occurrences  
@@ -1038,12 +1003,58 @@ void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,c
     cap.release();  
     cv::destroyAllWindows();  
 }
-std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path) {
+cv::Mat cvLib::preprocessImage(const std::string& imgPath, const outputImgMode& img_mode, const unsigned int gradientMagnitude_threshold) {
+    // Step 1: Open the image using cv::imread
+    cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);
+    if (image.empty()) {
+        std::cerr << "Error: Could not open or find the image." << std::endl;
+        return cv::Mat();
+    }
+    // Step 2: Resize the image to 120x120 pixels
+    cv::Mat resizedImage;
+    cv::resize(image, resizedImage, cv::Size(120, 120));
+    std::vector<std::vector<RGB>> datasets;
+    subfunctions subfun;
+    if(img_mode == outputImgMode::Color){
+        datasets = this->cv_mat_to_dataset_color(resizedImage);
+    }
+    else if(img_mode == outputImgMode::Gray){
+        cv::Mat gray_image;
+        cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
+        datasets = this->cv_mat_to_dataset_color(gray_image);
+    }
+    auto outliers = this->findOutlierEdges(datasets, gradientMagnitude_threshold);
+    std::vector<std::vector<RGB>> trans_img = subfun.getPixelsInsideObject(datasets, outliers);
+    cv::Mat final_image = subfun.convertDatasetToMat(trans_img);
+    return final_image;
+    // Step 3: Convert the image to CV_32F and normalize
+    // cv::Mat floatImage;
+    // resizedImage.convertTo(floatImage, CV_32F);
+    // floatImage /= 255.0; // Normalize to [0, 1] for machine learning applications
+}
+std::vector<std::vector<RGB>> cvLib::get_img_120_gray_for_ML(const std::string& imgPath,const unsigned int gradientMagnitude_threshold) {  
+    if(imgPath.empty()){
+        return {};
+    }
+    std::vector<std::vector<RGB>> datasets;  
+    cv::Mat image = this->preprocessImage(imgPath,outputImgMode::Gray,gradientMagnitude_threshold); 
+    if (image.empty()) {  
+        std::cerr << "Error: Could not open or find the image." << std::endl;  
+        return datasets;   
+    }  
+    cv::Mat resized_image,gray_image;
+    cv::resize(image, resized_image, cv::Size(120, 120));
+    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
+    // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
+    datasets = this->cv_mat_to_dataset_color(gray_image);
+    return datasets;  
+}
+std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path,const unsigned int gradientMagnitude_threshold) {
         std::vector<uint32_t> img_matrix;
         if (image_path.empty()) {
             return {};  // Return an empty vector
         }
-        cv::Mat img = this->preprocessImage(image_path,outputImgMode::Gray);//this->get_img_120_gray_for_ML(imgFolderPath);
+        cv::Mat img = this->preprocessImage(image_path,outputImgMode::Gray,gradientMagnitude_threshold);//this->get_img_120_gray_for_ML(imgFolderPath);
         cv::Mat gray_image;
         cv::cvtColor(img, gray_image, cv::COLOR_BGR2GRAY);
         if (gray_image.empty()) {
@@ -1084,7 +1095,7 @@ std::vector<cv::KeyPoint> cvLib::extractORBFeatures(const cv::Mat& img, cv::Mat&
     orb->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
     return keypoints;
 }
-void cvLib::train_img_occurrences(const std::string& images_folder_path, const std::string& model_output_path, const std::string& model_output_key_path){
+void cvLib::train_img_occurrences(const std::string& images_folder_path, const std::string& model_output_path, const std::string& model_output_key_path, const unsigned int gradientMagnitude_threshold){
     std::unordered_map<std::string, std::vector<cv::Mat>> dataset; 
     std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>> dataset_keypoint;  
     if (images_folder_path.empty()) {  
@@ -1102,7 +1113,7 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const s
                 for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
                     if (entrySubFolder.is_regular_file()) {  
                         std::string imgFilePath = entrySubFolder.path().string();  
-                        cv::Mat get_img = this->preprocessImage(imgFilePath,outputImgMode::Color);
+                        cv::Mat get_img = this->preprocessImage(imgFilePath,outputImgMode::Color,gradientMagnitude_threshold);
                         if(!get_img.empty()){
                             cv::Mat descriptors;
                             std::vector<cv::KeyPoint> sub_key = this->extractORBFeatures(get_img,descriptors);
@@ -1127,55 +1138,59 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const s
         std::cerr << "Error: " << e.what() << std::endl;
         return;
     }
-    /*
-        Summarize the dataset
-    */
-    std::cout << "Machine learning..." << std::endl;
-    std::unordered_map<std::string, cv::Mat> summarizedDataset;
-    for (const auto& [category, descriptors] : dataset) {
-        if (descriptors.empty()) continue;
-        cv::Mat sum = descriptors[C_0].clone();
-        for (size_t i = 1; i < descriptors.size(); ++i) {
-            sum += descriptors[i];
-        }
-        cv::Mat average = sum / static_cast<double>(descriptors.size());
-        summarizedDataset[category] = average;
-    }
-    std::unordered_map<std::string, std::vector<cv::KeyPoint>> summarizedKeypoints;
-    for (const auto& [category, keypointSets] : dataset_keypoint) {
-        if (keypointSets.empty()) continue;
-        // Accumulators for keypoint properties
-        std::vector<double> xSum, ySum, sizeSum, angleSum;
-        for (const auto& keypoints : keypointSets) {
-            for (size_t i = 0; i < keypoints.size(); ++i) {
-                if (i >= xSum.size()) {
-                    // Initialize
-                    xSum.push_back(0);
-                    ySum.push_back(0);
-                    sizeSum.push_back(0);
-                    angleSum.push_back(0);
-                }
-                xSum[i] += keypoints[i].pt.x;
-                ySum[i] += keypoints[i].pt.y;
-                sizeSum[i] += keypoints[i].size;
-                angleSum[i] += keypoints[i].angle;
-            }
-        }
-        // Compute averages
-        std::vector<cv::KeyPoint> averagedKeypoints;
-        for (size_t i = 0; i < xSum.size(); ++i) {
-            cv::KeyPoint kp;
-            kp.pt.x = xSum[i] / keypointSets.size();
-            kp.pt.y = ySum[i] / keypointSets.size();
-            kp.size = sizeSum[i] / keypointSets.size();
-            kp.angle = angleSum[i] / keypointSets.size();
-            averagedKeypoints.push_back(kp);
-        }
-        summarizedKeypoints[category] = averagedKeypoints;  
-    }
+    // /*
+    //     Summarize the dataset
+    // */
+    // std::cout << "Machine learning..." << std::endl;
+    // std::unordered_map<std::string, cv::Mat> summarizedDataset;
+    // for (const auto& [category, descriptors] : dataset) {
+    //     if (descriptors.empty()) continue;
+    //     cv::Mat sum = descriptors[C_0].clone();
+    //     for (size_t i = 1; i < descriptors.size(); ++i) {
+    //         sum += descriptors[i];
+    //     }
+    //     cv::Mat average = sum / static_cast<double>(descriptors.size());
+    //     summarizedDataset[category] = average;
+    // }
+    // std::unordered_map<std::string, std::vector<cv::KeyPoint>> summarizedKeypoints;
+    // for (const auto& [category, keypointSets] : dataset_keypoint) {
+    //     if (keypointSets.empty()) continue;
+    //     // Accumulators for keypoint properties
+    //     std::vector<double> xSum, ySum, sizeSum, angleSum;
+    //     for (const auto& keypoints : keypointSets) {
+    //         for (size_t i = 0; i < keypoints.size(); ++i) {
+    //             if (i >= xSum.size()) {
+    //                 // Initialize
+    //                 xSum.push_back(0);
+    //                 ySum.push_back(0);
+    //                 sizeSum.push_back(0);
+    //                 angleSum.push_back(0);
+    //             }
+    //             xSum[i] += keypoints[i].pt.x;
+    //             ySum[i] += keypoints[i].pt.y;
+    //             sizeSum[i] += keypoints[i].size;
+    //             angleSum[i] += keypoints[i].angle;
+    //         }
+    //     }
+    //     // Compute averages
+    //     std::vector<cv::KeyPoint> averagedKeypoints;
+    //     for (size_t i = 0; i < xSum.size(); ++i) {
+    //         cv::KeyPoint kp;
+    //         kp.pt.x = xSum[i] / keypointSets.size();
+    //         kp.pt.y = ySum[i] / keypointSets.size();
+    //         kp.size = sizeSum[i] / keypointSets.size();
+    //         kp.angle = angleSum[i] / keypointSets.size();
+    //         averagedKeypoints.push_back(kp);
+    //     }
+    //     summarizedKeypoints[category] = averagedKeypoints;  
+    // }
     std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
     sub_j.saveModel(dataset, model_output_path); 
-    sub_j.saveModel_keypoint(summarizedKeypoints,model_output_key_path); 
+    sub_j.saveModel_keypoint(dataset_keypoint,model_output_key_path); 
+}
+void cvLib::machine_learning_result(const std::unordered_map<std::string, cv::Mat>& summarizedDataset, 
+        std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints){
+    
 }
 void cvLib::loadModel(std::unordered_map<std::string, std::vector<cv::Mat>>& featureMap, const std::string& filename){
    if(filename.empty()){
@@ -1209,7 +1224,7 @@ void cvLib::loadModel(std::unordered_map<std::string, std::vector<cv::Mat>>& fea
     }
     ifs.close();
 }  
-void cvLib::loadModel_keypoint(std::unordered_map<std::string, std::vector<cv::KeyPoint>>& featureMap, const std::string& filename) {
+void cvLib::loadModel_keypoint(std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>& featureMap, const std::string& filename) {
     if (filename.empty()) {
         return;
     }
@@ -1224,23 +1239,30 @@ void cvLib::loadModel_keypoint(std::unordered_map<std::string, std::vector<cv::K
         for (size_t i = 0; i < mapSize; ++i) {
             size_t keySize;
             ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));
-            std::string className(keySize, '\0');  // Use '\0' to ensure proper string initialization
+            std::string className(keySize, '\0');  // Ensure string is properly initialized
             ifs.read(&className[C_0], keySize);
-            size_t keypointCount;
-            ifs.read(reinterpret_cast<char*>(&keypointCount), sizeof(keypointCount));
-            std::vector<cv::KeyPoint> keypoints(keypointCount);
-            for (size_t j = 0; j < keypointCount; ++j) {
-                cv::KeyPoint kp;
-                ifs.read(reinterpret_cast<char*>(&kp.pt.x), sizeof(kp.pt.x));
-                ifs.read(reinterpret_cast<char*>(&kp.pt.y), sizeof(kp.pt.y));
-                ifs.read(reinterpret_cast<char*>(&kp.size), sizeof(kp.size));
-                ifs.read(reinterpret_cast<char*>(&kp.angle), sizeof(kp.angle));
-                ifs.read(reinterpret_cast<char*>(&kp.response), sizeof(kp.response));
-                ifs.read(reinterpret_cast<char*>(&kp.octave), sizeof(kp.octave));
-                ifs.read(reinterpret_cast<char*>(&kp.class_id), sizeof(kp.class_id));
-                keypoints[j] = kp;
+
+            size_t setCount;
+            ifs.read(reinterpret_cast<char*>(&setCount), sizeof(setCount));
+            std::vector<std::vector<cv::KeyPoint>> keypointSets(setCount);
+            for (size_t j = 0; j < setCount; ++j) {
+                size_t keypointCount;
+                ifs.read(reinterpret_cast<char*>(&keypointCount), sizeof(keypointCount));
+                std::vector<cv::KeyPoint> keypoints(keypointCount);
+                for (size_t k = 0; k < keypointCount; ++k) {
+                    cv::KeyPoint kp;
+                    ifs.read(reinterpret_cast<char*>(&kp.pt.x), sizeof(kp.pt.x));
+                    ifs.read(reinterpret_cast<char*>(&kp.pt.y), sizeof(kp.pt.y));
+                    ifs.read(reinterpret_cast<char*>(&kp.size), sizeof(kp.size));
+                    ifs.read(reinterpret_cast<char*>(&kp.angle), sizeof(kp.angle));
+                    ifs.read(reinterpret_cast<char*>(&kp.response), sizeof(kp.response));
+                    ifs.read(reinterpret_cast<char*>(&kp.octave), sizeof(kp.octave));
+                    ifs.read(reinterpret_cast<char*>(&kp.class_id), sizeof(kp.class_id));
+                    keypoints[k] = kp;
+                }
+                keypointSets[j] = keypoints;
             }
-            featureMap[className] = keypoints;
+            featureMap[className] = keypointSets;
         }
     } catch (const std::exception& e) {
         std::cerr << "Error reading from file: " << e.what() << std::endl;
