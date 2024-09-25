@@ -42,17 +42,12 @@ enum class brushColor{
     White,
     Black
 };
-enum class outputImgMode{
+enum class inputImgMode{
     Gray,
     Color
 };
 class cvLib{
     public:
-        /*
-            para1: main dataset 
-            para2: sub dataset
-        */
-        unsigned int count_occurrences(const std::vector<uint32_t>&, const std::vector<uint32_t>&);
         /*
             Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>> 
         */
@@ -79,8 +74,8 @@ class cvLib{
         /*
             para1: input an image path, will return the image size 
             struct imgSize{
-                int width;
-                int height;
+                unsigned int width;
+                unsigned int height;
             };
         */
         imgSize get_image_size(const std::string&);
@@ -109,16 +104,9 @@ class cvLib{
             para1: image path
             para2: output matrix rows number(height)
             para3: output matrix columns number(width)
+            para4: inputImgMode::Gray use gray image, inputImgMode::Color use full color imag
         */
-        std::vector<std::vector<RGB>> get_img_matrix(const std::string&, unsigned int,unsigned int);
-         /*
-            1.read an image, 2.resize the image to expected size, (keep image colors)
-            Turn into a std::vector<std::vector<RGB>> dataset (matrix: dimention-rows: dataset.size(), dimention-columns: std::vector<RGB> size())
-            para1: image path
-            para2: output matrix rows number(height)
-            para3: output matrix columns number(width)
-        */
-        std::vector<std::vector<RGB>> get_img_matrix_color(const std::string&, unsigned int,unsigned int);
+        std::vector<std::vector<RGB>> get_img_matrix(const std::string&, unsigned int,unsigned int,const inputImgMode&);
         /*
             read all images in a folder to a std::vector<std::vector<RGB>> dataset
             para1: folder path
@@ -231,7 +219,7 @@ class cvLib{
             para1: image path
             para2 : gradientMagnitude threshold 0-100, better result with small digits
         */
-        std::vector<std::vector<RGB>> objectsInImage(const std::string&, unsigned int, const outputImgMode&);
+        std::vector<std::vector<RGB>> objectsInImage(const std::string&, unsigned int, const inputImgMode&);
         /*
             This function can recognize text in an image
             para1: the image path
@@ -274,11 +262,11 @@ class cvLib{
         void StartWebCam(unsigned int,const std::string&,const std::vector<std::string>&, const cv::Scalar&, std::function<void(cv::Mat&)> callback);
          /*
             para1: image path
-            para2: outputImgMode (Gray or Color)
+            para2: inputImgMode (Gray or Color)
             para3: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
             This function will open an image and convert it to type CV_32F
         */
-        cv::Mat preprocessImage(const std::string&, const outputImgMode&, const unsigned int);
+        cv::Mat preprocessImage(const std::string&, const inputImgMode&, const unsigned int);
         /*
             para1: image path
             para2: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
@@ -298,14 +286,56 @@ class cvLib{
         */
         std::vector<cv::KeyPoint> extractORBFeatures(const cv::Mat&, cv::Mat&);
         /*
-            para1: train images folder
-            para2: output model file path/output.dat
-            para3: output model_keypoints file path/output_key.dat
-            para4: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
+            save model keypoints
+            para1: dataMap
+            para2: output filePath path/model.dat
         */
-        void train_img_occurrences(const std::string&, const std::string&,const std::string&,const unsigned int);
-        void machine_learning_result(const std::unordered_map<std::string, cv::Mat>&, 
-        std::unordered_map<std::string, std::vector<cv::KeyPoint>>&);
+        void save_keymap(const std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>&, const std::string&);
+        /*
+            load model keypoints
+            para1:model file path
+            para2: dataMap
+        */
+        void load_keymap(const std::string&, std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>&);
+        /*
+            para1: train images folder
+            para2: learning rate (Between 0-1, takes more time if number is bigger)
+            para3: output model file path/output.dat 
+            para4: output model_keypoints file path/output_key.dat
+            para5: output model_keymap file path/output_map.dat
+            para6: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
+            para7: input image mode, inputImgMode::Color, or inputImgMode::Gray
+        */
+        void train_img_occurrences(const std::string&, const double, const std::string&,const std::string&,const std::string&,const unsigned int,const inputImgMode&);
+        /*
+            Function to input an image and return the recognition (std::string)
+            para1: input an image file path
+        */
+        std::string what_is_this(const std::string&);
+        /*
+            Save the void machine_learning_result(); result
+            para1: input: const std::unordered_map<std::string, cv::Mat>& summarizedDataset, 
+            para2: input:  const std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints,
+            para3: output model file path path/to/model.dat
+        */
+        void save_trained_model(const std::unordered_map<std::string, cv::Mat>&, 
+               const std::unordered_map<std::string, std::vector<cv::KeyPoint>>&,
+               const std::string&);
+        /*
+            para1: cluster number < dataset.size(), 
+            para1: std::unordered_map<std::string, std::vector<cv::Mat>> dataset; //descriptors
+            para2: std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>> dataset_keypoint; //keypoints
+            para3: return value-> std::unordered_map<std::string, cv::Mat>& summarizedDataset
+            para4: return value-> std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints
+            para5: output model file path : path/to/model.dat
+        */
+        void machine_learning_result(
+            const unsigned int,
+            const std::unordered_map<std::string, std::vector<cv::Mat>>&, 
+            const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&,
+            std::unordered_map<std::string, cv::Mat>&, 
+            std::unordered_map<std::string, std::vector<cv::KeyPoint>>&,
+            const std::string&); 
         /*
             para1: return a pre-defined std::unordered_map<std::string, std::vector<cv::Mat>>
             para2: the model's file path
@@ -316,6 +346,19 @@ class cvLib{
             para1: return a pre-defined std::unordered_map<std::string, std::vector<KeyPoint>>
         */
        void loadModel_keypoint(std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&, const std::string&);
-
+        /*
+            Load the void machine_learning_result(); result
+            para1: modle file name path
+            para2: output-> std::unordered_map<std::string, cv::Mat>& summarizedDataset
+            para3: output-> std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints
+        */
+        void load_trained_model(const std::string&,std::unordered_map<std::string, cv::Mat>&, 
+               std::unordered_map<std::string, std::vector<cv::KeyPoint>>&);
+        /*
+            Image recognition
+            para1: input target image descriptors
+            para2: trained image dataset const std::unordered_map<std::string, cv::Mat>& summarizedDataset
+        */
+        std::string matchDescriptors(const cv::Mat&,const std::unordered_map<std::string, cv::Mat>&);
 };      
 #endif

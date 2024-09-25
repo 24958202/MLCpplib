@@ -226,7 +226,6 @@ void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std:
             size_t keySize = className.size();
             ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
             ofs.write(className.data(), keySize);
-            
             size_t setCount = keypointSets.size();
             ofs.write(reinterpret_cast<const char*>(&setCount), sizeof(setCount));
             for (const auto& keypoints : keypointSets) {
@@ -280,19 +279,6 @@ void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, co
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
-unsigned int cvLib::count_occurrences(const std::vector<uint32_t>& main_data, const std::vector<uint32_t>& sub_data) {  
-    if (sub_data.empty()) return 0;  // Return zero if sub_data is empty  
-    // Use std::search and std::ranges to count occurrences  
-    unsigned int count = 0;  
-    auto it = std::search(main_data.begin(), main_data.end(),   
-                          sub_data.begin(), sub_data.end());  
-    while (it != main_data.end()) {  
-        ++count;  // Found one occurrence  
-        // Search for the next occurrence  
-        it = std::search(std::next(it), main_data.end(), sub_data.begin(), sub_data.end());  
-    }  
-    return count;  
-}  
 // Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>>  
 std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint32_t>& pixels, unsigned int width, unsigned int height) {  
     std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));  
@@ -443,7 +429,7 @@ void cvLib::saveVectorRGB(const std::vector<std::vector<RGB>>& img, unsigned int
     }  
     out.close();  
 }
-std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, unsigned int img_rows, unsigned int img_cols) {  
+std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, unsigned int img_rows, unsigned int img_cols, const inputImgMode& img_mode) {  
     if(imgPath.empty()){
         return {};
     }
@@ -455,25 +441,14 @@ std::vector<std::vector<RGB>> cvLib::get_img_matrix(const std::string& imgPath, 
     }  
     cv::Mat resized_image, gray_image;  
     cv::resize(image, resized_image, cv::Size(img_cols, img_rows));
-    cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
-    // Assume cv_mat_to_dataset(gray_image) is implemented correctly
-    datasets = this->cv_mat_to_dataset(gray_image);
-    return datasets;  
-}
-std::vector<std::vector<RGB>> cvLib::get_img_matrix_color(const std::string& imgPath, unsigned int img_rows, unsigned int img_cols) {  
-    if(imgPath.empty()){
-        return {};
+    if(img_mode == inputImgMode::Gray){
+        cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
+        // Assume cv_mat_to_dataset(gray_image) is implemented correctly
+        datasets = this->cv_mat_to_dataset(gray_image);
     }
-    std::vector<std::vector<RGB>> datasets(img_rows, std::vector<RGB>(img_cols));  
-    cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);  
-    if (image.empty()) {  
-        std::cerr << "Error: Could not open or find the image." << std::endl;  
-        return datasets;   
-    }  
-    cv::Mat resized_image;
-    cv::resize(image, resized_image, cv::Size(img_cols, img_rows));
-    // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
-    datasets = this->cv_mat_to_dataset_color(resized_image);
+    else{
+        datasets = this->cv_mat_to_dataset(resized_image);
+    }
     return datasets;  
 }
 std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& folderPath){  
@@ -490,7 +465,7 @@ std::multimap<std::string, std::vector<RGB>> cvLib::read_images(std::string& fol
             std::string nuts_key = folderPath + imgPath;
             imgSize img_size;
             img_size = this->get_image_size(nuts_key);
-            std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(nuts_key,img_size.width,img_size.height);  
+            std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(nuts_key,img_size.width,img_size.height, inputImgMode::Gray);  
             std::vector<RGB> one_d_image_rgb;
             for(const auto& mg : image_rgb){
                 for(const auto& m : mg){
@@ -631,7 +606,7 @@ void cvLib::read_image_detect_edges(const std::string& imagePath,unsigned int gr
     }
     std::vector<RGB> pixelToPaint;
     imgSize img_size = this->get_image_size(imagePath);
-    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imagePath,img_size.width,img_size.height);  
+    std::vector<std::vector<RGB>> image_rgb = this->get_img_matrix(imagePath,img_size.width,img_size.height,inputImgMode::Color);  
     // Find outliers (edges)  
     auto outliers = this->findOutlierEdges(image_rgb,gradientMagnitude_threshold); 
     cv::Scalar brushMarkerColor;  
@@ -877,7 +852,7 @@ bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, un
     }  
     return false;  
 }  
-std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, unsigned int gradientMagnitude_threshold, const outputImgMode& out_mode) {  
+std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, unsigned int gradientMagnitude_threshold, const inputImgMode& out_mode) {  
     if (imgPath.empty()) {
         std::cerr << "Error: Image path is empty." << std::endl;
         return {};
@@ -885,11 +860,11 @@ std::vector<std::vector<RGB>> cvLib::objectsInImage(const std::string& imgPath, 
     subfunctions subfun;  
     imgSize img_size = this->get_image_size(imgPath);  
     std::vector<std::vector<RGB>> image_rgb;
-    if(out_mode == outputImgMode::Color){
-        image_rgb = this->get_img_matrix_color(imgPath, img_size.height, img_size.width);  
+    if(out_mode == inputImgMode::Color){
+        image_rgb = this->get_img_matrix(imgPath, img_size.height, img_size.width, inputImgMode::Color);  
     }
-    else if(out_mode == outputImgMode::Gray){
-        image_rgb = this->get_img_matrix(imgPath, img_size.height, img_size.width);
+    else if(out_mode == inputImgMode::Gray){
+        image_rgb = this->get_img_matrix(imgPath, img_size.height, img_size.width, inputImgMode::Gray);
     }
     if (!image_rgb.empty()) {
         auto outliers = this->findOutlierEdges(image_rgb, gradientMagnitude_threshold);
@@ -1003,7 +978,7 @@ void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,c
     cap.release();  
     cv::destroyAllWindows();  
 }
-cv::Mat cvLib::preprocessImage(const std::string& imgPath, const outputImgMode& img_mode, const unsigned int gradientMagnitude_threshold) {
+cv::Mat cvLib::preprocessImage(const std::string& imgPath, const inputImgMode& img_mode, const unsigned int gradientMagnitude_threshold) {
     // Step 1: Open the image using cv::imread
     cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);
     if (image.empty()) {
@@ -1012,38 +987,36 @@ cv::Mat cvLib::preprocessImage(const std::string& imgPath, const outputImgMode& 
     }
     // Step 2: Resize the image to 120x120 pixels
     cv::Mat resizedImage;
-    cv::resize(image, resizedImage, cv::Size(120, 120));
+    cv::resize(image, resizedImage, cv::Size(800, 800));
+
     std::vector<std::vector<RGB>> datasets;
     subfunctions subfun;
-    if(img_mode == outputImgMode::Color){
+    if(img_mode == inputImgMode::Color){
         datasets = this->cv_mat_to_dataset_color(resizedImage);
     }
-    else if(img_mode == outputImgMode::Gray){
+    else if(img_mode == inputImgMode::Gray){
         cv::Mat gray_image;
         cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
         datasets = this->cv_mat_to_dataset_color(gray_image);
     }
     auto outliers = this->findOutlierEdges(datasets, gradientMagnitude_threshold);
     std::vector<std::vector<RGB>> trans_img = subfun.getPixelsInsideObject(datasets, outliers);
-    cv::Mat final_image = subfun.convertDatasetToMat(trans_img);
+    cv::Mat final_image = subfun.convertDatasetToMat(trans_img);//trans_img
     return final_image;
-    // Step 3: Convert the image to CV_32F and normalize
-    // cv::Mat floatImage;
-    // resizedImage.convertTo(floatImage, CV_32F);
-    // floatImage /= 255.0; // Normalize to [0, 1] for machine learning applications
+
 }
 std::vector<std::vector<RGB>> cvLib::get_img_120_gray_for_ML(const std::string& imgPath,const unsigned int gradientMagnitude_threshold) {  
     if(imgPath.empty()){
         return {};
     }
     std::vector<std::vector<RGB>> datasets;  
-    cv::Mat image = this->preprocessImage(imgPath,outputImgMode::Gray,gradientMagnitude_threshold); 
+    cv::Mat image = this->preprocessImage(imgPath,inputImgMode::Gray,gradientMagnitude_threshold); 
     if (image.empty()) {  
         std::cerr << "Error: Could not open or find the image." << std::endl;  
         return datasets;   
     }  
     cv::Mat resized_image,gray_image;
-    cv::resize(image, resized_image, cv::Size(120, 120));
+    cv::resize(image, resized_image, cv::Size(800, 800));
     cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
     // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
     datasets = this->cv_mat_to_dataset_color(gray_image);
@@ -1054,7 +1027,7 @@ std::vector<uint32_t> cvLib::get_one_image(const std::string& image_path,const u
         if (image_path.empty()) {
             return {};  // Return an empty vector
         }
-        cv::Mat img = this->preprocessImage(image_path,outputImgMode::Gray,gradientMagnitude_threshold);//this->get_img_120_gray_for_ML(imgFolderPath);
+        cv::Mat img = this->preprocessImage(image_path,inputImgMode::Gray,gradientMagnitude_threshold);//this->get_img_120_gray_for_ML(imgFolderPath);
         cv::Mat gray_image;
         cv::cvtColor(img, gray_image, cv::COLOR_BGR2GRAY);
         if (gray_image.empty()) {
@@ -1095,9 +1068,63 @@ std::vector<cv::KeyPoint> cvLib::extractORBFeatures(const cv::Mat& img, cv::Mat&
     orb->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
     return keypoints;
 }
-void cvLib::train_img_occurrences(const std::string& images_folder_path, const std::string& model_output_path, const std::string& model_output_key_path, const unsigned int gradientMagnitude_threshold){
+void cvLib::save_keymap(const std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& dataMap, const std::string& filePath) {
+    if(filePath.empty()){
+        return;
+    }
+    std::ofstream ofs(filePath, std::ios::binary);
+    if (!ofs.is_open()) {
+        throw std::runtime_error("Error: Unable to open file for writing.");
+    }
+    // Serialize the map
+    size_t mapSize = dataMap.size();
+    ofs.write(reinterpret_cast<const char*>(&mapSize), sizeof(mapSize));
+    for (const auto& [key, vec] : dataMap) {
+        size_t keySize = key.size();
+        ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
+        ofs.write(key.c_str(), keySize);
+        size_t vecSize = vec.size();
+        ofs.write(reinterpret_cast<const char*>(&vecSize), sizeof(vecSize));
+        for (const auto& pair : vec) {
+            ofs.write(reinterpret_cast<const char*>(&pair.first), sizeof(pair.first));
+            ofs.write(reinterpret_cast<const char*>(&pair.second), sizeof(pair.second));
+        }
+    }
+    ofs.close();
+}
+void cvLib::load_keymap(const std::string& filePath, std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& dataMap) {
+    if(filePath.empty()){
+        return;
+    }
+    std::ifstream ifs(filePath, std::ios::binary);
+    if (!ifs.is_open()) {
+        throw std::runtime_error("Error: Unable to open file for reading.");
+    }
+    // Deserialize the map
+    size_t mapSize;
+    ifs.read(reinterpret_cast<char*>(&mapSize), sizeof(mapSize));
+    for (size_t i = 0; i < mapSize; ++i) {
+        size_t keySize;
+        ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));
+        std::string key(keySize, '\0');
+        ifs.read(&key[C_0], keySize);
+        size_t vecSize;
+        ifs.read(reinterpret_cast<char*>(&vecSize), sizeof(vecSize));
+        std::vector<std::pair<unsigned int, unsigned int>> vec(vecSize);
+        for (size_t j = 0; j < vecSize; ++j) {
+            unsigned int first, second;
+            ifs.read(reinterpret_cast<char*>(&first), sizeof(first));
+            ifs.read(reinterpret_cast<char*>(&second), sizeof(second));
+            vec[j] = {first, second};
+        }
+        dataMap[key] = vec;
+    }
+    ifs.close();
+}
+void cvLib::train_img_occurrences(const std::string& images_folder_path, const double learning_rate, const std::string& model_output_path, const std::string& model_output_key_path, const std::string& model_output_map_path,const unsigned int gradientMagnitude_threshold, const inputImgMode& img_mode){
     std::unordered_map<std::string, std::vector<cv::Mat>> dataset; 
     std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>> dataset_keypoint;  
+    std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& dataMap
     if (images_folder_path.empty()) {  
         return;  
     }  
@@ -1109,16 +1136,59 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const s
                 std::string sub_folder_path = entryMainFolder.path().string();  
                 std::vector<cv::Mat> sub_folder_all_images;  
                 std::vector<std::vector<cv::KeyPoint>> sub_folder_keypoints;
+                std::vector<std::pair<unsigned int, unsigned int>> img_keymap;
                 // Accumulate pixel count for memory reservation  
                 for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
                     if (entrySubFolder.is_regular_file()) {  
-                        std::string imgFilePath = entrySubFolder.path().string();  
-                        cv::Mat get_img = this->preprocessImage(imgFilePath,outputImgMode::Color,gradientMagnitude_threshold);
+                        std::string imgFilePath = entrySubFolder.path().string(); 
+                        cv::Mat get_img;
+                        if(img_mode == inputImgMode::Gray){ 
+                            get_img = this->preprocessImage(imgFilePath,inputImgMode::Gray,gradientMagnitude_threshold);
+                        }
+                        else{
+                            get_img = this->preprocessImage(imgFilePath,inputImgMode::Color,gradientMagnitude_threshold);
+                        }
                         if(!get_img.empty()){
                             cv::Mat descriptors;
                             std::vector<cv::KeyPoint> sub_key = this->extractORBFeatures(get_img,descriptors);
                             sub_folder_all_images.push_back(descriptors);
                             sub_folder_keypoints.push_back(sub_key);
+                            /*
+                                Output model data
+                            */
+                            if(!sub_key.empty()){
+                                double total_record = static_cast<double>(sub_key.size());
+                                unsigned int learning_count = 0;
+                                double no_data_to_save = learning_rate * total_record
+                                unsigned int learning_no = static_cast<unsigned int> (no_data_to_save);
+                                std::vector<std::pair<std::vector<unsigned int>,double>> count_response;
+                                std::cout << "Learning rate: " << learning_rate << " total number: " << learning_no << std::endl;
+                                for(unsigned int i = 0; i < sub_key.size(); ++i){
+                                    const cv::KeyPoint& kp = sub_key[i];
+                                    std::vector<unsigned int> point_x_y{
+                                        static_cast<unsigned int>(kp.pt.x),
+                                        static_cast<unsigned int>(kp.pt.y)
+                                    };
+                                    count_response.push_back(std::make_pair(point_x_y,static_cast<double>(kp.response)));
+                                }
+                                if(!count_response.empty()){
+                                    std::sort(count_response.begin(),count_response.end(),[](const auto& a, const auto& b){
+                                        return a.second > b.second;
+                                    });
+                                }
+                                else{
+                                    std::cerr << sub_folder_name << " error reading the image." << std::endl;
+                                    continue;
+                                }
+                                for(const auto& item : count_response){
+                                    learning_count++;
+                                    if(learning_count > learning_no){
+                                        break;//reach the limit
+                                    }
+                                    std::pair<std::vector<unsigned int>,double> printItem = item;
+                                    img_keymap.push_back(std::make_pair(printItem.first[0],printItem.first[1]));
+                                }
+                            }
                         }
                         else{
                             std::cout << imgFilePath << " (get_img is empty)!" << std::endl;
@@ -1127,6 +1197,7 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const s
                 }  
                 dataset[sub_folder_name] = sub_folder_all_images;
                 dataset_keypoint[sub_folder_name] = sub_folder_keypoints;
+                dataMap[sub_folder_name] = img_keymap;
                 std::cout << sub_folder_name << " is done!" << std::endl;  
             }  
         }  
@@ -1138,59 +1209,112 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const s
         std::cerr << "Error: " << e.what() << std::endl;
         return;
     }
-    // /*
-    //     Summarize the dataset
-    // */
-    // std::cout << "Machine learning..." << std::endl;
-    // std::unordered_map<std::string, cv::Mat> summarizedDataset;
-    // for (const auto& [category, descriptors] : dataset) {
-    //     if (descriptors.empty()) continue;
-    //     cv::Mat sum = descriptors[C_0].clone();
-    //     for (size_t i = 1; i < descriptors.size(); ++i) {
-    //         sum += descriptors[i];
-    //     }
-    //     cv::Mat average = sum / static_cast<double>(descriptors.size());
-    //     summarizedDataset[category] = average;
-    // }
-    // std::unordered_map<std::string, std::vector<cv::KeyPoint>> summarizedKeypoints;
-    // for (const auto& [category, keypointSets] : dataset_keypoint) {
-    //     if (keypointSets.empty()) continue;
-    //     // Accumulators for keypoint properties
-    //     std::vector<double> xSum, ySum, sizeSum, angleSum;
-    //     for (const auto& keypoints : keypointSets) {
-    //         for (size_t i = 0; i < keypoints.size(); ++i) {
-    //             if (i >= xSum.size()) {
-    //                 // Initialize
-    //                 xSum.push_back(0);
-    //                 ySum.push_back(0);
-    //                 sizeSum.push_back(0);
-    //                 angleSum.push_back(0);
-    //             }
-    //             xSum[i] += keypoints[i].pt.x;
-    //             ySum[i] += keypoints[i].pt.y;
-    //             sizeSum[i] += keypoints[i].size;
-    //             angleSum[i] += keypoints[i].angle;
-    //         }
-    //     }
-    //     // Compute averages
-    //     std::vector<cv::KeyPoint> averagedKeypoints;
-    //     for (size_t i = 0; i < xSum.size(); ++i) {
-    //         cv::KeyPoint kp;
-    //         kp.pt.x = xSum[i] / keypointSets.size();
-    //         kp.pt.y = ySum[i] / keypointSets.size();
-    //         kp.size = sizeSum[i] / keypointSets.size();
-    //         kp.angle = angleSum[i] / keypointSets.size();
-    //         averagedKeypoints.push_back(kp);
-    //     }
-    //     summarizedKeypoints[category] = averagedKeypoints;  
-    // }
     std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
     sub_j.saveModel(dataset, model_output_path); 
     sub_j.saveModel_keypoint(dataset_keypoint,model_output_key_path); 
+    sub_j.save_keymap(dataMap,model_output_path);
 }
-void cvLib::machine_learning_result(const std::unordered_map<std::string, cv::Mat>& summarizedDataset, 
-        std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints){
+std::string cvLib::what_is_this(const std::string&){
     
+}
+void cvLib::save_trained_model(
+    const std::unordered_map<std::string, cv::Mat>& summarizedDataset, 
+    const std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints,
+    const std::string& model_file_path) {
+    std::ofstream ofs(model_file_path, std::ios::binary);
+    if (!ofs.is_open()) {
+        throw std::runtime_error("Error: Unable to open file for writing.");
+    }
+    // Serialize the summarized dataset
+    size_t datasetSize = summarizedDataset.size();
+    ofs.write(reinterpret_cast<const char*>(&datasetSize), sizeof(datasetSize));
+    for (const auto& [category, mat] : summarizedDataset) {
+        size_t keySize = category.size();
+        ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
+        ofs.write(category.c_str(), keySize);
+        int rows = mat.rows;
+        int cols = mat.cols;
+        int type = mat.type();
+        ofs.write(reinterpret_cast<const char*>(&rows), sizeof(rows));
+        ofs.write(reinterpret_cast<const char*>(&cols), sizeof(cols));
+        ofs.write(reinterpret_cast<const char*>(&type), sizeof(type));
+        size_t dataSize = mat.elemSize() * rows * cols;
+        ofs.write(reinterpret_cast<const char*>(mat.data), dataSize);
+    }
+    // Serialize the summarized keypoints
+    size_t keypointsSize = summarizedKeypoints.size();
+    ofs.write(reinterpret_cast<const char*>(&keypointsSize), sizeof(keypointsSize));
+    for (const auto& [category, keypoints] : summarizedKeypoints) {
+        size_t keySize = category.size();
+        ofs.write(reinterpret_cast<const char*>(&keySize), sizeof(keySize));
+        ofs.write(category.c_str(), keySize);
+        size_t keypointCount = keypoints.size();
+        ofs.write(reinterpret_cast<const char*>(&keypointCount), sizeof(keypointCount));
+        for (const auto& kp : keypoints) {
+            ofs.write(reinterpret_cast<const char*>(&kp.pt.x), sizeof(kp.pt.x));
+            ofs.write(reinterpret_cast<const char*>(&kp.pt.y), sizeof(kp.pt.y));
+            ofs.write(reinterpret_cast<const char*>(&kp.size), sizeof(kp.size));
+            ofs.write(reinterpret_cast<const char*>(&kp.angle), sizeof(kp.angle));
+            ofs.write(reinterpret_cast<const char*>(&kp.response), sizeof(kp.response));
+            ofs.write(reinterpret_cast<const char*>(&kp.octave), sizeof(kp.octave));
+            ofs.write(reinterpret_cast<const char*>(&kp.class_id), sizeof(kp.class_id));
+        }
+    }
+    ofs.close();
+}
+void cvLib::machine_learning_result(
+    const unsigned int clusterNo,
+    const std::unordered_map<std::string, std::vector<cv::Mat>>& dataset,
+    const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>& dataset_keypoint,
+    std::unordered_map<std::string, cv::Mat>& summarizedDataset,
+    std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints,
+    const std::string& model_file_path) {
+    //const int K = clusterNo;  // Increased number of clusters for better precision in complex datasets
+    for (const auto& [category, descriptors] : dataset) {
+        if (descriptors.empty()) continue;
+        cv::Mat allDescriptors;
+        for (const auto& descriptor : descriptors) {
+            cv::Mat floatDescriptor;
+            descriptor.convertTo(floatDescriptor, CV_32F);
+            allDescriptors.push_back(floatDescriptor);
+        }
+        if (!allDescriptors.empty()) {
+            cv::Mat labels, centers;
+            cv::kmeans(allDescriptors, clusterNo, labels, 
+                cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 2000, 0.1),//150,0.1
+                20, cv::KMEANS_PP_CENTERS, centers);//10
+            summarizedDataset[category] = centers;
+        }
+    }
+    for (const auto& [category, keypointSets] : dataset_keypoint) {
+        if (keypointSets.empty()) continue;
+        std::vector<cv::Point2f> allPoints;
+        for (const auto& keypoints : keypointSets) {
+            for (const auto& kp : keypoints) {
+                allPoints.push_back(kp.pt);
+            }
+        }
+        if (!allPoints.empty()) {
+            cv::Mat allPointsMat(static_cast<int>(allPoints.size()), 2, CV_32F);
+            for (size_t i = 0; i < allPoints.size(); ++i) {
+                allPointsMat.at<float>(static_cast<int>(i), 0) = allPoints[i].x;
+                allPointsMat.at<float>(static_cast<int>(i), 1) = allPoints[i].y;
+            }
+            cv::Mat labels, centers;
+            cv::kmeans(allPointsMat, clusterNo, labels,
+                cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 2000, 0.1),//150,0.1
+                20, cv::KMEANS_PP_CENTERS, centers);//10
+            std::vector<cv::KeyPoint> clusteredKeypoints;
+            for (int i = 0; i < centers.rows; ++i) {
+                cv::KeyPoint kp;
+                kp.pt.x = centers.at<float>(i, 0);
+                kp.pt.y = centers.at<float>(i, 1);
+                clusteredKeypoints.push_back(kp);
+            }
+            summarizedKeypoints[category] = clusteredKeypoints;
+        }
+    }
+    this->save_trained_model(summarizedDataset, summarizedKeypoints, model_file_path);
 }
 void cvLib::loadModel(std::unordered_map<std::string, std::vector<cv::Mat>>& featureMap, const std::string& filename){
    if(filename.empty()){
@@ -1269,5 +1393,97 @@ void cvLib::loadModel_keypoint(std::unordered_map<std::string, std::vector<std::
     }
     ifs.close();
 }
-
+void cvLib::load_trained_model(
+        const std::string& filename,
+        std::unordered_map<std::string, cv::Mat>& summarizedDataset,
+        std::unordered_map<std::string, std::vector<cv::KeyPoint>>& summarizedKeypoints){
+        std::ifstream ifs(filename, std::ios::binary);
+        if (!ifs.is_open()) {
+            throw std::runtime_error("Error: Unable to open file for reading.");
+        }
+        // Load summarizedDataset
+        size_t datasetSize;
+        ifs.read(reinterpret_cast<char*>(&datasetSize), sizeof(datasetSize));
+        for (size_t i = 0; i < datasetSize; ++i) {
+            size_t keySize;
+            ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));
+            std::string category(keySize, '\0');
+            ifs.read(&category[C_0], keySize);
+            int rows, cols, type;
+            ifs.read(reinterpret_cast<char*>(&rows), sizeof(rows));
+            ifs.read(reinterpret_cast<char*>(&cols), sizeof(cols));
+            ifs.read(reinterpret_cast<char*>(&type), sizeof(type));
+            cv::Mat mat(rows, cols, type);
+            ifs.read(reinterpret_cast<char*>(mat.data), mat.elemSize() * rows * cols);
+            summarizedDataset[category] = mat;
+        }
+        // Load summarizedKeypoints
+        size_t keypointsSize;
+        ifs.read(reinterpret_cast<char*>(&keypointsSize), sizeof(keypointsSize));
+        for (size_t i = 0; i < keypointsSize; ++i) {
+            size_t keySize;
+            ifs.read(reinterpret_cast<char*>(&keySize), sizeof(keySize));
+            std::string category(keySize, '\0');
+            ifs.read(&category[C_0], keySize);
+            size_t keypointCount;
+            ifs.read(reinterpret_cast<char*>(&keypointCount), sizeof(keypointCount));
+            std::vector<cv::KeyPoint> keypoints(keypointCount);
+            for (size_t j = 0; j < keypointCount; ++j) {
+                cv::KeyPoint kp;
+                ifs.read(reinterpret_cast<char*>(&kp.pt.x), sizeof(kp.pt.x));
+                ifs.read(reinterpret_cast<char*>(&kp.pt.y), sizeof(kp.pt.y));
+                ifs.read(reinterpret_cast<char*>(&kp.size), sizeof(kp.size));
+                ifs.read(reinterpret_cast<char*>(&kp.angle), sizeof(kp.angle));
+                ifs.read(reinterpret_cast<char*>(&kp.response), sizeof(kp.response));
+                ifs.read(reinterpret_cast<char*>(&kp.octave), sizeof(kp.octave));
+                ifs.read(reinterpret_cast<char*>(&kp.class_id), sizeof(kp.class_id));
+                keypoints[j] = kp;
+            }
+            summarizedKeypoints[category] = keypoints;
+        }
+        ifs.close();
+}
+std::string cvLib::matchDescriptors(const cv::Mat& descriptors,const std::unordered_map<std::string, cv::Mat>& summarizedDataset){
+    cv::BFMatcher matcher(cv::NORM_L2, false);
+    std::string bestMatchCategory;
+    double bestScore = std::numeric_limits<double>::max();
+    cv::Mat floatDescriptors;
+    if (descriptors.type() != CV_32F) {
+        descriptors.convertTo(floatDescriptors, CV_32F);
+    } else {
+        floatDescriptors = descriptors;
+    }
+    for (const auto& [category, clusterDescriptors] : summarizedDataset) {
+        cv::Mat floatClusterDescriptors;
+        if (clusterDescriptors.type() != CV_32F) {
+            clusterDescriptors.convertTo(floatClusterDescriptors, CV_32F);
+        } else {
+            floatClusterDescriptors = clusterDescriptors;
+        }
+        std::vector<std::vector<cv::DMatch>> knnMatches;
+        matcher.knnMatch(floatDescriptors, floatClusterDescriptors, knnMatches, 10);//2
+        // Apply Lowe's ratio test
+        double score = 0.0;
+        int numGoodMatches = 0;
+        const float ratioThresh = 0.9f;//0.65 0.75f
+        for (size_t i = 0; i < knnMatches.size(); i++) {
+            if (knnMatches[i].size() >= 2) {
+                const cv::DMatch& bestMatch = knnMatches[i][C_0];
+                const cv::DMatch& betterMatch = knnMatches[i][C_1];
+                if (bestMatch.distance < ratioThresh * betterMatch.distance) {
+                    score += bestMatch.distance;
+                    numGoodMatches++;
+                }
+            }
+        }
+        if (numGoodMatches > 0) {
+            score /= numGoodMatches;
+            if (score < bestScore) {
+                bestScore = score;
+                bestMatchCategory = category;
+            }
+        }
+    }
+    return bestMatchCategory;
+}
 
