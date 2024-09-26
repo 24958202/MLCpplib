@@ -279,6 +279,19 @@ void subfunctions::merge_without_duplicates(std::vector<uint32_t>& data_main, co
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
+std::vector<std::string> cvLib::splitString(const std::string& input, char delimiter){
+    std::vector<std::string> result;
+    if(input.empty() || delimiter == '\0'){
+        std::cerr << "Jsonlib::splitString input empty" << '\n';
+    	return result;
+    }
+    std::stringstream ss(input);
+    std::string token;
+    while(std::getline(ss,token,delimiter)){
+        result.push_back(token);
+    }
+    return result;
+}
 // Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>>  
 std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint32_t>& pixels, unsigned int width, unsigned int height) {  
     std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));  
@@ -1124,11 +1137,10 @@ void cvLib::load_keymap(const std::string& filePath, std::unordered_map<std::str
 void cvLib::train_img_occurrences(const std::string& images_folder_path, const double learning_rate, const std::string& model_output_path, const std::string& model_output_key_path, const std::string& model_output_map_path,const unsigned int gradientMagnitude_threshold, const inputImgMode& img_mode){
     std::unordered_map<std::string, std::vector<cv::Mat>> dataset; 
     std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>> dataset_keypoint;  
-    std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& dataMap
+    std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> dataMap;
     if (images_folder_path.empty()) {  
         return;  
     }  
-    subfunctions sub_j;
     try {  
         for (const auto& entryMainFolder : std::filesystem::directory_iterator(images_folder_path)) {  
             if (entryMainFolder.is_directory()) { // Check if the entry is a directory  
@@ -1159,10 +1171,9 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const d
                             if(!sub_key.empty()){
                                 double total_record = static_cast<double>(sub_key.size());
                                 unsigned int learning_count = 0;
-                                double no_data_to_save = learning_rate * total_record
+                                double no_data_to_save = learning_rate * total_record;
                                 unsigned int learning_no = static_cast<unsigned int> (no_data_to_save);
                                 std::vector<std::pair<std::vector<unsigned int>,double>> count_response;
-                                std::cout << "Learning rate: " << learning_rate << " total number: " << learning_no << std::endl;
                                 for(unsigned int i = 0; i < sub_key.size(); ++i){
                                     const cv::KeyPoint& kp = sub_key[i];
                                     std::vector<unsigned int> point_x_y{
@@ -1201,7 +1212,8 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const d
                 std::cout << sub_folder_name << " is done!" << std::endl;  
             }  
         }  
-    } catch (const std::filesystem::filesystem_error& e) {  
+    } 
+    catch (const std::filesystem::filesystem_error& e) {  
         std::cerr << "Filesystem error: " << e.what() << std::endl;  
         return; // Return an empty dataset in case of filesystem error  
     }  
@@ -1209,13 +1221,105 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const d
         std::cerr << "Error: " << e.what() << std::endl;
         return;
     }
-    std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
+    subfunctions sub_j;
     sub_j.saveModel(dataset, model_output_path); 
     sub_j.saveModel_keypoint(dataset_keypoint,model_output_key_path); 
-    sub_j.save_keymap(dataMap,model_output_path);
+    this->save_keymap(dataMap,model_output_map_path);
+    std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
 }
-std::string cvLib::what_is_this(const std::string&){
-    
+void cvLib::loadImageRecog(const std::string& keymap_path,const unsigned int gradientMagnitude_threshold, 
+const bool display_time_spend,const unsigned int dis_bias){
+    if(keymap_path.empty()){
+        return;
+    }
+    this->display_time = display_time_spend;
+    this->_gradientMagnitude_threshold = gradientMagnitude_threshold;
+    this-> distance_bias = dis_bias;
+    this->load_keymap(keymap_path,this->_loaddataMap);
+}
+std::string cvLib::what_is_this(const std::string& img_path){
+    std::string str_result;
+    if(img_path.empty()){
+        return str_result;
+    }
+    /*
+        preprocess image
+    */
+    std::chrono::time_point<std::chrono::high_resolution_clock> t_count_start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> t_count_end;
+    if(this->display_time){
+        t_count_start = std::chrono::high_resolution_clock::now(); // Initialize start time 
+    }
+    cv::Mat getImg = this->preprocessImage(img_path,inputImgMode::Gray,_gradientMagnitude_threshold);
+    if(!getImg.empty()){
+        cv::Mat desc;
+        std::vector<cv::KeyPoint> testKey = this->extractORBFeatures(getImg,desc);
+        if(!testKey.empty()){
+            std::vector<std::pair<std::vector<unsigned int>,double>> test_img_data;
+            for (size_t i = 0; i < testKey.size(); ++i) {
+                const cv::KeyPoint& kp = testKey[i];
+                std::vector<unsigned int> kp_pos{
+                    static_cast<unsigned int>(kp.pt.x),
+                    static_cast<unsigned int>(kp.pt.y)
+                };
+                test_img_data.push_back(std::make_pair(kp_pos,static_cast<double>(kp.response)));
+            }
+            if(!test_img_data.empty()){
+                std::sort(test_img_data.begin(),test_img_data.end(),[](const auto& a, const auto& b){
+                    return a.second > b.second;
+                });
+                /*
+                    start recognizing...
+                    trained_img_data
+                    std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
+                */
+                try{
+                    std::unordered_map<std::string,unsigned int> score_counting;
+                    for (const auto& testItem : test_img_data) {
+                        auto test_img_line = testItem.first;
+                        if (!test_img_line.empty() && !_loaddataMap.empty()) {
+                            for (const auto& train_item : _loaddataMap) {
+                                auto train_unit = train_item.second;
+                                for (const auto& tt : train_unit) {
+                                    auto tt_compare = tt;
+                                    if (tt_compare.first != 0 && tt_compare.second != 0) {
+                                        if (std::abs(static_cast<int>(tt_compare.first) - static_cast<int>(test_img_line[C_0])) < distance_bias &&
+                                            std::abs(static_cast<int>(tt_compare.second) - static_cast<int>(test_img_line[C_1])) < distance_bias) {
+                                            score_counting[train_item.first]++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(!score_counting.empty()){
+                        std::vector<std::pair<std::string, unsigned int>> sorted_score_counting(score_counting.begin(), score_counting.end());
+                        // Sort the vector of pairs
+                        std::sort(sorted_score_counting.begin(), sorted_score_counting.end(), [](const auto& a, const auto& b) {
+                            return a.second > b.second;
+                        });
+                        auto it = sorted_score_counting.begin();
+                        str_result = it->first;
+                    }
+                }
+                catch (const std::filesystem::filesystem_error& e) {  
+                    std::cerr << "Filesystem error: " << e.what() << std::endl;  
+                }  
+                catch (const std::exception& e) {
+                    std::cerr << "Error: " << e.what() << std::endl;
+                }
+            }
+        }
+        else{
+            std::cerr << "Test key is empty!" << std::endl;
+        }
+    }
+    if(this->display_time){
+        t_count_end = std::chrono::high_resolution_clock::now();   
+        std::chrono::duration<double> duration = t_count_end - t_count_start;  
+        std::cout << "Execution time: " << duration.count() << " seconds\n"; 
+    }
+    return str_result;
 }
 void cvLib::save_trained_model(
     const std::unordered_map<std::string, cv::Mat>& summarizedDataset, 

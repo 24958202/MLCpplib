@@ -7,6 +7,11 @@
 #include <opencv2/opencv.hpp>  
 #include <functional>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ImageWidth 120
 #define ImageHeight 120
 const uint32_t C_0 = 0;
@@ -22,16 +27,6 @@ struct RGB {
     // Parameterized constructor  
     RGB(uint32_t red, uint32_t green, uint32_t blue) : r(red), g(green), b(blue) {}  
 };   
-struct VectorHash {  
-    template <typename T>  
-    std::size_t operator()(const std::vector<T>& vec) const {  
-        std::size_t seed = vec.size(); // Start with the size of vector  
-        for (const auto& i : vec) {  
-            seed ^= std::hash<T>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2); // Combining hashes  
-        }  
-        return seed;  
-    }  
-}; 
 struct imgSize{
     unsigned int width;
     unsigned int height;
@@ -47,7 +42,13 @@ enum class inputImgMode{
     Color
 };
 class cvLib{
+    private:
+        std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
+        unsigned int _gradientMagnitude_threshold = 33; 
+        bool display_time = false;
+        unsigned int distance_bias = 2;
     public:
+        std::vector<std::string> splitString(const std::string&, char);//tokenize a string, sperated by char for example ','
         /*
             Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>> 
         */
@@ -308,6 +309,14 @@ class cvLib{
         */
         void train_img_occurrences(const std::string&, const double, const std::string&,const std::string&,const std::string&,const unsigned int,const inputImgMode&);
         /*
+            initialize recognition 
+            para1: input the train model file from function train_img_occurrences para5: output model_keymap file path/output_map.dat
+            para2: //gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits, but takes longer (default: 33)
+            para3: bool = true (display time spent)
+            para4: distance allow bias from the trained data default = 2;
+        */
+        void loadImageRecog(const std::string&,const unsigned int, const bool, unsigned int);
+        /*
             Function to input an image and return the recognition (std::string)
             para1: input an image file path
         */
@@ -360,5 +369,10 @@ class cvLib{
             para2: trained image dataset const std::unordered_map<std::string, cv::Mat>& summarizedDataset
         */
         std::string matchDescriptors(const cv::Mat&,const std::unordered_map<std::string, cv::Mat>&);
-};      
+};     
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
