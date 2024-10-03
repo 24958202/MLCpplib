@@ -14,19 +14,29 @@ extern "C" {
 
 #define ImageWidth 120
 #define ImageHeight 120
-const uint32_t C_0 = 0;
-const uint32_t C_1 = 1;
-const uint32_t C_2 = 2;
-const uint32_t C_3 = 3;
-struct RGB {  
-    uint32_t r; // Red  
-    uint32_t g; // Green  
-    uint32_t b; // Blue  
-    // Default constructor  
-    RGB() : r(0), g(0), b(0) {} // Initializes RGB to black (0, 0, 0)  
-    // Parameterized constructor  
-    RGB(uint32_t red, uint32_t green, uint32_t blue) : r(red), g(green), b(blue) {}  
-};   
+
+const uint8_t C_0 = 0;
+const uint8_t C_1 = 1;
+const uint8_t C_2 = 2;
+const uint8_t C_3 = 3;
+struct RGB {
+    uint8_t r; // Red
+    uint8_t g; // Green
+    uint8_t b; // Blue
+    // Default constructor
+    RGB() : r(0), g(0), b(0) {} // Initializes RGB to black (0, 0, 0)
+    // Parameterized constructor
+    RGB(uint8_t red, uint8_t green, uint8_t blue) : r(red), g(green), b(blue) {}
+}; 
+struct the_obj_in_an_image {
+    std::string objName;
+    std::chrono::duration<double> timespent;
+    // Define what "empty" means for this struct
+    bool empty() const {
+        // Check if objName is empty and timespent is zero
+        return objName.empty() && timespent.count() == 0.0;
+    }
+};
 struct imgSize{
     unsigned int width;
     unsigned int height;
@@ -47,23 +57,34 @@ class cvLib{
         unsigned int _gradientMagnitude_threshold = 33; 
         bool display_time = false;
         unsigned int distance_bias = 2;
+        double learning_rate = 0.05;
     public:
+        void set_distance_bias(const unsigned int&);
+        unsigned int get_distance_bias() const;
+        void set_display_time(const bool&);
+        bool get_display_time() const;
+        void set_gradientMagnitude_threshold(const unsigned int&);
+        unsigned int get_gradientMagnitude_threshold() const;
+        void set_loaddataMap(const std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>&);
+        std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> get_loaddataMap() const;
+        void set_learing_rate(const double&);
+        double get_learning_rate() const;
         std::vector<std::string> splitString(const std::string&, char);//tokenize a string, sperated by char for example ','
         /*
-            Function to convert std::vector<uint32_t> to std::vector<std::vector<RGB>> 
+            Function to convert std::vector<uint8_t> to std::vector<std::vector<RGB>> 
         */
-        std::vector<std::vector<RGB>> convertToRGB(const std::vector<uint32_t>&, unsigned int,  unsigned int);
+        std::vector<std::vector<RGB>> convertToRGB(const std::vector<uint8_t>&, unsigned int,  unsigned int);
         /*
-            Function to convert std::vector<std::vector<RGB>> back to std::vector<uint32_t> 
+            Function to convert std::vector<std::vector<RGB>> back to std::vector<uint8_t> 
         */
-        std::vector<uint32_t> convertToPacked(const std::vector<std::vector<RGB>>&);
+        std::vector<uint8_t> convertToPacked(const std::vector<std::vector<RGB>>&);
         /*
-            Function to convert std::vector<uint32_t> to cv::Mat 
+            Function to convert std::vector<uint8_t> to cv::Mat 
             para1: packed pixel data
             para2: width
             para3: height
         */
-        cv::Mat vectorToImage(const std::vector<uint32_t>&, unsigned int, unsigned int); 
+        cv::Mat vectorToImage(const std::vector<uint8_t>&, unsigned int, unsigned int); 
         /*
             Input an image path, will return an RGB dataset std::vector<std::vector<RGB>> -gray
         */
@@ -140,6 +161,22 @@ class cvLib{
             para4: output image background color cv::Scalar bgColor(0,0,0);
         */
         void createOutlierImage(const std::vector<std::vector<RGB>>&, const std::vector<std::pair<int, int>>&, const std::string&, const cv::Scalar&);
+        /*
+            Function to extract, resize, and center objects onto a white background.
+            para1: imagePath
+            para2: cannyThreshold Lower (0 - 255)
+            para3: cannyThreshold Upper (0 - 255)
+            Canny Thresholds:
+                cannyThreshold1 (Lower Threshold):
+                It is the lower bound threshold in Canny edge detection.
+                When determining whether a pixel is an edge, if its intensity gradient is greater than this value, it may become an edge pixel, but not decisively.
+                It helps in edge linking; pixels with gradient intensity between this threshold and the upper threshold are considered only if they're connected to a pixel with a gradient above cannyThreshold2.
+            cannyThreshold2 (Upper Threshold):
+                It is the higher bound threshold for edge pixel determination.
+                Any pixel with a gradient intensity above this threshold is considered a strong edge pixel.
+                It greatly influences the number of visible/hard edges — higher values typically result in fewer edges being detected.
+        */
+        std::vector<cv::Mat> extractAndProcessObjects(const std::string& imagePath, int cannyThreshold1 = 100, int cannyThreshold2 = 200);
         /*
             This function can read an image, and mark all the edges of objects in the image
             para1: the image path
@@ -219,6 +256,7 @@ class cvLib{
             This function will return all the object as std::vector<std::vector<RGB>> in an image
             para1: image path
             para2 : gradientMagnitude threshold 0-100, better result with small digits
+            para3: inputImgMode(::Color, ::Gray)
         */
         std::vector<std::vector<RGB>> objectsInImage(const std::string&, unsigned int, const inputImgMode&);
         /*
@@ -275,17 +313,17 @@ class cvLib{
         */
         std::vector<std::vector<RGB>> get_img_120_gray_for_ML(const std::string&, const unsigned int);
         /*
-            read an image and return std::vector<uint32_t>
+            read an image and return std::vector<uint8_t>
             para1: image path
             para2: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
         */
-        std::vector<uint32_t>get_one_image(const std::string&, const unsigned int);
+        std::vector<uint8_t>get_one_image(const std::string&, const unsigned int);
         /*
             get the key point of an image
             para1: cv::Mat input image
             para2: cv::Mat descriptors
         */
-        std::vector<cv::KeyPoint> extractORBFeatures(const cv::Mat&, cv::Mat&);
+        std::vector<cv::KeyPoint> extractORBFeatures(const cv::Mat&, cv::Mat&) const;
         /*
             save model keypoints
             para1: dataMap
@@ -314,13 +352,14 @@ class cvLib{
             para2: //gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits, but takes longer (default: 33)
             para3: bool = true (display time spent)
             para4: distance allow bias from the trained data default = 2;
+            para5: learning rate (much be the save as train_img_occurrences, and train_for_multi_imgs_recognition)
         */
-        void loadImageRecog(const std::string&,const unsigned int, const bool, unsigned int);
+        void loadImageRecog(const std::string&,const unsigned int, const bool, unsigned int, double);
         /*
             Function to input an image and return the recognition (std::string)
             para1: input an image file path
         */
-        std::string what_is_this(const std::string&);
+        the_obj_in_an_image what_is_this(const std::string&);
         /*
             Save the void machine_learning_result(); result
             para1: input: const std::unordered_map<std::string, cv::Mat>& summarizedDataset, 
@@ -364,11 +403,13 @@ class cvLib{
         void load_trained_model(const std::string&,std::unordered_map<std::string, cv::Mat>&, 
                std::unordered_map<std::string, std::vector<cv::KeyPoint>>&);
         /*
-            Image recognition
-            para1: input target image descriptors
-            para2: trained image dataset const std::unordered_map<std::string, cv::Mat>& summarizedDataset
+            Function to input an image and return all objects in it
+            para1: input an image file path
+            para2: pass const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& multi-objects recognition corpus
+            para3: learning rate (much be the same as function: get_outliers_for_ml)
+            return: std::unordered_map<std::string,std::pair<std::vector<unsigned i nt>,std::vector<unsigned int>>>
         */
-        std::string matchDescriptors(const cv::Mat&,const std::unordered_map<std::string, cv::Mat>&);
+        std::vector<std::string> what_are_these(const std::string&);
 };     
 
 #ifdef __cplusplus
