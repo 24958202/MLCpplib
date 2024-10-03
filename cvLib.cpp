@@ -86,7 +86,13 @@ class subfunctions{
         void saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>&, const std::string&);
         void saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&, const std::string&);
         void merge_without_duplicates(std::vector<uint8_t>&, const std::vector<uint8_t>&);
-        bool isSimilar(const RGB&, const RGB&);
+        /*
+            Function to compare two pixel's similarity ()
+            para1: pixel a
+            para2: pixel b
+            para3: threshold (threshold 0-30, better result with small digits)
+        */
+        bool isSimilar(const RGB&, const RGB&, const unsigned int&);
         /*
             convert rgb to hsv
             para1: r, para2: g, para3: b
@@ -247,6 +253,7 @@ the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv
                 try{
                     std::unordered_map<std::string,unsigned int> score_counting;
                     for (const auto& testItem : test_img_data) {
+                        //bool obj_found = false;
                         auto test_img_line = testItem.first;
                         if (!test_img_line.empty() && !_loaddataMap.empty()) {
                             for (const auto& train_item : _loaddataMap) {
@@ -257,9 +264,20 @@ the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv
                                         if (std::abs(static_cast<int>(tt_compare.first) - static_cast<int>(test_img_line[C_0])) < distance_bias &&
                                             std::abs(static_cast<int>(tt_compare.second) - static_cast<int>(test_img_line[C_1])) < distance_bias) {
                                             score_counting[train_item.first]++;
+                                            // if(score_counting[train_item.first] > 400){//adjust accordingly to learning rate
+                                            //     obj_found = true;
+                                            //     break;
+                                            // }
                                         }
                                     }
+                                    // if(obj_found){
+                                    //     break;
+                                    // }
                                 }
+                                // if(obj_found){
+                                //     obj_found = false;
+                                //     break;
+                                // }
                             }
                         }
                     }
@@ -459,9 +477,8 @@ void subfunctions::merge_without_duplicates(std::vector<uint8_t>& data_main, con
         data_main.push_back(item.first);
     }
 }  
-bool subfunctions::isSimilar(const RGB& a, const RGB& b) {
+bool subfunctions::isSimilar(const RGB& a, const RGB& b, const unsigned int& threshold) {
     // Example similarity threshold comparison, adjust as necessary
-    const int threshold = 30;
     return (std::abs(static_cast<int>(a.r) - static_cast<int>(b.r)) < threshold &&
             std::abs(static_cast<int>(a.g) - static_cast<int>(b.g)) < threshold &&
             std::abs(static_cast<int>(a.b) - static_cast<int>(b.b)) < threshold);
@@ -904,52 +921,66 @@ std::vector<cv::Mat> cvLib::extractAndProcessObjects(const std::string& imagePat
     if(imagePath.empty()){
         return objectImages;
     }
-    // Load the image
-    cv::Mat originalImage = cv::imread(imagePath, cv::IMREAD_COLOR);
-    if (originalImage.empty()) {
-        std::cerr << "Error loading image!" << std::endl;
-        return objectImages;  // Return an empty vector if image loading fails
+    if (!std::filesystem::exists(imagePath) || !std::filesystem::is_regular_file(imagePath)) {
+        std::cerr << "File path is invalid or file not found: " << imagePath << std::endl;
+        return objectImages;
     }
-    // Convert to grayscale
-    cv::Mat grayImage;
-    cv::cvtColor(originalImage, grayImage, cv::COLOR_BGR2GRAY);
-    // Apply Gaussian Blur
-    cv::Mat blurredImage;
-    cv::GaussianBlur(grayImage, blurredImage, cv::Size(5, 5), 0);
-    // Perform Canny Edge Detection
-    cv::Mat edges;
-    cv::Canny(blurredImage, edges, cannyThreshold1, cannyThreshold2);
-    // Find contours
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(edges, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    // Dimensions for the processing
-    const int outputWidth = 800;
-    const int outputHeight = 800;
-    const double scaleFactor = 0.8;
-    const int resizedWidth = static_cast<int>(outputWidth * scaleFactor);
-    const int resizedHeight = static_cast<int>(outputHeight * scaleFactor);
-    // Iterate through contours and store each processed object in the vector
-    for (const auto& contour : contours) {
-        // Ignore small contours that might be noise
-        if (cv::contourArea(contour) > 100.0) {  // Tune this value based on your needs
-            cv::Rect boundingRect = cv::boundingRect(contour);
-            // Extract the object from the original image using the bounding rectangle
-            cv::Mat objectImage = originalImage(boundingRect);
-            // Resize the extracted object
-            cv::Mat resizedObject;
-            cv::resize(objectImage, resizedObject, cv::Size(resizedWidth, resizedHeight));
-            // Create a white background image
-            cv::Mat background(outputHeight, outputWidth, CV_8UC3, cv::Scalar(255, 255, 255));
-            // Calculate the position to center the resized object
-            int startX = (outputWidth - resizedWidth) / 2;
-            int startY = (outputHeight - resizedHeight) / 2;
-            // Place the resized object onto the center of the white background
-            resizedObject.copyTo(background(cv::Rect(startX, startY, resizedWidth, resizedHeight)));
-            // Add the processed image to the vector
-            objectImages.push_back(background);
+    try{
+        // Load the image
+        cv::Mat originalImage = cv::imread(imagePath, cv::IMREAD_COLOR);    
+        if (originalImage.empty()) {
+            std::cerr << "cvLib::extractAndProcessObjects Error loading image!" << std::endl;
+            return objectImages;  // Return an empty vector if image loading fails
         }
-    }
+        // Convert to grayscale
+        cv::Mat grayImage;
+        cv::cvtColor(originalImage, grayImage, cv::COLOR_BGR2GRAY);
+        // Apply Gaussian Blur
+        cv::Mat blurredImage;
+        cv::GaussianBlur(grayImage, blurredImage, cv::Size(5, 5), 0);
+        // Perform Canny Edge Detection
+        cv::Mat edges;
+        cv::Canny(blurredImage, edges, cannyThreshold1, cannyThreshold2);
+        // Find contours
+        std::vector<std::vector<cv::Point>> contours;
+        std::vector<cv::Vec4i> hierarchy;
+        cv::findContours(edges, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        // Dimensions for the processing
+        const int outputWidth = 800;
+        const int outputHeight = 800;
+        const double scaleFactor = 0.8;
+        const int resizedWidth = static_cast<int>(outputWidth * scaleFactor);
+        const int resizedHeight = static_cast<int>(outputHeight * scaleFactor);
+        // Iterate through contours and store each processed object in the vector
+        for (const auto& contour : contours) {
+            // Ignore small contours that might be noise
+            if (cv::contourArea(contour) > 100.0) {  // Tune this value based on your needs
+                cv::Rect boundingRect = cv::boundingRect(contour);
+                // Extract the object from the original image using the bounding rectangle
+                cv::Mat objectImage = originalImage(boundingRect);
+                // Resize the extracted object
+                cv::Mat resizedObject;
+                cv::resize(objectImage, resizedObject, cv::Size(resizedWidth, resizedHeight));
+                // Create a white background image
+                cv::Mat background(outputHeight, outputWidth, CV_8UC3, cv::Scalar(255, 255, 255));
+                // Calculate the position to center the resized object
+                int startX = (outputWidth - resizedWidth) / 2;
+                int startY = (outputHeight - resizedHeight) / 2;
+                // Place the resized object onto the center of the white background
+                resizedObject.copyTo(background(cv::Rect(startX, startY, resizedWidth, resizedHeight)));
+                // Add the processed image to the vector
+                objectImages.push_back(background);
+            }
+        }
+    } 
+    catch (const cv::Exception& e) 
+    {  
+        std::cerr << "OpenCV error: " << e.what() << std::endl;  
+    } catch (const std::exception& e) {  
+        std::cerr << "Standard exception: " << e.what() << std::endl;  
+    } catch (...) {  
+        std::cerr << "Unknown exception occurred." << std::endl;  
+    }  
     return objectImages;
 }
 void cvLib::read_image_detect_edges(const std::string& imagePath,unsigned int gradientMagnitude_threshold,const std::string& outImgPath,const brushColor& markerColor, const brushColor& bgColor){
@@ -1374,7 +1405,7 @@ std::vector<std::vector<RGB>> cvLib::get_img_120_gray_for_ML(const std::string& 
     cv::resize(image, resized_image, cv::Size(800, 800));
     cv::cvtColor(resized_image, gray_image, cv::COLOR_BGR2GRAY);
     // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
-    datasets = this->cv_mat_to_dataset_color(gray_image);
+    datasets = this->cv_mat_to_dataset(gray_image);
     return datasets;  
 }
 std::vector<uint8_t> cvLib::get_one_image(const std::string& image_path,const unsigned int gradientMagnitude_threshold) {
