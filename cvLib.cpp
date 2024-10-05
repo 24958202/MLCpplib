@@ -49,19 +49,6 @@ class subfunctions{
     };  
     using PairSet = std::unordered_set<std::pair<int, int>, pair_hash>;  
     public:
-        struct ObjsInImage{
-            unsigned int img_index;
-            std::pair<int,int> img_pos;
-            std::pair<unsigned int,unsigned int> img_size;
-            std::pair<double,double> img_centroid;
-            cv::Mat img_seg;
-            // Define what "empty" means for this struct
-            bool empty() const {
-                // Example condition: img_seg should not have any elements
-                return img_seg.empty() && 
-                    img_size == std::make_pair(0U, 0U);
-            }
-        };
         /*
             Update std::unordered_map<std::string, std::vector<uint8_t>> value, if the first key exists, append data to second value
             otherwise,create a new key.
@@ -103,6 +90,19 @@ class subfunctions{
         // Convert OpenCV's Vec3b (BGR format) to your RGB struct
         RGB vec3bToRgb(const cv::Vec3b&);
         std::pair<cv::Scalar, cv::Scalar> determineHSVRange(const cv::Mat&, double) const;
+        // Function to read a WebP image and convert it to a vector of tuples
+        /*
+            para1: webp image path
+        */
+        std::vector<std::tuple<double, double, double>> webpToTupleVector(const std::string&); 
+        // Function to convert the tuple vector back to an RGB 2D vector
+        /*
+            para1: tuple vector dataset 
+            para2: output image width
+            para3: output image height
+        */
+        std::vector<std::vector<RGB>> tupleVectorToRGBVector(
+            const std::vector<std::tuple<double, double, double>>&, int, int);
 };
 void subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint8_t>>& myMap, const std::string& key, const std::vector<uint8_t>& get_img_uint) {
     // Use find to check if the key exists
@@ -312,21 +312,19 @@ the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv
     return str_result;
 }
 cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<RGB>>& dataset) { 
-    if (dataset.empty() || dataset[C_0].empty()) {  
-        throw std::runtime_error("Dataset is empty or has no columns.");  
-    }   
-    unsigned int rows = dataset.size();  
-    unsigned int cols = dataset[0].size();  
-    cv::Mat image(rows, cols, CV_8UC3); // Create a Mat with 3 channels (BGR)  
-    for (unsigned int i = 0; i < rows; ++i) {  
-        for (unsigned int j = 0; j < cols; ++j) {  
-            // Access the RGB values from the dataset  
-            const RGB& rgb = dataset[i][j];  
-            // Set the pixel in the cv::Mat  
-            image.at<cv::Vec3b>(i, j) = cv::Vec3b(rgb.b, rgb.g, rgb.r); // OpenCV uses BGR format  
-        }  
-    }  
-    return image;  
+   if (dataset.empty() || dataset[C_0].empty()) {
+        throw std::runtime_error("Dataset is empty or has no columns.");
+    }
+    int rows = dataset.size();
+    int cols = dataset[C_0].size();
+    cv::Mat image(rows, cols, CV_8UC3);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            const RGB& rgb = dataset[i][j];
+            image.at<cv::Vec3b>(i, j) = cv::Vec3b(rgb.b, rgb.g, rgb.r);
+        }
+    }
+    return image;
 }  
 void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const cv::Scalar& bg_color){
     if(frame.empty()){
@@ -536,6 +534,47 @@ std::pair<cv::Scalar, cv::Scalar> subfunctions::determineHSVRange(const cv::Mat&
     highH = cv::Scalar(maxHue, 255, 255);
     return std::make_pair(lowH, highH);
 }
+// Function to read a WebP image and convert it to a vector of tuples
+std::vector<std::tuple<double, double, double>> subfunctions::webpToTupleVector(const std::string& webpImagePath) {
+    if(webpImagePath.empty()){
+        return {};
+    }
+    cv::Mat image = cv::imread(webpImagePath, cv::IMREAD_COLOR);
+    if (image.empty()) {
+        std::cerr << "Error: Could not read the WebP image." << std::endl;
+        return {};
+    }
+    std::vector<std::tuple<double, double, double>> dataset;
+    for (int i = 0; i < image.rows; ++i) {
+        for (int j = 0; j < image.cols; ++j) {
+            cv::Vec3b pixel = image.at<cv::Vec3b>(i, j);
+            double b = pixel[C_0] / 255.0;
+            double g = pixel[C_1] / 255.0;
+            double r = pixel[C_2] / 255.0;
+            dataset.emplace_back(r, g, b);
+        }
+    }
+    return dataset;
+}
+// Function to convert the tuple vector back to an RGB 2D vector
+std::vector<std::vector<RGB>> subfunctions::tupleVectorToRGBVector(
+    const std::vector<std::tuple<double, double, double>>& dataset, int width, int height) {
+    if (dataset.empty() || width <= 0 || height <= 0 || dataset.size() != static_cast<size_t>(width * height)) {
+        throw std::runtime_error("Dataset is empty or dimensions are incorrect.");
+        return {};
+    }
+    std::vector<std::vector<RGB>> imageRGB(height, std::vector<RGB>(width));
+    size_t index = 0;
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            auto [r, g, b] = dataset[index++];
+            imageRGB[i][j] = RGB(static_cast<uint8_t>(r * 255), 
+                                 static_cast<uint8_t>(g * 255), 
+                                 static_cast<uint8_t>(b * 255));
+        }
+    }
+    return imageRGB;
+}
 /*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
@@ -686,7 +725,6 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset(const cv::Mat& genImg) {
     }
     return datasets;
 }
-
 std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset_color(const cv::Mat& genImg) {  
     // Create a copy of the input image to apply noise reduction
     cv::Mat processedImg;
@@ -711,6 +749,22 @@ std::vector<std::vector<RGB>> cvLib::cv_mat_to_dataset_color(const cv::Mat& genI
         }  
     }  
     return datasets;  
+}
+void cvLib::convertAndSaveAsWebP(const std::string& inputImagePath, const std::string& outputWebPPath){
+    if(inputImagePath.empty() || outputWebPPath.empty()){
+        return;
+    }
+    cv::Mat image = cv::imread(inputImagePath, cv::IMREAD_COLOR);
+    if (image.empty()) {
+        std::cerr << "Error: Could not read the input image." << std::endl;
+        return;
+    }
+    std::vector<int> params = {cv::IMWRITE_WEBP_QUALITY, 90};
+    if (!cv::imwrite(outputWebPPath, image, params)) {
+        std::cerr << "Error: Could not write the image as WebP." << std::endl;
+    } else {
+        std::cout << "Image successfully saved as WebP: " << outputWebPPath << std::endl;
+    }
 }
 imgSize cvLib::get_image_size(const std::string& imgPath) {  
     imgSize im_s = {0, 0}; // Initialize width and height to 0  

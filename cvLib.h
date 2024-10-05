@@ -37,6 +37,19 @@ struct the_obj_in_an_image {
         return objName.empty() && timespent.count() == 0.0;
     }
 };
+struct ObjsInImage{
+    unsigned int img_index;
+    std::pair<int,int> img_pos;
+    std::pair<unsigned int,unsigned int> img_size;
+    std::pair<double,double> img_centroid;
+    cv::Mat img_seg;
+    // Define what "empty" means for this struct
+    bool empty() const {
+        // Example condition: img_seg should not have any elements
+        return img_seg.empty() && 
+            img_size == std::make_pair(0U, 0U);
+    }
+};
 struct imgSize{
     unsigned int width;
     unsigned int height;
@@ -100,6 +113,12 @@ class cvLib{
             Input an image path, will return an RGB dataset - color
         */
         std::vector<std::vector<RGB>> cv_mat_to_dataset_color(const cv::Mat&);
+        /*
+            Function to convert an input image to WebP format and save it
+            para1: Input image Path
+            para2: output WebP file path Path (path/to/output.webp)
+        */
+        void convertAndSaveAsWebP(const std::string&, const std::string&);
         /*
             para1: input an image path, will return the image size 
             struct imgSize{
