@@ -264,7 +264,7 @@ the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv
                                         if (std::abs(static_cast<int>(tt_compare.first) - static_cast<int>(test_img_line[C_0])) < distance_bias &&
                                             std::abs(static_cast<int>(tt_compare.second) - static_cast<int>(test_img_line[C_1])) < distance_bias) {
                                             score_counting[train_item.first]++;
-                                            // if(score_counting[train_item.first] > 400){//adjust accordingly to learning rate
+                                            // if(score_counting[train_item.first] > 200){//adjust accordingly to learning rate
                                             //     obj_found = true;
                                             //     break;
                                             // }
@@ -588,6 +588,34 @@ std::vector<std::string> cvLib::splitString(const std::string& input, char delim
     }
     return result;
 }
+cv::Mat cvLib::placeOnTransparentBackground(const cv::Mat& inImg, unsigned int img_width, unsigned int img_height) {
+    if (inImg.empty()) {
+        return cv::Mat();
+    }
+    cv::Mat alphaImg;
+    // Ensure the image has an alpha channel
+    if (inImg.channels() == 3) {
+        cv::cvtColor(inImg, alphaImg, cv::COLOR_BGR2BGRA);
+    } else {
+        alphaImg = inImg;
+    }
+    // Step 2: Resize the image to 80% of the dimension
+    int resized_img_width = static_cast<int>(img_width * 0.8);
+    int resized_img_height = static_cast<int>(img_height * 0.8);
+    cv::Size newSize(resized_img_width, resized_img_height);
+    cv::Mat resizedImage;
+    cv::resize(alphaImg, resizedImage, newSize);
+    // Step 3: Create a transparent background
+    cv::Mat background(cv::Size(img_width, img_height), CV_8UC4, cv::Scalar(0, 0, 0, 0)); // Transparent
+    // Step 4: Calculate positioning to center the resized image on the background
+    int xOffset = (background.cols - resizedImage.cols) / 2;
+    int yOffset = (background.rows - resizedImage.rows) / 2;
+    // Step 5: Place the resized image on the transparent background centered
+    cv::Rect roi(xOffset, yOffset, resizedImage.cols, resizedImage.rows);
+    resizedImage.copyTo(background(roi), resizedImage);
+    return background;
+}
+
 // Function to convert std::vector<uint8_t> to std::vector<std::vector<RGB>>  
 std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint8_t>& pixels, unsigned int width, unsigned int height) {  
     std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));  
@@ -915,7 +943,7 @@ void cvLib::createOutlierImage(const std::vector<std::vector<RGB>>& originalData
     // this->saveImage(originalData, outImgPath + "_orig.ppm");
     std::cout << "Outlier image saved successfully." << std::endl;
 }
-std::vector<cv::Mat> cvLib::extractAndProcessObjects(const std::string& imagePath, int cannyThreshold1, int cannyThreshold2){
+std::vector<cv::Mat> cvLib::extractAndProcessObjects(const std::string& imagePath, unsigned int cannyThreshold1, unsigned int cannyThreshold2, unsigned int gradientMagnitude, unsigned int outputWidth, unsigned int outputHeight, double scaleFactor){
     // Initialize a vector to store processed objects
     std::vector<cv::Mat> objectImages;
     if(imagePath.empty()){
@@ -927,34 +955,43 @@ std::vector<cv::Mat> cvLib::extractAndProcessObjects(const std::string& imagePat
     }
     try{
         // Load the image
-        cv::Mat originalImage = cv::imread(imagePath, cv::IMREAD_COLOR);    
+        cv::Mat originalImage = cv::imread(imagePath, cv::IMREAD_COLOR);
         if (originalImage.empty()) {
             std::cerr << "cvLib::extractAndProcessObjects Error loading image!" << std::endl;
-            return objectImages;  // Return an empty vector if image loading fails
+            return objectImages;
         }
-        // Convert to grayscale
+        // Convert to grayscale using OpenCV
         cv::Mat grayImage;
         cv::cvtColor(originalImage, grayImage, cv::COLOR_BGR2GRAY);
         // Apply Gaussian Blur
         cv::Mat blurredImage;
         cv::GaussianBlur(grayImage, blurredImage, cv::Size(5, 5), 0);
-        // Perform Canny Edge Detection
+        // Apply Canny Edge Detection
         cv::Mat edges;
         cv::Canny(blurredImage, edges, cannyThreshold1, cannyThreshold2);
-        // Find contours
+        // Optionally enhance edges with morphology
+        cv::Mat morphEdges;
+        cv::morphologyEx(edges, morphEdges, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 2);
+        // Find contours on enhanced edges
         std::vector<std::vector<cv::Point>> contours;
         std::vector<cv::Vec4i> hierarchy;
-        cv::findContours(edges, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-        // Dimensions for the processing
-        const int outputWidth = 800;
-        const int outputHeight = 800;
-        const double scaleFactor = 0.8;
+        cv::findContours(morphEdges, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        // Optional: Uncomment and consider Sobel if needed for additional analysis
+        /*
+        cv::Mat sobelX, sobelY, sobel;
+        cv::Sobel(blurredImage, sobelX, CV_16S, 1, 0, 3);
+        cv::Sobel(blurredImage, sobelY, CV_16S, 0, 1, 3);
+        cv::convertScaleAbs(sobelX, sobelX);
+        cv::convertScaleAbs(sobelY, sobelY);
+        cv::addWeighted(sobelX, 0.5, sobelY, 0.5, 0, sobel);
+        */
+        //Dimensions for the processing
         const int resizedWidth = static_cast<int>(outputWidth * scaleFactor);
         const int resizedHeight = static_cast<int>(outputHeight * scaleFactor);
         // Iterate through contours and store each processed object in the vector
         for (const auto& contour : contours) {
             // Ignore small contours that might be noise
-            if (cv::contourArea(contour) > 100.0) {  // Tune this value based on your needs
+            if (cv::contourArea(contour) > 100) {  // Tune this value based on your needs
                 cv::Rect boundingRect = cv::boundingRect(contour);
                 // Extract the object from the original image using the bounding rectangle
                 cv::Mat objectImage = originalImage(boundingRect);
@@ -969,7 +1006,7 @@ std::vector<cv::Mat> cvLib::extractAndProcessObjects(const std::string& imagePat
                 // Place the resized object onto the center of the white background
                 resizedObject.copyTo(background(cv::Rect(startX, startY, resizedWidth, resizedHeight)));
                 // Add the processed image to the vector
-                objectImages.push_back(background);
+                objectImages.push_back(objectImage);
             }
         }
     } 
@@ -1365,7 +1402,7 @@ cv::Mat cvLib::preprocessImage(const std::string& imgPath, const inputImgMode& i
     if(imgPath.empty()){
         return cv::Mat();
     }
-    // Step 1: Open the image using cv::imread
+    // // Step 1: Open the image using cv::imread
     cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);
     if (image.empty()) {
         std::cerr << "preprocessImage Error: Could not open or find the image." << std::endl;
@@ -1375,7 +1412,7 @@ cv::Mat cvLib::preprocessImage(const std::string& imgPath, const inputImgMode& i
     cv::Mat resizedImage;
     cv::resize(image, resizedImage, cv::Size(800, 800));
     // Apply Gaussian blur to minimize noise
-    cv::GaussianBlur(image, image, cv::Size(5, 5), 0);
+    cv::GaussianBlur(resizedImage, resizedImage, cv::Size(5, 5), 0);
     std::vector<std::vector<RGB>> datasets;
     subfunctions subfun;
     if(img_mode == inputImgMode::Color){
@@ -1407,46 +1444,6 @@ std::vector<std::vector<RGB>> cvLib::get_img_120_gray_for_ML(const std::string& 
     // Assume cv_mat_to_dataset_color(resized_image) is implemented correctly
     datasets = this->cv_mat_to_dataset(gray_image);
     return datasets;  
-}
-std::vector<uint8_t> cvLib::get_one_image(const std::string& image_path,const unsigned int gradientMagnitude_threshold) {
-        std::vector<uint8_t> img_matrix;
-        if (image_path.empty()) {
-            return {};  // Return an empty vector
-        }
-        cv::Mat img = this->preprocessImage(image_path,inputImgMode::Gray,gradientMagnitude_threshold);//this->get_img_120_gray_for_ML(imgFolderPath);
-        cv::Mat gray_image;
-        cv::cvtColor(img, gray_image, cv::COLOR_BGR2GRAY);
-        if (gray_image.empty()) {
-            throw std::runtime_error("Failed to load image: " + image_path);
-        }
-        img_matrix.reserve(gray_image.rows * gray_image.cols * gray_image.channels());
-        for (int y = 0; y < gray_image.rows; ++y) {
-            for (int x = 0; x < gray_image.cols; ++x) {
-                if (gray_image.channels() == 4) {
-                    cv::Vec4b pixel = gray_image.at<cv::Vec4b>(y, x); // BGRA
-                    img_matrix.push_back(pixel[C_0]); // Blue
-                    img_matrix.push_back(pixel[C_1]); // Green
-                    img_matrix.push_back(pixel[C_2]); // Red
-                    img_matrix.push_back(pixel[C_3]); // Alpha
-                } else if (gray_image.channels() == 3) {
-                    cv::Vec3b pixel = gray_image.at<cv::Vec3b>(y, x); // BGR
-                    img_matrix.push_back(pixel[C_0]); // Blue
-                    img_matrix.push_back(pixel[C_1]); // Green
-                    img_matrix.push_back(pixel[C_2]); // Red
-                    // Optionally: img_matrix.push_back(255); // Add Alpha if needed (assumed fully opaque)
-                } else if (gray_image.channels() == 1) { // Handle grayscale
-                    uint8_t pixel = gray_image.at<uint8_t>(y, x);
-                    img_matrix.push_back(pixel); // Red as grayscale
-                    img_matrix.push_back(pixel); // Green as grayscale
-                    img_matrix.push_back(pixel); // Blue as grayscale
-                    // Optionally: img_matrix.push_back(255); // Add Alpha if needed
-                } else {
-                    std::cerr << "Unsupported image format: " << gray_image.channels() << " channels." << std::endl;
-                    throw std::runtime_error("Unsupported image format.");
-                }
-            }
-        }
-        return img_matrix;
 }
 std::vector<cv::KeyPoint> cvLib::extractORBFeatures(const cv::Mat& img, cv::Mat& descriptors) const{
     cv::Ptr<cv::ORB> orb = cv::ORB::create();
@@ -1861,8 +1858,8 @@ void cvLib::load_trained_model(
         }
         ifs.close();
 }
-std::vector<std::string> cvLib::what_are_these(const std::string& img_path){
-    std::vector<std::string> str_result;
+std::vector<the_obj_in_an_image> cvLib::what_are_these(const std::string& img_path){
+    std::vector<the_obj_in_an_image> str_result;
     if(img_path.empty()){
         return str_result;
     }
@@ -1878,13 +1875,52 @@ std::vector<std::string> cvLib::what_are_these(const std::string& img_path){
         start
     */
     subfunctions subf_j;
-    std::vector<cv::Mat> getObjs = this->extractAndProcessObjects(img_path);
-    if(!getObjs.empty()){
-        for(const auto& item : getObjs){
-            the_obj_in_an_image returnObj = subf_j.getObj_in_an_image(*this,item);
-            str_result.push_back(returnObj.objName);
+    std::vector<cv::Mat> getObjs;
+    try{
+        getObjs = this->extractAndProcessObjects(img_path,120,200,this->_gradientMagnitude_threshold);
+        if(!getObjs.empty()){
+            unsigned int imgCount = 0;
+            for(const auto& item : getObjs){
+                imgCount++;
+                std::string outputFile = "/Users/dengfengji/ronnieji/lib/images/segments/img" + std::to_string(imgCount) + ".jpg";
+                cv::imwrite(outputFile,item);
+                // Step 2: Resize the image to 120x120 pixels
+                cv::Mat resizedImage;
+                cv::resize(item, resizedImage, cv::Size(800, 800));
+                // // Apply Gaussian blur to minimize noise
+                cv::GaussianBlur(resizedImage, resizedImage, cv::Size(5, 5), 0);
+                std::vector<std::vector<RGB>> datasets;
+                // cv::Mat gray_image;
+                // cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
+                datasets = this->cv_mat_to_dataset(resizedImage);
+                auto outliers = this->findOutlierEdges(datasets, this->_gradientMagnitude_threshold);
+                std::vector<std::vector<RGB>> trans_img = subf_j.getPixelsInsideObject(datasets, outliers);
+                cv::Mat img_ready = subf_j.convertDatasetToMat(trans_img);//trans_img
+                the_obj_in_an_image returnObj = subf_j.getObj_in_an_image(*this,img_ready);
+                //std::cout << "obj returned: " << returnObj.objName << std::endl;
+                /*
+                    if the item exists
+                    continue;
+                */
+                auto it = std::find_if(str_result.begin(), str_result.end(), [&returnObj](const the_obj_in_an_image& item) {
+                    return item.objName == returnObj.objName;
+                });
+                if(it == str_result.end()){
+                    str_result.push_back(returnObj);
+                }
+            }
         }
-    }
+        else{
+            std::cerr << "cvLib::what_are_these Failed to get the image slices." << std::endl;
+        }
+    } 
+    catch (const cv::Exception& e){  
+        std::cerr << "OpenCV error: " << e.what() << std::endl;  
+    } catch (const std::exception& e) {  
+        std::cerr << "Standard exception: " << e.what() << std::endl;  
+    } catch (...) {  
+        std::cerr << "Unknown exception occurred." << std::endl;  
+    }  
     /*
         end
     */

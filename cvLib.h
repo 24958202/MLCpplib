@@ -71,6 +71,13 @@ class cvLib{
         double get_learning_rate() const;
         std::vector<std::string> splitString(const std::string&, char);//tokenize a string, sperated by char for example ','
         /*
+            Function to open an image and put it into a width x height matrix and return a cv::Mat
+            para1: Input image cv::Mat
+            para2: Output image width
+            para3: Output image height
+        */
+        cv::Mat placeOnTransparentBackground(const cv::Mat&,unsigned int,unsigned int);
+        /*
             Function to convert std::vector<uint8_t> to std::vector<std::vector<RGB>> 
         */
         std::vector<std::vector<RGB>> convertToRGB(const std::vector<uint8_t>&, unsigned int,  unsigned int);
@@ -175,8 +182,12 @@ class cvLib{
                 It is the higher bound threshold for edge pixel determination.
                 Any pixel with a gradient intensity above this threshold is considered a strong edge pixel.
                 It greatly influences the number of visible/hard edges — higher values typically result in fewer edges being detected.
+            para4: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
+            para5: output image width
+            para6: output image height
+            para7: the percentage of the content in the image - scaleFactor(value 0 to 1)
         */
-        std::vector<cv::Mat> extractAndProcessObjects(const std::string& imagePath, int cannyThreshold1 = 100, int cannyThreshold2 = 200);
+        std::vector<cv::Mat> extractAndProcessObjects(const std::string& imagePath, unsigned int cannyThreshold1 = 100, unsigned int cannyThreshold2 = 200, unsigned int gradientMagnitude = 99, unsigned int outputWidth=800, unsigned int outputHeight=800, double scaleFactor=0.8);
         /*
             This function can read an image, and mark all the edges of objects in the image
             para1: the image path
@@ -313,12 +324,6 @@ class cvLib{
         */
         std::vector<std::vector<RGB>> get_img_120_gray_for_ML(const std::string&, const unsigned int);
         /*
-            read an image and return std::vector<uint8_t>
-            para1: image path
-            para2: gradientMagnitude_threshold gradientMagnitude threshold 0-100, better result with small digits
-        */
-        std::vector<uint8_t>get_one_image(const std::string&, const unsigned int);
-        /*
             get the key point of an image
             para1: cv::Mat input image
             para2: cv::Mat descriptors
@@ -409,7 +414,7 @@ class cvLib{
             para3: learning rate (much be the same as function: get_outliers_for_ml)
             return: std::unordered_map<std::string,std::pair<std::vector<unsigned i nt>,std::vector<unsigned int>>>
         */
-        std::vector<std::string> what_are_these(const std::string&);
+        std::vector<the_obj_in_an_image> what_are_these(const std::string&);
 };     
 
 #ifdef __cplusplus

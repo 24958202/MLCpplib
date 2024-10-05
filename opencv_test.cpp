@@ -32,7 +32,7 @@ void trainImage(){
 }
 void test_image_recognition(){
     std::vector<std::string> testimgs;
-    std::string sub_folder_path = "/Users/dengfengji/ronnieji/Kaggle/test";
+    std::string sub_folder_path = "/Users/dengfengji/ronnieji/Kaggle/test"; //"/Users/dengfengji/ronnieji/Kaggle/test";
     for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
         if (entrySubFolder.is_regular_file()) {  
             std::string imgFilePath = entrySubFolder.path().string();  
@@ -71,19 +71,25 @@ void multi_objs_readImgs(){
     }
     if(!testimgs.empty()){
         std::cout << "test images number: " << testimgs.size() << std::endl;
+        bool display_time = cvl_j.get_display_time();
+        cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
         for(const auto& item : testimgs){
             if(std::filesystem::is_regular_file(item)){
-                std::vector<cv::Mat> getObjs =  cvl_j.extractAndProcessObjects(item);
-                if(!getObjs.empty()){
-                    for(int i = 0; i < getObjs.size(); ++i){
-                        std::string outputF = "/Users/dengfengji/ronnieji/lib/images/segments/img" + std::to_string(i) + ".jpg";
-                        cv::imwrite(outputF.c_str(),getObjs[i]);
+               std::vector<the_obj_in_an_image> multiObjsReturn = cvl_j.what_are_these(item);
+               if(!multiObjsReturn.empty()){
+                    std::cout << item << " image has: " << '\n';
+                    for(const auto& multi_item : multiObjsReturn){
+                        std::cout << "      " << multi_item.objName << std::endl;
+                        if(display_time){
+                            std::cout << "Execution time: " << multi_item.timespent << " seconds\n";
+                        }
                     }
-                }
+               }
+               else{
+                    std::cout << "multiObjsReturn value is empty!" << std::endl;
+               }
             }
-            
         }
-       
     }
 }
 int main(){
