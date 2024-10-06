@@ -427,6 +427,42 @@ class cvLib{
         void load_trained_model(const std::string&,std::unordered_map<std::string, cv::Mat>&, 
                std::unordered_map<std::string, std::vector<cv::KeyPoint>>&);
         /*
+            Function to put image2 to image1, and share the lighting effect and texture of image1
+            para1: image 1 (target image) path
+            para2: image 2 path
+            para3: image 2's width
+            para4: image 2's height
+            para5: image 2's left on the image1
+            para6: image 2's top on the image1
+            para7: image 2's alpha modulation 0-255 value to apply transparency.
+                   0: Fully transparent; the texture will not be visible at all.
+                   255: Fully opaque; the texture will be fully visible without any
+            para8: output image path
+            para9: target image1 width
+            para10: target image1 height
+            para11: output image width
+            para12: output image height
+            para13: 
+                int depth:
+                Purpose: The depth of the surface in bits per pixel (bpp). The value 32 in this context indicates that you're allocating space for 32 bits per pixel (typically used for a standard RGBA format with 8 bits per color channel).
+                Example Values: 32 for RGBA (4 bytes per pixel: 8 bits each for red, green, blue, and alpha).
+        */
+        cv::Mat put_img2_in_img1(
+            const std::string&, 
+            const std::string&, 
+            const int,
+            const int,
+            const int,
+            const int,
+            const uint8_t, 
+            const std::string&,
+            const unsigned int, 
+            const unsigned int, 
+            const unsigned int, 
+            const unsigned int, 
+            unsigned int
+            );
+        /*
             Function to input an image and return all objects in it
             para1: input an image file path
             para2: pass const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& multi-objects recognition corpus

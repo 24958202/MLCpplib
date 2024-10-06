@@ -1,11 +1,15 @@
 /*
     c++20 lib for using opencv
+    Dependencies:
+    opencv,tesseract,sdl2,sdl_image,boost
 */
 #include <opencv2/opencv.hpp>  
 #include <opencv2/features2d.hpp> 
 #include <opencv2/video.hpp> 
 #include <tesseract/baseapi.h>  
 #include <tesseract/publictypes.h>  
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include "authorinfo/author_info.h" 
 #include <vector> 
 #include <tuple> 
@@ -576,6 +580,199 @@ std::vector<std::vector<RGB>> subfunctions::tupleVectorToRGBVector(
     return imageRGB;
 }
 /*
+    start sub functions sdl2
+*/
+class subsdl2{
+    public:
+        void cleanup(SDL_Window*, SDL_Renderer*);
+        SDL_Texture* loadTexture(const std::string&, SDL_Renderer*);
+        bool saveTextureToFile(SDL_Renderer*, SDL_Texture*, const std::string&);//save sdl image to file
+        std::vector<std::vector<RGB>> convertSurfaceToVector(SDL_Surface*);
+        /*
+            Function to put img2 to img1, and share the lighting effect and texture of img1
+            para1: image 1 (target image) path
+            para2: image 2 path
+            para3: image2's info, (width,height, and the position you want to put in image1)
+                struct img2info{
+                    const unsigned int width;
+                    const unsigned int height;
+                    const int left;
+                    const int top;
+                    const unsigned int alpha_modul; //alpha modulation 0-255 value to apply transparency.
+                                                    0: Fully transparent; the texture will not be visible at all.
+                                                    255: Fully opaque; the texture will be fully visible without any
+                }
+            para4: output image path
+            para5: target image1 width
+            para6: target image1 height
+            para7: output image width
+            para8: output image height
+            para9: inDepth 
+                int depth:
+                Purpose: The depth of the surface in bits per pixel (bpp). The value 32 in this context indicates that you're allocating space for 32 bits per pixel (typically used for a standard RGBA format with 8 bits per color channel).
+                Example Values: 32 for RGBA (4 bytes per pixel: 8 bits each for red, green, blue, and alpha).
+        */
+        cv::Mat put_img2_in_img1(
+            const std::string&, 
+            const std::string&, 
+            const int,
+            const int,
+            const int,
+            const int,
+            const uint8_t,  
+            const std::string&,
+            const unsigned int, 
+            const unsigned int, 
+            const unsigned int, 
+            const unsigned int, 
+            const unsigned int);
+};
+void subsdl2::cleanup(SDL_Window* window, SDL_Renderer* renderer){
+    if (renderer) SDL_DestroyRenderer(renderer);
+    if (window) SDL_DestroyWindow(window);
+    IMG_Quit();
+    SDL_Quit();
+}
+SDL_Texture* subsdl2::loadTexture(const std::string& path, SDL_Renderer* renderer){
+    SDL_Texture* texture = nullptr;
+    SDL_Surface* surface = IMG_Load(path.c_str());
+    if (!surface) {
+        std::cerr << "Failed to load image: " << IMG_GetError() << std::endl;
+        return nullptr;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    if (!texture) {
+        std::cerr << "Failed to create texture: " << SDL_GetError() << std::endl;
+    }
+    return texture;
+}
+bool subsdl2::saveTextureToFile(SDL_Renderer* renderer, SDL_Texture* texture, const std::string& filename) {
+    if(filename.empty()){
+        return false;
+    }
+    int width, height;
+    SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA8888);
+    if (!surface) {
+        std::cerr << "Unable to create surface: " << SDL_GetError() << std::endl;
+        return false;
+    }
+    SDL_SetRenderTarget(renderer, texture);
+    SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_RGBA8888, surface->pixels, surface->pitch);
+    // Using SDL2_image to write the surface to a file
+    if (IMG_SavePNG(surface, filename.c_str()) != 0) {
+        std::cerr << "Failed to save PNG: " << IMG_GetError() << std::endl;
+    }
+    SDL_FreeSurface(surface);
+    SDL_SetRenderTarget(renderer, nullptr);
+    return true;
+}
+std::vector<std::vector<RGB>> subsdl2::convertSurfaceToVector(SDL_Surface* surface){
+    std::vector<std::vector<RGB>> imageData;
+    if (surface->format->BytesPerPixel != 4) {
+        std::cerr << "Surface does not have 4 bytes per pixel" << std::endl;
+        return imageData;
+    }
+    auto* pixels = static_cast<Uint32*>(surface->pixels);
+    int width = surface->w;
+    int height = surface->h;
+    int pitch = surface->pitch / 4; // pitch is in bytes, divided by 4 for number of pixels
+    imageData.resize(height, std::vector<RGB>(width));
+    SDL_PixelFormat* fmt = surface->format;
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            Uint32 pixel = pixels[y * pitch + x];
+            uint8_t r, g, b;
+            SDL_GetRGB(pixel, fmt, &r, &g, &b);
+            imageData[y][x] = RGB(r, g, b);
+        }
+    }
+    return imageData;
+}
+cv::Mat subsdl2::put_img2_in_img1(
+    const std::string& img1, 
+    const std::string& img2, 
+    const int img2Width,
+    const int img2Height,
+    const int img2Left,
+    const int img2Top,
+    const uint8_t img2alpha,
+    const std::string& output_img, 
+    const unsigned int in_img_width, 
+    const unsigned int in_img_height, 
+    const unsigned int out_img_width, 
+    const unsigned int out_img_height, 
+    const unsigned int inDepth){
+    if(img1.empty() || img2.empty() || output_img.empty()){
+        return cv::Mat();
+    }
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+        return cv::Mat();
+    }
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        std::cerr << "IMG_Init Error: " << IMG_GetError() << std::endl;
+        SDL_Quit();
+        return cv::Mat();
+    }
+    SDL_Window* window = SDL_CreateWindow("SDL2 Image Output", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, in_img_width, in_img_height, SDL_WINDOW_SHOWN);
+    if (!window) {
+        std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        IMG_Quit();
+        SDL_Quit();
+        return cv::Mat();
+    }
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!renderer) {
+        std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+        cleanup(window, nullptr);
+        return cv::Mat();
+    }
+    SDL_Texture* baseTexture = loadTexture(img1, renderer);
+    SDL_Texture* overlayTexture = loadTexture(img2, renderer);
+    if (!baseTexture || !overlayTexture) {
+        cleanup(window, renderer);
+        return cv::Mat();
+    }
+    SDL_SetTextureBlendMode(overlayTexture, SDL_BLENDMODE_BLEND);
+    SDL_Texture* targetTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, out_img_width, out_img_height);
+    SDL_SetRenderTarget(renderer, targetTexture);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, baseTexture, nullptr, nullptr);
+    SDL_Rect overlayRect = {img2Left, img2Top, img2Width, img2Height};
+    SDL_SetTextureAlphaMod(overlayTexture, img2alpha);
+    SDL_RenderCopy(renderer, overlayTexture, nullptr, &overlayRect);
+    SDL_SetRenderTarget(renderer, nullptr);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, out_img_width, out_img_height, 32, SDL_PIXELFORMAT_RGBA8888);
+    if (!surface) {
+        std::cerr << "Unable to create surface: " << SDL_GetError() << std::endl;
+        cleanup(window, renderer);
+        return {};
+    }
+    SDL_SetRenderTarget(renderer, targetTexture);
+    if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_RGBA8888, surface->pixels, surface->pitch) != 0) {
+        std::cerr << "SDL_RenderReadPixels error: " << SDL_GetError() << std::endl;
+        SDL_FreeSurface(surface);
+        cleanup(window, renderer);
+        return {};
+    }
+    auto imageData = convertSurfaceToVector(surface);
+    subfunctions subf_j;
+    cv::Mat finalImg = subf_j.convertDatasetToMat(imageData);
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(baseTexture);
+    SDL_DestroyTexture(overlayTexture);
+    SDL_DestroyTexture(targetTexture);
+    cleanup(window, renderer);
+    return finalImg;
+}
+
+
+/*
+    end sdl2 sub library
+*/
+/*
     Start cvLib -----------------------------------------------------------------------------------------------------
 */
 /*
@@ -654,7 +851,6 @@ cv::Mat cvLib::placeOnTransparentBackground(const cv::Mat& inImg, unsigned int i
     resizedImage.copyTo(background(roi), resizedImage);
     return background;
 }
-
 // Function to convert std::vector<uint8_t> to std::vector<std::vector<RGB>>  
 std::vector<std::vector<RGB>> cvLib::convertToRGB(const std::vector<uint8_t>& pixels, unsigned int width, unsigned int height) {  
     std::vector<std::vector<RGB>> image(height, std::vector<RGB>(width));  
@@ -1911,6 +2107,52 @@ void cvLib::load_trained_model(
             summarizedKeypoints[category] = keypoints;
         }
         ifs.close();
+}
+//const std::string& img1, const std::string& img2, const img2info& img2_info, const std::string& output_img,const unsigned int in_img_width, const unsigned int in_img_height, const unsigned int out_img_width, const unsigned int out_img_height
+cv::Mat cvLib::put_img2_in_img1(
+    const std::string& image1, 
+    const std::string& image2, 
+    const int img2Width,
+    const int img2Height,
+    const int img2Left,
+    const int img2Top,
+    const uint8_t img2alpha, 
+    const std::string& output_image_path,
+    const unsigned int inImg_width, 
+    const unsigned int inImg_height, 
+    const unsigned int outImg_width, 
+    const unsigned int outImg_height, 
+    unsigned int inDepth){
+    if (image1.empty() || image2.empty() || output_image_path.empty()) {
+        return cv::Mat();
+    }
+    subsdl2 subd2_j;
+    try{
+        cv::Mat getMergedImg = subd2_j.put_img2_in_img1(
+            image1,
+            image2,
+            img2Width,
+            img2Height,
+            img2Left,
+            img2Top,
+            img2alpha,
+            output_image_path,
+            inImg_width,
+            inImg_height,
+            outImg_width,
+            outImg_height,
+            inDepth
+        );
+        return getMergedImg;
+    }
+    catch (const cv::Exception& e) {  
+        std::cerr << "OpenCV error: " << e.what() << std::endl;  
+    } catch (const std::exception& e) {  
+        std::cerr << "Standard exception: " << e.what() << std::endl;  
+    } catch (...) {  
+        std::cerr << "Unknown exception occurred." << std::endl;  
+    }  
+    return cv::Mat();
 }
 std::vector<the_obj_in_an_image> cvLib::what_are_these(const std::string& img_path){
     std::vector<the_obj_in_an_image> str_result;
