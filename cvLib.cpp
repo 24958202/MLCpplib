@@ -238,7 +238,7 @@ the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv
         if(!testKey.empty()){
             std::vector<std::pair<std::vector<unsigned int>,double>> test_img_data;
             for (size_t i = 0; i < testKey.size(); ++i) {
-                const cv::KeyPoint& kp = testKey[i];
+                const cv::KeyPoint& kp = testKey[i]; 
                 std::vector<unsigned int> kp_pos{
                     static_cast<unsigned int>(kp.pt.x),
                     static_cast<unsigned int>(kp.pt.y)
@@ -1701,6 +1701,33 @@ std::vector<cv::KeyPoint> cvLib::extractORBFeatures(const cv::Mat& img, cv::Mat&
     orb->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
     return keypoints;
 }
+std::vector<cv::KeyPoint> cvLib::extractORBFeatures_multi(const cv::Mat& img, cv::Mat& descriptors, int nFea) const{
+    cv::Ptr<cv::ORB> orb = cv::ORB::create(nFea);
+    std::vector<cv::KeyPoint> keypoints;
+    orb->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+    return keypoints;
+}
+std::vector<std::vector<cv::KeyPoint>> cvLib::clusterKeypoints(const std::vector<cv::KeyPoint>& keypoints, int k) const{
+    // Prepare data for clustering
+    cv::Mat data(keypoints.size(), 2, CV_32F);
+    for (size_t i = 0; i < keypoints.size(); ++i) {
+        data.at<float>(i, 0) = keypoints[i].pt.x;
+        data.at<float>(i, 1) = keypoints[i].pt.y;
+    }
+    // Run k-means clustering
+    cv::Mat labels;
+    cv::Mat centers;
+    cv::kmeans(data, k, labels,
+               cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 10, 1.0),
+               3, cv::KMEANS_PP_CENTERS, centers);
+    // Prepare vector of clusters
+    std::vector<std::vector<cv::KeyPoint>> clusters(k);
+    for (size_t i = 0; i < keypoints.size(); ++i) {
+        int clusterIndex = labels.at<int>(i);
+        clusters[clusterIndex].push_back(keypoints[i]);
+    }
+    return clusters;
+}
 void cvLib::save_keymap(const std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& dataMap, const std::string& filePath) {
     if(filePath.empty()){
         return;
@@ -2170,44 +2197,83 @@ std::vector<the_obj_in_an_image> cvLib::what_are_these(const std::string& img_pa
     /*
         start
     */
-    subfunctions subf_j;
-    std::vector<cv::Mat> getObjs;
     try{
-        getObjs = this->extractAndProcessObjects(img_path,120,200,this->_gradientMagnitude_threshold);
-        if(!getObjs.empty()){
-            unsigned int imgCount = 0;
-            for(const auto& item : getObjs){
-                imgCount++;
-                std::string outputFile = "/Users/dengfengji/ronnieji/lib/images/segments/img" + std::to_string(imgCount) + ".jpg";
-                cv::imwrite(outputFile,item);
-                // Step 2: Resize the image to 120x120 pixels
-                cv::Mat resizedImage;
-                cv::resize(item, resizedImage, cv::Size(800, 800));
-                // // Apply Gaussian blur to minimize noise
-                cv::GaussianBlur(resizedImage, resizedImage, cv::Size(5, 5), 0);
-                std::vector<std::vector<RGB>> datasets;
-                // cv::Mat gray_image;
-                // cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
-                datasets = this->cv_mat_to_dataset(resizedImage);
-                auto outliers = this->findOutlierEdges(datasets, this->_gradientMagnitude_threshold);
-                std::vector<std::vector<RGB>> trans_img = subf_j.getPixelsInsideObject(datasets, outliers);
-                cv::Mat img_ready = subf_j.convertDatasetToMat(trans_img);//trans_img
-                the_obj_in_an_image returnObj = subf_j.getObj_in_an_image(*this,img_ready);
-                //std::cout << "obj returned: " << returnObj.objName << std::endl;
-                /*
-                    if the item exists
-                    continue;
-                */
-                auto it = std::find_if(str_result.begin(), str_result.end(), [&returnObj](const the_obj_in_an_image& item) {
-                    return item.objName == returnObj.objName;
-                });
-                if(it == str_result.end()){
-                    str_result.push_back(returnObj);
+        // // Step 1: Open the image using cv::imread
+        cv::Mat final_image = this->preprocessImage(imgPath,inputImgMode::Gray,this->_gradientMagnitude_threshold);
+        if(!final_image.empty()){
+            cv::Mat desc;
+            std::vector<cv::KeyPoint> testKey = cvl_j.extractORBFeatures_multi(getImg,desc,5000);
+            if(!testKey.empty()){
+                std::vector<std::pair<std::vector<unsigned int>,double>> test_img_data;
+                for (size_t i = 0; i < testKey.size(); ++i) {
+                    const cv::KeyPoint& kp = testKey[i]; 
+                    std::vector<unsigned int> kp_pos{
+                        static_cast<unsigned int>(kp.pt.x),
+                        static_cast<unsigned int>(kp.pt.y)
+                    };
+                    test_img_data.push_back(std::make_pair(kp_pos,static_cast<double>(kp.response)));
+                }
+                if(!test_img_data.empty()){
+                    std::sort(test_img_data.begin(),test_img_data.end(),[](const auto& a, const auto& b){
+                        return a.second > b.second;
+                    });
+                    /*
+                        start recognizing...
+                        trained_img_data
+                        std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
+                    */
+                    try{
+                        std::unordered_map<std::string,unsigned int> score_counting;
+                        for (const auto& testItem : test_img_data) {
+                            //bool obj_found = false;
+                            auto test_img_line = testItem.first;
+                            if (!test_img_line.empty() && !_loaddataMap.empty()) {
+                                for (const auto& train_item : _loaddataMap) {
+                                    auto train_unit = train_item.second;
+                                    for (const auto& tt : train_unit) {
+                                        auto tt_compare = tt;
+                                        if (tt_compare.first != 0 && tt_compare.second != 0) {
+                                            if (std::abs(static_cast<int>(tt_compare.first) - static_cast<int>(test_img_line[C_0])) < distance_bias &&
+                                                std::abs(static_cast<int>(tt_compare.second) - static_cast<int>(test_img_line[C_1])) < distance_bias) {
+                                                score_counting[train_item.first]++;
+                                                // if(score_counting[train_item.first] > 200){//adjust accordingly to learning rate
+                                                //     obj_found = true;
+                                                //     break;
+                                                // }
+                                            }
+                                        }
+                                        // if(obj_found){
+                                        //     break;
+                                        // }
+                                    }
+                                    // if(obj_found){
+                                    //     obj_found = false;
+                                    //     break;
+                                    // }
+                                }
+                            }
+                        }
+                        if(!score_counting.empty()){
+                            std::vector<std::pair<std::string, unsigned int>> sorted_score_counting(score_counting.begin(), score_counting.end());
+                            // Sort the vector of pairs
+                            std::sort(sorted_score_counting.begin(), sorted_score_counting.end(), [](const auto& a, const auto& b) {
+                                return a.second > b.second;
+                            });
+                            auto it = sorted_score_counting.begin();
+                            str_result.objName = it->first;
+                        }
+                    }
+                    catch (const std::filesystem::filesystem_error& e) {  
+                        std::cerr << "Filesystem error: " << e.what() << std::endl;  
+                    }  
+                    catch (const std::exception& e) {
+                        std::cerr << "Error: " << e.what() << std::endl;
+                    }
                 }
             }
-        }
-        else{
-            std::cerr << "cvLib::what_are_these Failed to get the image slices." << std::endl;
+            // else{
+            //     std::cerr << "Test key is empty!" << std::endl;
+            // }
         }
     } 
     catch (const cv::Exception& e){  

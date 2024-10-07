@@ -349,6 +349,19 @@ class cvLib{
         */
         std::vector<cv::KeyPoint> extractORBFeatures(const cv::Mat&, cv::Mat&) const;
         /*
+            get the key point of an image
+            para1: cv::Mat input image
+            para2: cv::Mat descriptors
+            para3: Tune ORB Detector Parameters, (increase the number of recognized points in clusters)
+        */
+        std::vector<cv::KeyPoint> extractORBFeatures_multi(const cv::Mat&, cv::Mat&, int) const;
+        /*
+            Function to get different clusters points into a dataset
+            para1: keypoints from extractORBFeatures
+            para2: Number of Clusters  
+        */
+        std::vector<std::vector<cv::KeyPoint>> clusterKeypoints(const std::vector<cv::KeyPoint>&, int) const;
+        /*
             save model keypoints
             para1: dataMap
             para2: output filePath path/model.dat
