@@ -1,5 +1,9 @@
 /*
-g++ -std=c++20 /Users/dengfengji/ronnieji/lib/project/main/opencv_test.cpp -o /Users/dengfengji/ronnieji/lib/project/main/opencv_test -I/Users/dengfengji/ronnieji/lib/project/include -I/Users/dengfengji/ronnieji/lib/project/src /Users/dengfengji/ronnieji/lib/project/src/*.cpp -I/opt/homebrew/Cellar/tesseract/5.4.1/include -L/opt/homebrew/Cellar/tesseract/5.4.1/lib -ltesseract -I/opt/homebrew/Cellar/opencv/4.10.0_6/include/opencv4 -L/opt/homebrew/Cellar/opencv/4.10.0_6/lib -Wl,-rpath,/opt/homebrew/Cellar/opencv/4.10.0_6/lib -lopencv_core -lopencv_highgui -lopencv_videoio -lopencv_photo -lopencv_features2d -lopencv_imgproc -lopencv_imgcodecs -lopencv_calib3d -lopencv_video -I/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3 -I/opt/homebrew/Cellar/boost/1.86.0/include -I/opt/homebrew/Cellar/icu4c/74.2/include -L/opt/homebrew/Cellar/icu4c/74.2/lib -licuuc -licudata /opt/homebrew/Cellar/boost/1.86.0/lib/libboost_system.a /opt/homebrew/Cellar/boost/1.86.0/lib/libboost_filesystem.a
+g++ -std=c++20 /Users/dengfengji/ronnieji/lib/project/main/opencv_test.cpp -o /Users/dengfengji/ronnieji/lib/project/main/opencv_test -I/Users/dengfengji/ronnieji/lib/project/include -I/Users/dengfengji/ronnieji/lib/project/src /Users/dengfengji/ronnieji/lib/project/src/*.cpp -I/opt/homebrew/Cellar/tesseract/5.4.1/include -L/opt/homebrew/Cellar/tesseract/5.4.1/lib -ltesseract -I/opt/homebrew/Cellar/opencv/4.10.0_10/include/opencv4 -L/opt/homebrew/Cellar/opencv/4.10.0_10/lib -Wl,-rpath,/opt/homebrew/Cellar/opencv/4.10.0_10/lib -lopencv_core -lopencv_highgui -lopencv_videoio -lopencv_photo -lopencv_features2d -lopencv_imgproc -lopencv_imgcodecs -lopencv_calib3d -lopencv_video -I/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3 -I/opt/homebrew/Cellar/boost/1.86.0/include -I/opt/homebrew/Cellar/icu4c/74.2/include -L/opt/homebrew/Cellar/icu4c/74.2/lib -licuuc -licudata /opt/homebrew/Cellar/boost/1.86.0/lib/libboost_system.a /opt/homebrew/Cellar/boost/1.86.0/lib/libboost_filesystem.a
+g++ /Users/dengfengji/ronnieji/lib/project/main/opencv_test.cpp -o /Users/dengfengji/ronnieji/lib/project/main/opencv_test -I/Users/dengfengji/ronnieji/lib/project/include -I/Users/dengfengji/ronnieji/lib/project/src /Users/dengfengji/ronnieji/lib/project/src/*.cpp -I/opt/homebrew/Cellar/tesseract/5.4.1/include -L/opt/homebrew/Cellar/tesseract/5.4.1/lib -ltesseract -I/opt/homebrew/Cellar/opencv/4.10.0_10/include/opencv4 -L/opt/homebrew/Cellar/opencv/4.10.0_10/lib -Wl,-rpath,/opt/homebrew/Cellar/opencv/4.10.0_10/lib -lopencv_core -lopencv_highgui -lopencv_videoio -lopencv_photo -lopencv_features2d -lopencv_imgproc -lopencv_imgcodecs -lopencv_calib3d -lopencv_video -I/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3 -I/opt/homebrew/Cellar/boost/1.86.0/include -I/opt/homebrew/Cellar/icu4c/74.2/include -L/opt/homebrew/Cellar/icu4c/74.2/lib -licuuc -licudata /opt/homebrew/Cellar/boost/1.86.0/lib/libboost_system.a /opt/homebrew/Cellar/boost/1.86.0/lib/libboost_filesystem.a \
+ $(pkg-config --cflags --libs sdl2) \
+  $(pkg-config --cflags --libs sdl2_image) \
+  -DOPENCV_VERSION=4.10.0_10 -std=gnu++20
 */
 #include <iostream>
 #include <string>
@@ -14,6 +18,7 @@ g++ -std=c++20 /Users/dengfengji/ronnieji/lib/project/main/opencv_test.cpp -o /U
 #include <sstream>
 #include <fstream>
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include "cvLib.h"
 
@@ -26,7 +31,7 @@ void trainImage(){
     "/Users/dengfengji/ronnieji/lib/project/main/data_key.dat",
     "/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",
     99,
-    inputImgMode::Gray
+    pubstructs::inputImgMode::Gray
     );
     std::cout << "Successfully loaded test images, start recognizing..." << std::endl;
 }
@@ -47,18 +52,36 @@ void test_image_recognition(){
     */
     cvLib cvl_j;
     cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
+    cvLib::mark_font_info pen_marker;
+    pen_marker.fontface = cv::FONT_HERSHEY_SIMPLEX;
+    pen_marker.fontScale = 1.0;
+    pen_marker.thickness = 2;
+    pen_marker.fontcolor = cv::Scalar(0, 255, 0);
+    pen_marker.text_position = cv::Point(5, 30);
     for(const auto& item : testimgs){
-        the_obj_in_an_image strReturn = cvl_j.what_is_this(item);
+        cvLib::the_obj_in_an_image strReturn = cvl_j.what_is_this(item,pen_marker);
         if(!strReturn.empty()){
             bool display_time = cvl_j.get_display_time();
             std::cout << item << " is a(an) " << strReturn.objName << std::endl;
             if(display_time){
                 std::cout << "Execution time: " << strReturn.timespent << " seconds\n";
             }
+            /*
+                mark the image and output to a new file
+            */
+            cv::Mat get_ori = cv::imread(item);
+            if (get_ori.empty()) {
+                std::cerr << "Error: Unable to load image." << std::endl;
+                continue;
+            }
+            unsigned int rec_width = static_cast<unsigned int>(std::abs(strReturn.rec_bottomRight.x - strReturn.rec_topLeft.x));
+            unsigned int rec_height = static_cast<unsigned int>(std::abs(strReturn.rec_bottomRight.y - strReturn.rec_topLeft.y));
+            cvl_j.drawRectangleWithText(get_ori,strReturn.x,strReturn.y,rec_width,rec_height,strReturn.objName,pen_marker.thickness,pen_marker.fontcolor,pen_marker.fontcolor);
+            std::string file_output = item + "_marked.jpg";
+            cv::imwrite(file_output,get_ori);
         }
     }
 }
-
 void multi_objs_readImgs(){
     cvLib cvl_j;
     std::vector<std::string> testimgs;
@@ -75,7 +98,7 @@ void multi_objs_readImgs(){
         cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
         for(const auto& item : testimgs){
             if(std::filesystem::is_regular_file(item)){
-               std::vector<the_obj_in_an_image> multiObjsReturn = cvl_j.what_are_these(item);
+               std::vector<cvLib::the_obj_in_an_image> multiObjsReturn = cvl_j.what_are_these(item);
                if(!multiObjsReturn.empty()){
                     std::cout << item << " image has: " << '\n';
                     for(const auto& multi_item : multiObjsReturn){
@@ -92,9 +115,29 @@ void multi_objs_readImgs(){
         }
     }
 }
+void put_img2_in_img1(){
+    cvLib cvl_j;
+    cv::Mat get_merged_img = cvl_j.put_img2_in_img1(
+        "/Users/dengfengji/ronnieji/Kaggle/test/bg.JPEG",
+        "/Users/dengfengji/ronnieji/Kaggle/test/processed_image.png",
+        50,
+        50,
+        400,
+        500,
+        255,
+        "/Users/dengfengji/ronnieji/Kaggle/test/output_image.jpg",
+        800,
+        600,
+        800,
+        600,
+        32
+    );
+   cv::imwrite("/Users/dengfengji/ronnieji/Kaggle/test/output_image.jpg",get_merged_img);
+}
 int main(){
-    trainImage();
+    //trainImage();
     test_image_recognition();
     //multi_objs_readImgs();
+    //put_img2_in_img1();
     return 0;
 }
