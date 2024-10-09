@@ -54,7 +54,7 @@ void test_image_recognition(){
     cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
     cvLib::mark_font_info pen_marker;
     pen_marker.fontface = cv::FONT_HERSHEY_SIMPLEX;
-    pen_marker.fontScale = 1.0;
+    pen_marker.fontScale = 15.0;
     pen_marker.thickness = 2;
     pen_marker.fontcolor = cv::Scalar(0, 255, 0);
     pen_marker.text_position = cv::Point(5, 30);
@@ -135,7 +135,7 @@ void put_img2_in_img1(){
    cv::imwrite("/Users/dengfengji/ronnieji/Kaggle/test/output_image.jpg",get_merged_img);
 }
 int main(){
-    //trainImage();
+    trainImage();
     test_image_recognition();
     //multi_objs_readImgs();
     //put_img2_in_img1();

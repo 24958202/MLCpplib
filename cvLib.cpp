@@ -279,50 +279,58 @@ cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,c
                     double check_record_numbers = 0.2;
                     const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
                     std::vector<cvLib::the_obj_in_an_image> test_pick;
+                    std::unordered_map<std::string,unsigned int> temp_res;
                     if (checkRange > 0) {
                         for (unsigned int j = 0; j < checkRange; ++j) {
                             test_pick.push_back(test_img_data[j].first);
                         }
                     }
                     if (!test_pick.empty() && !_loaddataMap.empty()) {
-                        for (const auto& train_item : _loaddataMap) {
-                            bool matchFound = false;
-                            std::vector<pubstructs::RGB> train_unit = train_item.second;
-                            if (train_unit.size() < test_pick.size()) {
-                                continue;
-                            }
-                            // Try every possible starting position in train_unit
-                            for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i) {
-                                bool match = false;
-                                // Compare test_pick with the current slice of train_unit
-                                for (unsigned int k = 0; k < test_pick.size(); ++k) {
-                                    if(k+7 < test_pick.size()){
+                        // Compare test_pick with the current slice of train_unit
+                        /*
+                            //apply to str_result
+                            str_result.objName = train_item.first;
+                            str_result.x = test_pick[k].x;
+                            str_result.y = test_pick[k].y;
+                            str_result.rec_topLeft = test_pick[k].rec_topLeft;
+                            str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
+                        */
+                        for (unsigned int k = 0; k < test_pick.size(); ++k) {
+                            if(k+7 < test_pick.size()){
+                                str_result.x = test_pick[k].x;
+                                str_result.y = test_pick[k].y;
+                                str_result.rec_topLeft = test_pick[k].rec_topLeft;
+                                str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
+                                for (const auto& train_item : _loaddataMap) {
+                                    std::vector<pubstructs::RGB> train_unit = train_item.second;
+                                    if (train_unit.size() < test_pick.size()) {
+                                        continue;
+                                    }
+                                    for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i){
                                         if(test_pick[k].rgb == train_unit[i] &&
-                                           test_pick[k+1].rgb == train_unit[i+1] &&
-                                           test_pick[k+2].rgb == train_unit[i+2] &&
-                                           test_pick[k+3].rgb == train_unit[i+3] &&
-                                           test_pick[k+4].rgb == train_unit[i+4] &&
-                                           test_pick[k+5].rgb == train_unit[i+5] &&
-                                           test_pick[k+6].rgb == train_unit[i+6]){
-                                           //apply to str_result
-                                           str_result.objName = train_item.first;
-                                           str_result.x = test_pick[k].x;
-                                           str_result.y = test_pick[k].y;
-                                           str_result.rec_topLeft = test_pick[k].rec_topLeft;
-                                           str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
-                                           match = true;
-                                           break;
+                                        test_pick[k+1].rgb == train_unit[i+1] &&
+                                        test_pick[k+2].rgb == train_unit[i+2] &&
+                                        test_pick[k+3].rgb == train_unit[i+3] &&
+                                        test_pick[k+4].rgb == train_unit[i+4] &&
+                                        test_pick[k+5].rgb == train_unit[i+5] &&
+                                        test_pick[k+6].rgb == train_unit[i+6]){
+                                            temp_res[train_item.first]++;
                                         }
                                     }
                                 }
-                                if (match) {
-                                    matchFound = true;
-                                    break; // Exit the loop as a match is found
-                                }
                             }
-                            if (matchFound) {
-                                break; // Exit the outer loop as a match is found
-                            }
+                        }
+                        /*
+                            sort the result
+                        */
+                        if(!temp_res.empty()){
+                            std::vector<std::pair<std::string, unsigned int>> sorted_score_counting(temp_res.begin(), temp_res.end());
+                            // Sort the vector of pairs
+                            std::sort(sorted_score_counting.begin(), sorted_score_counting.end(), [](const auto& a, const auto& b) {
+                                return a.second > b.second;
+                            });
+                            auto it = sorted_score_counting.begin();
+                            str_result.objName = it->first;
                         }
                     }
                 }
