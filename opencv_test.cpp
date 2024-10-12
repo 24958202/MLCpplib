@@ -25,7 +25,7 @@ g++ /Users/dengfengji/ronnieji/lib/project/main/opencv_test.cpp -o /Users/dengfe
 void trainImage(){
     cvLib cvl_j;
     std::cout << "Training images..." << std::endl;
-    cvl_j.train_img_occurrences("/Users/dengfengji/ronnieji/Kaggle/archive-2/train",
+    cvl_j.train_img_occurrences("/Users/dengfengji/ronnieji/Kaggle/house_plant_species",
     0.05,//0.05(learning rate)
     "/Users/dengfengji/ronnieji/lib/project/main/data.dat",
     "/Users/dengfengji/ronnieji/lib/project/main/data_key.dat",
@@ -134,10 +134,61 @@ void put_img2_in_img1(){
     );
    cv::imwrite("/Users/dengfengji/ronnieji/Kaggle/test/output_image.jpg",get_merged_img);
 }
+/*
+    resize image,and convert the image to 256, 8bit 
+*/
+void preprocess_images(const std::string& train_file_folder){
+     try {  
+        if(train_file_folder.empty()){
+            return;
+        }
+        cvLib cvl_j;
+        for (const auto& entryMainFolder : std::filesystem::directory_iterator(train_file_folder)) {  
+            if (entryMainFolder.is_directory()) { // Check if the entry is a directory  
+                std::string sub_folder_path = entryMainFolder.path().string();  
+                // Accumulate pixel count for memory reservation  
+                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
+                    if (entrySubFolder.is_regular_file()) {  
+                        std::string imgFilePath = entrySubFolder.path().string(); 
+                        if(!imgFilePath.empty()){
+                            cv::Mat input_image = cv::imread(imgFilePath);
+                            if(!input_image.empty()){
+                                input_image = cvl_j.convert_to_256_8bit(input_image);
+                                if(!input_image.empty()){
+                                    cv::imwrite(imgFilePath,input_image);
+                                    std::cout << "Successfully saved the image at: " << imgFilePath << std::endl;
+                                }
+                            }
+                            else{
+                                std::cout << "cv::Mat input_image is empty!" << std::endl; 
+                            }
+                        }
+                        else{
+                            std::cout << "The file path is invalid!" << std::endl;
+                        }
+                    }
+                }
+            }
+            else{
+                std::cout << "It's not a folder!" << std::endl;
+            }
+        }
+     }
+     catch(const std::exception& ex){
+        std::cerr << ex.what() << std::endl;
+     }
+}
+void find_contours(){
+    cvLib cvl_j;
+    std::unordered_map<std::string,std::vector<cv::KeyPoint>> da;
+    cvl_j.sub_find_contours_in_an_image("/Users/dengfengji/ronnieji/lib/images/sample1.jpg",da);
+}
 int main(){
-    trainImage();
-    test_image_recognition();
+    //preprocess_images("/Users/dengfengji/ronnieji/Kaggle/Vegetable Images/Memory");
+    //trainImage();
+    //test_image_recognition();
     //multi_objs_readImgs();
     //put_img2_in_img1();
+    find_contours();
     return 0;
 }

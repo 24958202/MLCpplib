@@ -107,6 +107,12 @@ class subfunctions{
         */
         std::vector<std::vector<pubstructs::RGB>> tupleVectorToRGBVector(
             const std::vector<std::tuple<double, double, double>>&, int, int);
+        /*
+            Function to automatically select the lower and upper threshold values for the Canny edge detection
+            const cv::Mat& gray, cv::Mat& edges, double sigma = 0.33
+            para4: output lower and upper value std::pair<int,int>
+        */
+        void automaticCanny(const cv::Mat& gray, cv::Mat& edges, double sigma = 0.33);
 };
 void subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint8_t>>& myMap, const std::string& key, const std::vector<uint8_t>& get_img_uint) {
     // Use find to check if the key exists
@@ -276,16 +282,74 @@ cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,c
                     std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
                 */
                 try{
-                    double check_record_numbers = 0.2;
+                    /*
+                        rule 1 starts
+                    */
+                    // double check_record_numbers = 0.2;//0.2
+                    // const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
+                    // std::vector<cvLib::the_obj_in_an_image> test_pick;
+                    // if (checkRange > 0) {
+                    //     for (unsigned int j = 0; j < checkRange; ++j) {
+                    //         test_pick.push_back(test_img_data[j].first);
+                    //     }
+                    // }
+                    // if (!test_pick.empty() && !_loaddataMap.empty()) {
+                    //     for (const auto& train_item : _loaddataMap) {
+                    //         bool matchFound = false;
+                    //         std::vector<pubstructs::RGB> train_unit = train_item.second;
+                    //         if (train_unit.size() < test_pick.size()) {
+                    //             continue;
+                    //         }
+                    //         // Try every possible starting position in train_unit
+                    //         for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i) {
+                    //             bool match = false;
+                    //             // Compare test_pick with the current slice of train_unit
+                    //             for (unsigned int k = 0; k < test_pick.size(); ++k) {
+                    //                 if(k+7 < test_pick.size()){
+                    //                     if(test_pick[k].rgb == train_unit[i] &&
+                    //                        test_pick[k+1].rgb == train_unit[i+1] &&
+                    //                        test_pick[k+2].rgb == train_unit[i+2] &&
+                    //                        test_pick[k+3].rgb == train_unit[i+3] &&
+                    //                        test_pick[k+4].rgb == train_unit[i+4] &&
+                    //                        test_pick[k+5].rgb == train_unit[i+5] &&
+                    //                        test_pick[k+6].rgb == train_unit[i+6]){
+                    //                        match = true;
+                    //                        str_result.x = test_pick[k].x;
+                    //                        str_result.y = test_pick[k].y;
+                    //                        str_result.rec_topLeft = test_pick[k].rec_topLeft;
+                    //                        str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
+                    //                        break;
+                    //                     }
+                    //                 }
+                    //             }
+                    //             if (match) {
+                    //                 matchFound = true;
+                    //                 str_result.objName = train_item.first;
+                    //                 break; // Exit the loop as a match is found
+                    //             }
+                    //         }
+                    //         if (matchFound) {
+                    //             break; // Exit the outer loop as a match is found
+                    //         }
+                    //     }
+                    // }
+                    /*
+                        rule 1 end
+                    */
+                    /*
+                        rule 2 starts here
+                    */
+                    double check_record_numbers = 0.2;//0.2
+                    std::unordered_map<std::string,unsigned int> temp_res;
                     const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
                     std::vector<cvLib::the_obj_in_an_image> test_pick;
-                    std::unordered_map<std::string,unsigned int> temp_res;
                     if (checkRange > 0) {
                         for (unsigned int j = 0; j < checkRange; ++j) {
                             test_pick.push_back(test_img_data[j].first);
                         }
                     }
-                    if (!test_pick.empty() && !_loaddataMap.empty()) {
+                    if (!test_pick.empty() && !_loaddataMap.empty()){
+                        unsigned int matchCount = 0;
                         // Compare test_pick with the current slice of train_unit
                         /*
                             //apply to str_result
@@ -333,6 +397,10 @@ cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,c
                             str_result.objName = it->first;
                         }
                     }
+                    /*
+                        rule 2 ends here
+                    */
+                    //}
                 }
                 catch (const std::filesystem::filesystem_error& e) {  
                     std::cerr << "Filesystem error: " << e.what() << std::endl;  
@@ -618,6 +686,32 @@ std::vector<std::vector<pubstructs::RGB>> subfunctions::tupleVectorToRGBVector(
     }
     return imageRGB;
 }
+//sigma = 0.33
+void subfunctions::automaticCanny(const cv::Mat& gray, cv::Mat& edges, double sigma){
+    // Calculate the median of the gradient magnitudes
+    if (gray.empty()) {
+        throw std::invalid_argument("The input image is empty");
+    }
+    // Compute gradients using Sobel
+    cv::Mat grad_x, grad_y;
+    cv::Sobel(gray, grad_x, CV_32F, 1, 0, 3);  // Use CV_32F
+    cv::Sobel(gray, grad_y, CV_32F, 0, 1, 3);  // Use CV_32F
+    // Compute the magnitude of gradients
+    cv::Mat grad;
+    cv::magnitude(grad_x, grad_y, grad);
+    // Flatten gradient values into a vector for median calculation
+    std::vector<float> gradientList(grad.begin<float>(), grad.end<float>());
+    // Compute the median of the gradient magnitudes
+    std::nth_element(gradientList.begin(), gradientList.begin() + gradientList.size() / 2, gradientList.end());
+    float medianGrad = gradientList[gradientList.size() / 2];
+    // Calculate thresholds based on the median
+    float lowerThresholdFloat = std::max(0.0f, (1.0f - static_cast<float>(sigma)) * medianGrad);
+    float upperThresholdFloat = std::min(255.0f, (1.0f + static_cast<float>(sigma)) * medianGrad);
+    int lowerThreshold = static_cast<int>(lowerThresholdFloat);
+    int upperThreshold = static_cast<int>(upperThresholdFloat);
+    // Perform Canny edge detection
+    cv::Canny(gray, edges, lowerThreshold, upperThreshold);
+}
 /*
     start sub functions sdl2
 */
@@ -806,8 +900,6 @@ cv::Mat subsdl2::put_img2_in_img1(
     cleanup(window, renderer);
     return finalImg;
 }
-
-
 /*
     end sdl2 sub library
 */
@@ -863,6 +955,42 @@ std::vector<std::string> cvLib::splitString(const std::string& input, char delim
         result.push_back(token);
     }
     return result;
+}
+cv::Mat cvLib::convert_to_256_8bit(const cv::Mat& inputImage){
+    if (inputImage.empty()) {
+        std::cerr << "Error: Input image is empty!" << std::endl;
+        return cv::Mat();
+    }
+    try{
+        cv::Mat resizedImage;
+        cv::resize(inputImage, resizedImage, cv::Size(800, 800));
+        cv::Mat img;
+        cv::cvtColor(resizedImage, img, cv::COLOR_BGR2RGB); // Convert to RGB if needed
+        // Reshape the image to a 2D matrix of pixels
+        cv::Mat data = img.reshape(1, img.total());
+        data.convertTo(data, CV_32F); // Convert to floating point for K-means
+        // Define criteria: (Type, max_iter, epsilon)
+        //cv::TermCriteria criteria(cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, 10, 1.0);
+        cv::TermCriteria criteria(cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, 5, 1.0);
+        // Apply K-means clustering to reduce colors
+        int k = 256; // We want a palette of 256 colors
+        cv::Mat labels, centers;
+        cv::kmeans(data, k, labels, criteria, 3, cv::KMEANS_PP_CENTERS, centers);
+        // Map the centers back to original image
+        cv::Mat quantizedImage(data.size(), data.type());
+        for (size_t i = 0; i < data.rows; ++i) {
+            quantizedImage.at<cv::Vec3f>(i) = centers.at<cv::Vec3f>(labels.at<int>(i));
+        }
+        // Reshape back to the original image shape
+        quantizedImage = quantizedImage.reshape(3, img.rows);
+        quantizedImage.convertTo(quantizedImage, CV_8UC3);
+        cv::cvtColor(quantizedImage, quantizedImage, cv::COLOR_RGB2BGR); // Convert back to BGR if needed
+        return quantizedImage;
+    }
+    catch(const std::exception& ex){
+        std::cerr << "cvLib::convert_to_256_8bit " << ex.what() << std::endl;
+    }
+    return cv::Mat();
 }
 cv::Mat cvLib::placeOnTransparentBackground(const cv::Mat& inImg, unsigned int img_width, unsigned int img_height) {
     if (inImg.empty()) {
@@ -922,25 +1050,48 @@ std::vector<uint8_t> cvLib::convertToPacked(const std::vector<std::vector<pubstr
     return pixels; // Return the resulting packed pixel vector  
 }  
 // Function to convert std::vector<uint8_t> to cv::Mat  
-cv::Mat cvLib::vectorToImage(const std::vector<uint8_t>& pixels, unsigned int width, unsigned int height) {  
-    // Create a cv::Mat object with the specified dimensions and type (CV_8UC3 for BGR)  
-    cv::Mat image(height, width, CV_8UC3);  
-    // Iterate through each pixel in the vector  
-    for (unsigned int y = 0; y < height; ++y) {  
-        for (unsigned int x = 0; x < width; ++x) {  
-            // Get the packed pixel from the vector  
-            uint8_t packedPixel = pixels[y * width + x];  
-            // Unpack the pixel components  
-            uint8_t b = (packedPixel & 0xFF);            // Blue component  
-            uint8_t g = (packedPixel >> 8) & 0xFF;       // Green component  
-            uint8_t r = (packedPixel >> 16) & 0xFF;      // Red component  
-            // uint8_t a = (packedPixel >> 24) & 0xFF;    // Alpha component (if needed)  
-            // Set the pixel value in the cv::Mat (OpenCV uses BGR format)  
-            image.at<cv::Vec3b>(y, x) = cv::Vec3b(b, g, r);  
-        }  
-    }  
-    return image;  // Return the created image  
+cv::Mat cvLib::vectorToImage(const std::vector<std::vector<pubstructs::RGB>>& pixels, unsigned int width, unsigned int height) {  
+    if(pixels.empty()){
+        return cv::Mat();
+    }
+    // Create a cv::Mat object with the specified dimensions and type (CV_8UC3 for BGR).
+    cv::Mat image(height, width, CV_8UC3);
+    // Verify that the height and width match the input vector
+    assert(pixels.size() == height && (height == 0 || pixels[pubstructs::C_0].size() == width));
+    // Iterate through each pixel in the vector
+    for (unsigned int y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x) {
+            // Get the RGB pixel from the vector
+            const pubstructs::RGB& pixel = pixels[y][x];
+            // Set the pixel value in the cv::Mat (OpenCV uses BGR format)
+            image.at<cv::Vec3b>(y, x) = cv::Vec3b(pixel.b, pixel.g, pixel.r);
+        }
+    }
+    return image;  // Return the created image
 }  
+/*
+    Function to detect keypoints by clusters
+    para1: input image 
+    para2: clusters cv::Rect(0, 0, 100, 100), cv::Rect(100, 100, 100, 100)
+*/
+std::unordered_map<std::string, std::vector<cv::KeyPoint>> detectKeypointsByClusters(const cv::Mat& image, const std::vector<cv::Rect>& regions) {
+    // Create an ORB detector
+    auto orb = cv::ORB::create();
+    // Map to store keypoints with cluster identifiers
+    std::unordered_map<std::string, std::vector<cv::KeyPoint>> keypointsMap;
+    for (size_t i = 0; i < regions.size(); ++i) {
+        // Extract the region of interest
+        cv::Mat region = image(regions[i]);
+        // Detect keypoints in the specified region
+        std::vector<cv::KeyPoint> keypoints;
+        orb->detect(region, keypoints);
+        // Formulate the cluster key (e.g., cluster1, cluster2, ...)
+        std::string clusterKey = "cluster" + std::to_string(i + 1);
+        // Store the detected keypoints in the map
+        keypointsMap[clusterKey] = keypoints;
+    }
+    return keypointsMap;
+}
 /*
     This function to convert an cv::Mat into a std::vector<std::vector<pubstructs::RGB>> dataset
 */
@@ -1016,6 +1167,61 @@ cvLib::imgSize cvLib::get_image_size(const std::string& imgPath) {
     im_s.width = img.cols;  
     im_s.height = img.rows;  
     return im_s;   
+}
+std::unordered_map<std::string, std::vector<cv::KeyPoint>> cvLib::extractContoursAsKeyPoints(const cv::Mat& edges){
+    if(edges.empty()){
+        return {};
+    }
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+    // Find contours
+    cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    std::unordered_map<std::string, std::vector<cv::KeyPoint>> contourKeyPoints;
+    for (size_t i = 0; i < contours.size(); ++i) {
+        std::vector<cv::KeyPoint> keypoints;
+        for (const auto& point : contours[i]) {
+            // Convert each point to a keypoint
+            keypoints.emplace_back(cv::KeyPoint(
+                static_cast<float>(point.x), 
+                static_cast<float>(point.y), 
+                1.0f // size - can be scaled as needed
+            ));
+        }
+        // Construct key name based on contour index or other descriptors
+        std::string key = "Contour_" + std::to_string(i);
+        contourKeyPoints[key] = keypoints;
+    }
+    return contourKeyPoints;
+}
+void cvLib::sub_find_contours_in_an_image(const std::string& imagePath,std::unordered_map<std::string, std::vector<cv::KeyPoint>>& imgclusters){
+    if(imagePath.empty()){
+        return;
+    }
+    cv::Mat image = cv::imread(imagePath);
+    if (image.empty()) {
+        std::cerr << "Error: Could not open or find the image!" << std::endl;
+        return;
+    }
+    // Convert to grayscale
+    cv::Mat gray;
+    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    // Use Canny to detect edges
+    cv::Mat edges;
+    subfunctions subf_j;
+    subf_j.automaticCanny(gray,edges,0.33);
+    // Find contours
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    // Create an output image to draw contours
+    cv::Mat contourImage = cv::Mat::zeros(image.size(), CV_8UC3);
+    // Draw each contour with a random color
+    for (size_t i = 0; i < contours.size(); ++i) {
+        cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
+        cv::drawContours(contourImage, contours, static_cast<int>(i), color, 2, cv::LINE_8, hierarchy, 0);
+    }
+    // Extract contours as keypoints
+    imgclusters = extractContoursAsKeyPoints(edges);
 }
 /*
     cv::Scalar markerColor(0,255,0);
@@ -1698,25 +1904,32 @@ cv::Mat cvLib::preprocessImage(const std::string& imgPath, const pubstructs::inp
         std::cerr << "preprocessImage Error: Could not open or find the image." << std::endl;
         return cv::Mat();
     }
-    // Step 2: Resize the image to 120x120 pixels
-    cv::Mat resizedImage;
-    cv::resize(image, resizedImage, cv::Size(800, 800));
-    // Apply Gaussian blur to minimize noise
-    cv::GaussianBlur(resizedImage, resizedImage, cv::Size(5, 5), 0);
-    std::vector<std::vector<pubstructs::RGB>> datasets;
-    subfunctions subfun;
-    if(img_mode == pubstructs::inputImgMode::Color){
-        datasets = this->cv_mat_to_dataset_color(resizedImage);
+    try{
+        // Step 2: Resize the image to 120x120 pixels
+        //cv::Mat preProImg = this->convert_to_256_8bit(image);
+        // Apply Gaussian blur to minimize noise
+        cv::Mat resizedImage;
+        cv::resize(image, resizedImage, cv::Size(800, 800));
+        cv::GaussianBlur(resizedImage, resizedImage, cv::Size(5, 5), 0);
+        std::vector<std::vector<pubstructs::RGB>> datasets;
+        subfunctions subfun;
+        if(img_mode == pubstructs::inputImgMode::Color){
+            datasets = this->cv_mat_to_dataset_color(resizedImage);
+        }
+        else if(img_mode == pubstructs::inputImgMode::Gray){
+            cv::Mat gray_image;
+            cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
+            datasets = this->cv_mat_to_dataset(gray_image);
+        }
+        auto outliers = this->findOutlierEdges(datasets, gradientMagnitude_threshold);
+        std::vector<std::vector<pubstructs::RGB>> trans_img = subfun.getPixelsInsideObject(datasets, outliers);
+        cv::Mat final_image = subfun.convertDatasetToMat(trans_img);//trans_img
+        return final_image;
     }
-    else if(img_mode == pubstructs::inputImgMode::Gray){
-        cv::Mat gray_image;
-        cv::cvtColor(resizedImage, gray_image, cv::COLOR_BGR2GRAY);
-        datasets = this->cv_mat_to_dataset(gray_image);
+    catch(const std::exception& ex){
+        std::cerr << "cvLib::preprocessImage " << ex.what() << std::endl;
     }
-    auto outliers = this->findOutlierEdges(datasets, gradientMagnitude_threshold);
-    std::vector<std::vector<pubstructs::RGB>> trans_img = subfun.getPixelsInsideObject(datasets, outliers);
-    cv::Mat final_image = subfun.convertDatasetToMat(trans_img);//trans_img
-    return final_image;
+    return cv::Mat();
 }
 std::vector<std::vector<pubstructs::RGB>> cvLib::get_img_120_gray_for_ML(const std::string& imgPath,const unsigned int gradientMagnitude_threshold) {  
     if(imgPath.empty()){
