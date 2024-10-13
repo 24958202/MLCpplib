@@ -181,14 +181,15 @@ void preprocess_images(const std::string& train_file_folder){
 void find_contours(){
     cvLib cvl_j;
     std::unordered_map<std::string,std::vector<cv::KeyPoint>> da;
-    cvl_j.sub_find_contours_in_an_image("/Users/dengfengji/ronnieji/lib/images/sample1.jpg",da);
+    cvl_j.sub_find_contours_in_an_image("/Users/dengfengji/ronnieji/lib/images/libtest.jpg",da);
+    std::cout << "Objs: " << da.size() << std::endl;
 }
 int main(){
     //preprocess_images("/Users/dengfengji/ronnieji/Kaggle/Vegetable Images/Memory");
     //trainImage();
     //test_image_recognition();
-    //multi_objs_readImgs();
+    multi_objs_readImgs();
     //put_img2_in_img1();
-    find_contours();
+    //find_contours();
     return 0;
 }

@@ -1168,26 +1168,44 @@ cvLib::imgSize cvLib::get_image_size(const std::string& imgPath) {
     im_s.height = img.rows;  
     return im_s;   
 }
-std::unordered_map<std::string, std::vector<cv::KeyPoint>> cvLib::extractContoursAsKeyPoints(const cv::Mat& edges){
-    if(edges.empty()){
+std::unordered_map<std::string, std::vector<cv::KeyPoint>> cvLib::extractContoursAsKeyPoints(const cv::Mat& edges) {
+    if (edges.empty()) {
         return {};
     }
+    cv::Mat smoothedEdges;
+    // Apply Gaussian Blur to reduce noise and improve contour detection
+    cv::GaussianBlur(edges, smoothedEdges, cv::Size(5, 5), 0);
+    // Apply a binary threshold to further suppress noise
+    cv::Mat binaryEdges;
+    cv::threshold(smoothedEdges, binaryEdges, 50, 255, cv::THRESH_BINARY);
     std::vector<std::vector<cv::Point>> contours;
     std::vector<cv::Vec4i> hierarchy;
-    // Find contours
-    cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    // Find external contours to avoid nested ones
+    cv::findContours(binaryEdges, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    // Filter contours by area to eliminate noise
+    const double areaThreshold = 100.0; // Define a threshold based on expected object sizes
+    std::vector<std::vector<cv::Point>> filteredContours;
+    for (const auto& contour : contours) {
+        if (cv::contourArea(contour) > areaThreshold) {
+            filteredContours.push_back(contour);
+        }
+    }
     std::unordered_map<std::string, std::vector<cv::KeyPoint>> contourKeyPoints;
-    for (size_t i = 0; i < contours.size(); ++i) {
+    for (size_t i = 0; i < filteredContours.size(); ++i) {
         std::vector<cv::KeyPoint> keypoints;
-        for (const auto& point : contours[i]) {
+        // Approximate contours to reduce number of points for keypoint conversion
+        std::vector<cv::Point> approxContour;
+        double epsilon = 0.02 * cv::arcLength(filteredContours[i], true); // Adjust the scaling factor if necessary
+        cv::approxPolyDP(filteredContours[i], approxContour, epsilon, true);
+        for (const auto& point : approxContour) {
             // Convert each point to a keypoint
             keypoints.emplace_back(cv::KeyPoint(
-                static_cast<float>(point.x), 
-                static_cast<float>(point.y), 
-                1.0f // size - can be scaled as needed
+                static_cast<float>(point.x),
+                static_cast<float>(point.y),
+                1.0f // Use a default size, adjust if needed
             ));
         }
-        // Construct key name based on contour index or other descriptors
+        // Construct key name based on contour index
         std::string key = "Contour_" + std::to_string(i);
         contourKeyPoints[key] = keypoints;
     }
@@ -1205,10 +1223,12 @@ void cvLib::sub_find_contours_in_an_image(const std::string& imagePath,std::unor
     // Convert to grayscale
     cv::Mat gray;
     cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+    cv::Mat imgResize;
+    cv::resize(gray, imgResize, cv::Size(800, 800));
     // Use Canny to detect edges
     cv::Mat edges;
     subfunctions subf_j;
-    subf_j.automaticCanny(gray,edges,0.33);
+    subf_j.automaticCanny(imgResize,edges,0.05);//0.33
     // Find contours
     std::vector<std::vector<cv::Point>> contours;
     std::vector<cv::Vec4i> hierarchy;
@@ -1222,6 +1242,7 @@ void cvLib::sub_find_contours_in_an_image(const std::string& imagePath,std::unor
     }
     // Extract contours as keypoints
     imgclusters = extractContoursAsKeyPoints(edges);
+    // Show the original and contour image
 }
 /*
     cv::Scalar markerColor(0,255,0);
@@ -2440,7 +2461,7 @@ cv::Mat cvLib::put_img2_in_img1(
     }  
     return cv::Mat();
 }
-std::vector<cvLib::the_obj_in_an_image> cvLib::what_are_these(const std::string& img_path){
+std::vector<cvLib::the_obj_in_an_image> cvLib::what_are_these(const std::string& img_path,const cvLib::mark_font_info& maker_info){
     std::vector<cvLib::the_obj_in_an_image> str_result;
     if(img_path.empty()){
         return str_result;
@@ -2455,35 +2476,26 @@ std::vector<cvLib::the_obj_in_an_image> cvLib::what_are_these(const std::string&
     */
     try{
         // // Step 1: Open the image using cv::imread
+        std::unordered_map<std::string,std::vector<cv::KeyPoint>> da;
         cv::Mat final_image = this->preprocessImage(img_path,pubstructs::inputImgMode::Gray,this->_gradientMagnitude_threshold);
         if(!final_image.empty()){
-            cv::Mat desc;
-            std::vector<cv::KeyPoint> testKey = this->extractORBFeatures_multi(final_image,desc,5000);
-            if(!testKey.empty()){
-                std::vector<std::pair<std::vector<unsigned int>,double>> test_img_data;
-                for (size_t i = 0; i < testKey.size(); ++i) {
-                    const cv::KeyPoint& kp = testKey[i]; 
-                    std::vector<unsigned int> kp_pos{
-                        static_cast<unsigned int>(kp.pt.x),
-                        static_cast<unsigned int>(kp.pt.y)
-                    };
-                    test_img_data.push_back(std::make_pair(kp_pos,static_cast<double>(kp.response)));
-                }
-                if(!test_img_data.empty()){
-                    std::sort(test_img_data.begin(),test_img_data.end(),[](const auto& a, const auto& b){
-                        return a.second > b.second;
-                    });
-                    /*
-                        start recognizing...
-                        trained_img_data
-                        std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
-                    */
-                    
-                }
+            // Use Canny to detect edges
+            cv::Mat edges;
+            subfunctions subf_j;
+            subf_j.automaticCanny(final_image,edges,0.05);//0.33
+            // Find contours
+            std::vector<std::vector<cv::Point>> contours;
+            std::vector<cv::Vec4i> hierarchy;
+            cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+            // Create an output image to draw contours
+            cv::Mat contourImage = cv::Mat::zeros(final_image.size(), CV_8UC3);
+            // Draw each contour with a random color
+            for (size_t i = 0; i < contours.size(); ++i) {
+                cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
+                cv::drawContours(contourImage, contours, static_cast<int>(i), color, 2, cv::LINE_8, hierarchy, 0);
             }
-            // else{
-            //     std::cerr << "Test key is empty!" << std::endl;
-            // }
+            // Extract contours as keypoints
+            da = extractContoursAsKeyPoints(edges);
         }
     } 
     catch (const cv::Exception& e){  
