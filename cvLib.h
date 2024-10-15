@@ -7,6 +7,8 @@
 #include <opencv2/opencv.hpp>  
 #include <functional>
 #include <stdint.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,12 +44,6 @@ namespace pubstructs{
     }; 
 }
 class cvLib{
-    private:
-        std::unordered_map<std::string, std::vector<pubstructs::RGB>> _loaddataMap;
-        unsigned int _gradientMagnitude_threshold = 33; 
-        bool display_time = false;
-        unsigned int distance_bias = 2;
-        double learning_rate = 0.05;
     public:
         struct mark_font_info{
             int fontface;
@@ -128,6 +124,8 @@ class cvLib{
         std::unordered_map<std::string, std::vector<pubstructs::RGB>> get_loaddataMap() const;
         void set_learing_rate(const double&);
         double get_learning_rate() const;
+        void set_percent_to_check(const double&);
+        double get_percent_to_check() const;
         std::vector<std::string> splitString(const std::string&, char);//tokenize a string, sperated by char for example ','
         /*
             Function to open an image and put it into a width x height matrix and return a cv::Mat
@@ -194,14 +192,26 @@ class cvLib{
             para1: image path
             para2: output std::unordered_map<std::string, std::vector<cv::KeyPoint>> 
         */
-        void sub_find_contours_in_an_image(const std::string&,std::unordered_map<std::string, std::vector<cv::KeyPoint>>&);
+        void sub_find_contours_in_an_image(const std::string&,std::vector<std::pair<std::string, cv::Mat>>&);
         /*
+            Function to draw a rectangle on an object
+            para1: input image
+            para2: location x
+            para3: location y
+            para4: rectange's width
+            para5: rectangle's height
+            para6: text to put on the rectangle
+            para7: rectangle's thickness
+            para8: marker color
+            para9: text color
+
             cv::Scalar markerColor(0,255,0);
             cv::Scalar txtColor(255, 255, 255);
             rec_thickness = 2;
+            void cvLib::drawRectangleWithText(cv::Mat& image, int x, int y, unsigned int width, unsigned int height, const std::string& text, unsigned int rec_thickness, const cv::Scalar& markerColor, const cv::Scalar& txtColor, double fontScale)
         */
         // Function to draw a green rectangle on an image  
-        void drawRectangleWithText(cv::Mat&, int, int, unsigned int, unsigned int, const std::string&, unsigned int, const cv::Scalar&, const cv::Scalar&);
+        void drawRectangleWithText(cv::Mat&, int, int, unsigned int, unsigned int, const std::string&, unsigned int, const cv::Scalar&, const cv::Scalar&, double, int);
         /*
             save cv::Mat to a file, para1: input a cv::Mat file, para2: output file path *.ppm
         */
@@ -463,7 +473,7 @@ class cvLib{
             para4: distance allow bias from the trained data default = 2;
             para5: learning rate (much be the save as train_img_occurrences, and train_for_multi_imgs_recognition)
         */
-        void loadImageRecog(const std::string&,const unsigned int, const bool, unsigned int, double);
+        void loadImageRecog(const std::string&,const unsigned int, const bool, unsigned int, double, double);
         /*
             Function to input an image and return the recognition (std::string)
             para1: input an image file path
@@ -552,11 +562,175 @@ class cvLib{
         /*
             Function to input an image and return all objects in it
             para1: input an image file path
-            para2: pass const std::unordered_map<std::string, std::vector<std::pair<int, int>>>& multi-objects recognition corpus
+            para2:  define marker's info
+                    struct mark_font_info{
+                    int fontface;
+                    double fontScale;
+                    unsigned int thickness;
+                    cv::Scalar fontcolor;
+                    cv::Point text_position;//default is cv::Point position(5, 30); // Typically, (5, 30) is a good starting point for large fonts to avoid cutting off the text
+                    mark_font_info() : fontface(cv::FONT_HERSHEY_SIMPLEX),fontScale(1.0),thickness(2),fontcolor(cv::Scalar(0, 255, 0)),text_position(cv::Point(5, 30)) {}
+                    bool empty() const {
+                        return fontface == -1 &&      // Assuming -1 is an uninitialized state for fontface
+                        fontScale == 0.0 &&    // Assuming 0.0 is an uninitialized state for fontScale
+                        thickness == 0 &&      // Assuming 0 is an uninitialized state for thickness
+                        fontcolor == cv::Scalar(0, 0, 0, 0) && // Assuming (0, 0, 0, 0) is "empty" for fontcolor
+                        text_position == cv::Point(0, 0); // Assuming (0, 0) is an "empty" position
+                    }
+        };
             para3: learning rate (much be the same as function: get_outliers_for_ml)
             return: std::unordered_map<std::string,std::pair<std::vector<unsigned i nt>,std::vector<unsigned int>>>
         */
-        std::vector<the_obj_in_an_image> what_are_these(const std::string&);
+        std::vector<the_obj_in_an_image> what_are_these(const std::string&, const cvLib::mark_font_info&);
+
+        private:
+            std::unordered_map<std::string, std::vector<pubstructs::RGB>> _loaddataMap;
+            unsigned int _gradientMagnitude_threshold = 33; 
+            bool display_time = false;
+            unsigned int distance_bias = 2;
+            double learning_rate = 0.05;
+            double percent_to_check = 0.2;
+            /*
+                subfunctions start
+            */
+            class subfunctions{
+                public:
+                    /*
+                        Update std::unordered_map<std::string, std::vector<uint8_t>> value, if the first key exists, append data to second value
+                        otherwise,create a new key.
+                    */
+                    void updateMap(std::unordered_map<std::string, std::vector<uint8_t>>&, const std::string&, const std::vector<uint8_t>&);
+                    void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<pubstructs::RGB>>&);
+                    void move_single_objs_to_center(std::vector<std::pair<std::vector<unsigned int>, double>>&,unsigned int, unsigned int);
+                    void move_objs_to_center(std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>&, unsigned int, unsigned int);
+                    /*
+                        Function to automatically select the lower and upper threshold values for the Canny edge detection
+                        const cv::Mat& gray, cv::Mat& edges, double sigma = 0.33
+                        para4: output lower and upper value std::pair<int,int>
+                    */
+                    void automaticCanny(const cv::Mat& gray, cv::Mat& edges, double sigma = 0.33);
+                    /*
+                        Function to visual recognite the obj in the image
+                        para1: std::vector<std::pair<cvLib::the_obj_in_an_image,double>>
+                        para2: double check_record_numbers = 0.2;//0.2
+                        para3: trained dataset
+                        para4: output cvLib::the_obj_in_an_image positon, and objName
+                    */
+                    void visual_recognize_obj(const std::vector<std::pair<cvLib::the_obj_in_an_image,double>>&,const double&, const std::unordered_map<std::string, std::vector<pubstructs::RGB>>&, cvLib::the_obj_in_an_image&);
+                    /*
+                        detect the object in an image
+                    */
+                    cvLib::the_obj_in_an_image getObj_in_an_image(const cvLib&,const cv::Mat&, const cvLib::mark_font_info&);
+                    // Function to convert a dataset to cv::Mat  
+                    cv::Mat convertDatasetToMat(const std::vector<std::vector<pubstructs::RGB>>&);
+                    void markVideo(cv::Mat&, const cv::Scalar&,const cv::Scalar&);
+                    // Function to check if a point is inside a polygon  
+                    //para1:x, para2:y , para3: polygon
+                    bool isPointInPolygon(int, int, const std::vector<std::pair<int, int>>&);
+                    // Function to get all pixels inside the object defined by A  
+                    std::vector<std::vector<pubstructs::RGB>> getPixelsInsideObject(const std::vector<std::vector<pubstructs::RGB>>&, const std::vector<std::pair<int, int>>&); 
+                    cv::Mat getObjectsInVideo(const cv::Mat&);
+                    void saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>&, const std::string&);
+                    void saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&, const std::string&);
+                    void merge_without_duplicates(std::vector<uint8_t>&, const std::vector<uint8_t>&);
+                    /*
+                        Function to compare two pixel's similarity ()
+                        para1: pixel a
+                        para2: pixel b
+                        para3: threshold (threshold 0-30, better result with small digits)
+                    */
+                    bool isSimilar(const pubstructs::RGB&, const pubstructs::RGB&, const unsigned int&);
+                    /*
+                        convert rgb to hsv
+                        para1: r, para2: g, para3: b
+                    */
+                    std::tuple<double, double, double> rgbToHsv(unsigned int, unsigned int, unsigned int);
+                    // Convert your pubstructs::RGB struct to OpenCV's Vec3b (BGR format)
+                    cv::Vec3b rgbToVec3b(const pubstructs::RGB&);
+                    // Convert OpenCV's Vec3b (BGR format) to your pubstructs::RGB struct
+                    pubstructs::RGB vec3bToRgb(const cv::Vec3b&);
+                    std::pair<cv::Scalar, cv::Scalar> determineHSVRange(const cv::Mat&, double) const;
+                    // Function to read a WebP image and convert it to a vector of tuples
+                    /*
+                        para1: webp image path
+                    */
+                    std::vector<std::tuple<double, double, double>> webpToTupleVector(const std::string&); 
+                    // Function to convert the tuple vector back to an pubstructs::RGB 2D vector
+                    /*
+                        para1: tuple vector dataset 
+                        para2: output image width
+                        para3: output image height
+                    */
+                    std::vector<std::vector<pubstructs::RGB>> tupleVectorToRGBVector(
+                        const std::vector<std::tuple<double, double, double>>&, int, int);
+                    /*
+                        put a contour into a 800x800 pixels white color background
+                        para1: input cv::Mat
+                        para2: lowerCannyThreshold
+                        para3: upperCannyThreshold
+                        para4: minContourArea
+                    */
+                    std::vector<cv::Mat> extractAndTransformContours(const cv::Mat&, double, double, int);
+                    
+            };
+            /*
+                subfunctions end
+            */
+            /*
+                subfunctions subsdl2 start
+            */
+            class subsdl2{
+                public:
+                    void cleanup(SDL_Window*, SDL_Renderer*);
+                    SDL_Texture* loadTexture(const std::string&, SDL_Renderer*);
+                    bool saveTextureToFile(SDL_Renderer*, SDL_Texture*, const std::string&);//save sdl image to file
+                    std::vector<std::vector<pubstructs::RGB>> convertSurfaceToVector(SDL_Surface*);
+                    /*
+                        Function to put img2 to img1, and share the lighting effect and texture of img1
+                        para0: pass parent cvLib 
+                        para1: image 1 (target image) path
+                        para2: image 2 path
+                        para3: image2's info, (width,height, and the position you want to put in image1)
+                            struct img2info{
+                                const unsigned int width;
+                                const unsigned int height;
+                                const int left;
+                                const int top;
+                                const unsigned int alpha_modul; //alpha modulation 0-255 value to apply transparency.
+                                                                0: Fully transparent; the texture will not be visible at all.
+                                                                255: Fully opaque; the texture will be fully visible without any
+                            }
+                        para4: output image path
+                        para5: target image1 width
+                        para6: target image1 height
+                        para7: output image width
+                        para8: output image height
+                        para9: inDepth 
+                            int depth:
+                            Purpose: The depth of the surface in bits per pixel (bpp). The value 32 in this context indicates that you're allocating space for 32 bits per pixel (typically used for a standard RGBA format with 8 bits per color channel).
+                            Example Values: 32 for RGBA (4 bytes per pixel: 8 bits each for red, green, blue, and alpha).
+                    */
+                    cv::Mat put_img2_in_img1(
+                        cvLib&,
+                        const std::string&, 
+                        const std::string&, 
+                        const int,
+                        const int,
+                        const int,
+                        const int,
+                        const uint8_t,  
+                        const std::string&,
+                        const unsigned int, 
+                        const unsigned int, 
+                        const unsigned int, 
+                        const unsigned int, 
+                        const unsigned int);
+            };
+            /*
+                subfunctions subsdl2 end
+            */
+            subfunctions subf_j;
+            subsdl2 subsd_j;
 };     
 
 #ifdef __cplusplus

@@ -25,7 +25,7 @@ g++ /Users/dengfengji/ronnieji/lib/project/main/opencv_test.cpp -o /Users/dengfe
 void trainImage(){
     cvLib cvl_j;
     std::cout << "Training images..." << std::endl;
-    cvl_j.train_img_occurrences("/Users/dengfengji/ronnieji/Kaggle/house_plant_species",
+    cvl_j.train_img_occurrences("/Users/dengfengji/ronnieji/Kaggle/archive-2/train",
     0.05,//0.05(learning rate)
     "/Users/dengfengji/ronnieji/lib/project/main/data.dat",
     "/Users/dengfengji/ronnieji/lib/project/main/data_key.dat",
@@ -51,11 +51,11 @@ void test_image_recognition(){
         para4: distance allow bias from the trained data default = 2;(better result with small digits)
     */
     cvLib cvl_j;
-    cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
+    cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05,0.2);
     cvLib::mark_font_info pen_marker;
     pen_marker.fontface = cv::FONT_HERSHEY_SIMPLEX;
-    pen_marker.fontScale = 15.0;
-    pen_marker.thickness = 2;
+    pen_marker.fontScale = 3;
+    pen_marker.thickness = 5;
     pen_marker.fontcolor = cv::Scalar(0, 255, 0);
     pen_marker.text_position = cv::Point(5, 30);
     for(const auto& item : testimgs){
@@ -76,7 +76,19 @@ void test_image_recognition(){
             }
             unsigned int rec_width = static_cast<unsigned int>(std::abs(strReturn.rec_bottomRight.x - strReturn.rec_topLeft.x));
             unsigned int rec_height = static_cast<unsigned int>(std::abs(strReturn.rec_bottomRight.y - strReturn.rec_topLeft.y));
-            cvl_j.drawRectangleWithText(get_ori,strReturn.x,strReturn.y,rec_width,rec_height,strReturn.objName,pen_marker.thickness,pen_marker.fontcolor,pen_marker.fontcolor);
+            cvl_j.drawRectangleWithText(
+                get_ori,
+                strReturn.x,
+                strReturn.y,
+                rec_width,
+                rec_height,
+                strReturn.objName,
+                pen_marker.thickness,
+                pen_marker.fontcolor,
+                pen_marker.fontcolor,
+                pen_marker.fontScale,                      // Font scale
+                pen_marker.fontface  // Font face
+            );
             std::string file_output = item + "_marked.jpg";
             cv::imwrite(file_output,get_ori);
         }
@@ -95,10 +107,16 @@ void multi_objs_readImgs(){
     if(!testimgs.empty()){
         std::cout << "test images number: " << testimgs.size() << std::endl;
         bool display_time = cvl_j.get_display_time();
-        cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
+        cvLib::mark_font_info pen_marker;
+        pen_marker.fontface = cv::FONT_HERSHEY_SIMPLEX;
+        pen_marker.fontScale = 3;
+        pen_marker.thickness = 5;
+        pen_marker.fontcolor = cv::Scalar(0, 255, 0);
+        pen_marker.text_position = cv::Point(5, 30);
+        cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05,0.2);
         for(const auto& item : testimgs){
             if(std::filesystem::is_regular_file(item)){
-               std::vector<cvLib::the_obj_in_an_image> multiObjsReturn = cvl_j.what_are_these(item);
+               std::vector<cvLib::the_obj_in_an_image> multiObjsReturn = cvl_j.what_are_these(item,pen_marker);
                if(!multiObjsReturn.empty()){
                     std::cout << item << " image has: " << '\n';
                     for(const auto& multi_item : multiObjsReturn){
@@ -107,6 +125,9 @@ void multi_objs_readImgs(){
                             std::cout << "Execution time: " << multi_item.timespent << " seconds\n";
                         }
                     }
+                    /*
+                        mark multiple objs in the image and output to a file
+                    */
                }
                else{
                     std::cout << "multiObjsReturn value is empty!" << std::endl;
@@ -178,17 +199,27 @@ void preprocess_images(const std::string& train_file_folder){
         std::cerr << ex.what() << std::endl;
      }
 }
+/*
+    preprocess images
+*/
 void find_contours(){
     cvLib cvl_j;
-    std::unordered_map<std::string,std::vector<cv::KeyPoint>> da;
-    cvl_j.sub_find_contours_in_an_image("/Users/dengfengji/ronnieji/lib/images/libtest.jpg",da);
-    std::cout << "Objs: " << da.size() << std::endl;
+    std::vector<std::pair<std::string,cv::Mat>> da;
+    cvl_j.sub_find_contours_in_an_image("/Users/dengfengji/ronnieji/lib/images/sample1.jpg",da);
+    if(!da.empty()){
+        for(const auto& item : da){
+            std::string output_str = "/Users/dengfengji/ronnieji/lib/images/";
+            output_str.append(item.first);
+            output_str.append(".jpg");
+            cv::imwrite(output_str,item.second);
+        }
+    }
 }
 int main(){
     //preprocess_images("/Users/dengfengji/ronnieji/Kaggle/Vegetable Images/Memory");
-    //trainImage();
-    //test_image_recognition();
-    multi_objs_readImgs();
+    trainImage();
+    test_image_recognition();
+    //multi_objs_readImgs();
     //put_img2_in_img1();
     //find_contours();
     return 0;

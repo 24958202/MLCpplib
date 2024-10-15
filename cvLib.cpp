@@ -42,79 +42,9 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include "cvLib.h"
-class subfunctions{
-    struct pair_hash {  
-        template <class T>  
-        std::size_t operator() (const std::pair<T, T>& pair) const {  
-            auto hash1 = std::hash<T>{}(pair.first);  
-            auto hash2 = std::hash<T>{}(pair.second);  
-            return hash1 ^ hash2; // Combine the two hash values  
-        }  
-    };  
-    using PairSet = std::unordered_set<std::pair<int, int>, pair_hash>;  
-    public:
-        /*
-            Update std::unordered_map<std::string, std::vector<uint8_t>> value, if the first key exists, append data to second value
-            otherwise,create a new key.
-        */
-        void updateMap(std::unordered_map<std::string, std::vector<uint8_t>>&, const std::string&, const std::vector<uint8_t>&);
-        void convertToBlackAndWhite(cv::Mat&, std::vector<std::vector<pubstructs::RGB>>&);
-        void move_single_objs_to_center(std::vector<std::pair<std::vector<unsigned int>, double>>&,unsigned int, unsigned int);
-        void move_objs_to_center(std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>&, unsigned int, unsigned int);
-        /*
-            detect the object in an image
-        */
-        cvLib::the_obj_in_an_image getObj_in_an_image(const cvLib&,const cv::Mat&, const cvLib::mark_font_info&);
-        // Function to convert a dataset to cv::Mat  
-        cv::Mat convertDatasetToMat(const std::vector<std::vector<pubstructs::RGB>>&);
-        void markVideo(cv::Mat&, const cv::Scalar&,const cv::Scalar&);
-        // Function to check if a point is inside a polygon  
-        //para1:x, para2:y , para3: polygon
-        bool isPointInPolygon(int, int, const std::vector<std::pair<int, int>>&);
-        // Function to get all pixels inside the object defined by A  
-        std::vector<std::vector<pubstructs::RGB>> getPixelsInsideObject(const std::vector<std::vector<pubstructs::RGB>>&, const std::vector<std::pair<int, int>>&); 
-        cv::Mat getObjectsInVideo(const cv::Mat&);
-        void saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>&, const std::string&);
-        void saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>&, const std::string&);
-        void merge_without_duplicates(std::vector<uint8_t>&, const std::vector<uint8_t>&);
-        /*
-            Function to compare two pixel's similarity ()
-            para1: pixel a
-            para2: pixel b
-            para3: threshold (threshold 0-30, better result with small digits)
-        */
-        bool isSimilar(const pubstructs::RGB&, const pubstructs::RGB&, const unsigned int&);
-        /*
-            convert rgb to hsv
-            para1: r, para2: g, para3: b
-        */
-        std::tuple<double, double, double> rgbToHsv(unsigned int, unsigned int, unsigned int);
-        // Convert your pubstructs::RGB struct to OpenCV's Vec3b (BGR format)
-        cv::Vec3b rgbToVec3b(const pubstructs::RGB&);
-        // Convert OpenCV's Vec3b (BGR format) to your pubstructs::RGB struct
-        pubstructs::RGB vec3bToRgb(const cv::Vec3b&);
-        std::pair<cv::Scalar, cv::Scalar> determineHSVRange(const cv::Mat&, double) const;
-        // Function to read a WebP image and convert it to a vector of tuples
-        /*
-            para1: webp image path
-        */
-        std::vector<std::tuple<double, double, double>> webpToTupleVector(const std::string&); 
-        // Function to convert the tuple vector back to an pubstructs::RGB 2D vector
-        /*
-            para1: tuple vector dataset 
-            para2: output image width
-            para3: output image height
-        */
-        std::vector<std::vector<pubstructs::RGB>> tupleVectorToRGBVector(
-            const std::vector<std::tuple<double, double, double>>&, int, int);
-        /*
-            Function to automatically select the lower and upper threshold values for the Canny edge detection
-            const cv::Mat& gray, cv::Mat& edges, double sigma = 0.33
-            para4: output lower and upper value std::pair<int,int>
-        */
-        void automaticCanny(const cv::Mat& gray, cv::Mat& edges, double sigma = 0.33);
-};
-void subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint8_t>>& myMap, const std::string& key, const std::vector<uint8_t>& get_img_uint) {
+// Define the functions for the nested subfunctions class
+//void cvLib::subfunctions::visual_recognize_obj(std::vector<std::pair<cvLib::the_obj_in_an_image,double>>& test_img_data,const double& check_record_numbers, const std::unordered_map<std::string, std::vector<pubstructs::RGB>>& traineddataMap, cvLib::the_obj_in_an_image& objInfo);
+void cvLib::subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint8_t>>& myMap, const std::string& key, const std::vector<uint8_t>& get_img_uint) {
     // Use find to check if the key exists
     auto it = myMap.find(key);
     if (it != myMap.end()) {
@@ -125,7 +55,7 @@ void subfunctions::updateMap(std::unordered_map<std::string, std::vector<uint8_t
         myMap[key] = get_img_uint;
     }
 }
-void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<pubstructs::RGB>>& datasets) {
+void cvLib::subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vector<pubstructs::RGB>>& datasets) {
     if(datasets.empty() || datasets[pubstructs::C_0].empty()){
         std::cerr << "Error: datasets is empty!" << std::endl;
         return;
@@ -159,7 +89,7 @@ void subfunctions::convertToBlackAndWhite(cv::Mat& image, std::vector<std::vecto
         }
     }
 }
-void subfunctions::move_single_objs_to_center(std::vector<std::pair<std::vector<unsigned int>, double>>& imageData,unsigned int imageWidth, unsigned int imageHeight){
+void cvLib::subfunctions::move_single_objs_to_center(std::vector<std::pair<std::vector<unsigned int>, double>>& imageData,unsigned int imageWidth, unsigned int imageHeight){
     if (imageData.empty()) {
         return;
     }
@@ -184,7 +114,7 @@ void subfunctions::move_single_objs_to_center(std::vector<std::pair<std::vector<
         dataPair.first[pubstructs::C_1] = static_cast<unsigned int>(std::max(0, std::min(static_cast<int>(dataPair.first[pubstructs::C_1]) + shiftY, static_cast<int>(imageHeight - 1))));
     }
 }
-void subfunctions::move_objs_to_center(std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& objectPixelsMap, unsigned int imageWidth, unsigned int imageHeight){
+void cvLib::subfunctions::move_objs_to_center(std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>>& objectPixelsMap, unsigned int imageWidth, unsigned int imageHeight){
     if (objectPixelsMap.empty()) {
         return;
     }
@@ -217,7 +147,173 @@ void subfunctions::move_objs_to_center(std::unordered_map<std::string, std::vect
         }
     }
 }
-cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv::Mat& getImg,const cvLib::mark_font_info& markerInfo){
+//sigma = 0.33
+void cvLib::subfunctions::automaticCanny(const cv::Mat& gray, cv::Mat& edges, double sigma){
+    // Calculate the median of the gradient magnitudes
+    if (gray.empty()) {
+        throw std::invalid_argument("The input image is empty");
+    }
+    // Compute gradients using Sobel
+    cv::Mat grad_x, grad_y;
+    cv::Sobel(gray, grad_x, CV_32F, 1, 0, 3);  // Use CV_32F
+    cv::Sobel(gray, grad_y, CV_32F, 0, 1, 3);  // Use CV_32F
+    // Compute the magnitude of gradients
+    cv::Mat grad;
+    cv::magnitude(grad_x, grad_y, grad);
+    // Flatten gradient values into a vector for median calculation
+    std::vector<float> gradientList(grad.begin<float>(), grad.end<float>());
+    // Compute the median of the gradient magnitudes
+    std::nth_element(gradientList.begin(), gradientList.begin() + gradientList.size() / 2, gradientList.end());
+    float medianGrad = gradientList[gradientList.size() / 2];
+    // Calculate thresholds based on the median
+    float lowerThresholdFloat = std::max(0.0f, (1.0f - static_cast<float>(sigma)) * medianGrad);
+    float upperThresholdFloat = std::min(255.0f, (1.0f + static_cast<float>(sigma)) * medianGrad);
+    int lowerThreshold = static_cast<int>(lowerThresholdFloat);
+    int upperThreshold = static_cast<int>(upperThresholdFloat);
+    // Perform Canny edge detection
+    cv::Canny(gray, edges, lowerThreshold, upperThreshold);
+}
+void cvLib::subfunctions::visual_recognize_obj(const std::vector<std::pair<cvLib::the_obj_in_an_image,double>>& test_img_data,const double& check_record_numbers, const std::unordered_map<std::string, std::vector<pubstructs::RGB>>& traineddataMap, cvLib::the_obj_in_an_image& objInfo){
+    if(test_img_data.empty()){
+        std::cerr << "cvLib::subfunctions::visual_recognize_obj : test_img_data is empty!" << std::endl;
+        return;
+    }
+    /*
+        start recognizing...
+        trained_img_data
+        std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
+    */
+    try{
+        /*
+            rule 1 starts
+        */
+        // double check_record_numbers = 0.2;//0.2
+        // const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
+        // std::vector<cvLib::the_obj_in_an_image> test_pick;
+        // if (checkRange > 0) {
+        //     for (unsigned int j = 0; j < checkRange; ++j) {
+        //         test_pick.push_back(test_img_data[j].first);
+        //     }
+        // }
+        // if (!test_pick.empty() && !_loaddataMap.empty()) {
+        //     for (const auto& train_item : _loaddataMap) {
+        //         bool matchFound = false;
+        //         std::vector<pubstructs::RGB> train_unit = train_item.second;
+        //         if (train_unit.size() < test_pick.size()) {
+        //             continue;
+        //         }
+        //         // Try every possible starting position in train_unit
+        //         for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i) {
+        //             bool match = false;
+        //             // Compare test_pick with the current slice of train_unit
+        //             for (unsigned int k = 0; k < test_pick.size(); ++k) {
+        //                 if(k+7 < test_pick.size()){
+        //                     if(test_pick[k].rgb == train_unit[i] &&
+        //                        test_pick[k+1].rgb == train_unit[i+1] &&
+        //                        test_pick[k+2].rgb == train_unit[i+2] &&
+        //                        test_pick[k+3].rgb == train_unit[i+3] &&
+        //                        test_pick[k+4].rgb == train_unit[i+4] &&
+        //                        test_pick[k+5].rgb == train_unit[i+5] &&
+        //                        test_pick[k+6].rgb == train_unit[i+6]){
+        //                        match = true;
+        //                        str_result.x = test_pick[k].x;
+        //                        str_result.y = test_pick[k].y;
+        //                        str_result.rec_topLeft = test_pick[k].rec_topLeft;
+        //                        str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
+        //                        break;
+        //                     }
+        //                 }
+        //             }
+        //             if (match) {
+        //                 matchFound = true;
+        //                 str_result.objName = train_item.first;
+        //                 break; // Exit the loop as a match is found
+        //             }
+        //         }
+        //         if (matchFound) {
+        //             break; // Exit the outer loop as a match is found
+        //         }
+        //     }
+        // }
+        /*
+            rule 1 end
+        */
+        /*
+            rule 2 starts here
+        */
+        //double check_record_numbers = 0.2;//0.2
+        std::unordered_map<std::string,unsigned int> temp_res;
+        const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
+        std::vector<cvLib::the_obj_in_an_image> test_pick;
+        if (checkRange > 0) {
+            for (unsigned int j = 0; j < checkRange; ++j) {
+                test_pick.push_back(test_img_data[j].first);
+            }
+        }
+        if (!test_pick.empty() && !traineddataMap.empty()){
+            unsigned int matchCount = 0;
+            // Compare test_pick with the current slice of train_unit
+            /*
+                //apply to str_result
+                str_result.objName = train_item.first;
+                str_result.x = test_pick[k].x;
+                str_result.y = test_pick[k].y;
+                str_result.rec_topLeft = test_pick[k].rec_topLeft;
+                str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
+            */
+            for (unsigned int k = 0; k < test_pick.size(); ++k) {
+                if(k+7 < test_pick.size()){
+                    objInfo.x = test_pick[k].x;
+                    objInfo.y = test_pick[k].y;
+                    objInfo.rec_topLeft = test_pick[k].rec_topLeft;
+                    objInfo.rec_bottomRight = test_pick[k].rec_bottomRight;
+                    for (const auto& train_item : traineddataMap) {
+                        std::vector<pubstructs::RGB> train_unit = train_item.second;
+                        if (train_unit.size() < test_pick.size()) {
+                            continue;
+                        }
+                        for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i){
+                            if(test_pick[k].rgb == train_unit[i] &&
+                            test_pick[k+1].rgb == train_unit[i+1] &&
+                            test_pick[k+2].rgb == train_unit[i+2] &&
+                            test_pick[k+3].rgb == train_unit[i+3] &&
+                            test_pick[k+4].rgb == train_unit[i+4] &&
+                            test_pick[k+5].rgb == train_unit[i+5] &&
+                            test_pick[k+6].rgb == train_unit[i+6]){
+                                temp_res[train_item.first]++;
+                            }
+                        }
+                    }
+                }
+            }
+            /*
+                sort the result
+            */
+            if(!temp_res.empty()){
+                std::vector<std::pair<std::string, unsigned int>> sorted_score_counting(temp_res.begin(), temp_res.end());
+                // Sort the vector of pairs
+                std::sort(sorted_score_counting.begin(), sorted_score_counting.end(), [](const auto& a, const auto& b) {
+                    return a.second > b.second;
+                });
+                auto it = sorted_score_counting.begin();
+                objInfo.objName = it->first;
+            }
+        }
+        /*
+            rule 2 ends here
+        */
+        
+    }
+    catch (const std::filesystem::filesystem_error& e) {  
+        std::cerr << "Filesystem error: " << e.what() << std::endl;  
+    }  
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    } catch (...) {  
+        std::cerr << "Unknown exception occurred." << std::endl;   
+    }
+}
+cvLib::the_obj_in_an_image cvLib::subfunctions::getObj_in_an_image(const cvLib& cvl_j,const cv::Mat& getImg,const cvLib::mark_font_info& markerInfo){
     /*
         preprocess image
     */
@@ -240,6 +336,7 @@ cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,c
     distance_bias = cvl_j.get_distance_bias();
     _gradientMagnitude_threshold = cvl_j.get_gradientMagnitude_threshold();
     _loaddataMap = cvl_j.get_loaddataMap();
+    double percent_check_sub = cvl_j.get_percent_to_check();
     if(display_time){
         t_count_start = std::chrono::high_resolution_clock::now(); // Initialize start time 
     }
@@ -276,143 +373,12 @@ cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,c
                 std::sort(test_img_data.begin(),test_img_data.end(),[](const auto& a, const auto& b){
                     return a.second > b.second;
                 });
-                /*
-                    start recognizing...
-                    trained_img_data
-                    std::unordered_map<std::string, std::vector<std::pair<unsigned int, unsigned int>>> _loaddataMap;
-                */
-                try{
-                    /*
-                        rule 1 starts
-                    */
-                    // double check_record_numbers = 0.2;//0.2
-                    // const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
-                    // std::vector<cvLib::the_obj_in_an_image> test_pick;
-                    // if (checkRange > 0) {
-                    //     for (unsigned int j = 0; j < checkRange; ++j) {
-                    //         test_pick.push_back(test_img_data[j].first);
-                    //     }
-                    // }
-                    // if (!test_pick.empty() && !_loaddataMap.empty()) {
-                    //     for (const auto& train_item : _loaddataMap) {
-                    //         bool matchFound = false;
-                    //         std::vector<pubstructs::RGB> train_unit = train_item.second;
-                    //         if (train_unit.size() < test_pick.size()) {
-                    //             continue;
-                    //         }
-                    //         // Try every possible starting position in train_unit
-                    //         for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i) {
-                    //             bool match = false;
-                    //             // Compare test_pick with the current slice of train_unit
-                    //             for (unsigned int k = 0; k < test_pick.size(); ++k) {
-                    //                 if(k+7 < test_pick.size()){
-                    //                     if(test_pick[k].rgb == train_unit[i] &&
-                    //                        test_pick[k+1].rgb == train_unit[i+1] &&
-                    //                        test_pick[k+2].rgb == train_unit[i+2] &&
-                    //                        test_pick[k+3].rgb == train_unit[i+3] &&
-                    //                        test_pick[k+4].rgb == train_unit[i+4] &&
-                    //                        test_pick[k+5].rgb == train_unit[i+5] &&
-                    //                        test_pick[k+6].rgb == train_unit[i+6]){
-                    //                        match = true;
-                    //                        str_result.x = test_pick[k].x;
-                    //                        str_result.y = test_pick[k].y;
-                    //                        str_result.rec_topLeft = test_pick[k].rec_topLeft;
-                    //                        str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
-                    //                        break;
-                    //                     }
-                    //                 }
-                    //             }
-                    //             if (match) {
-                    //                 matchFound = true;
-                    //                 str_result.objName = train_item.first;
-                    //                 break; // Exit the loop as a match is found
-                    //             }
-                    //         }
-                    //         if (matchFound) {
-                    //             break; // Exit the outer loop as a match is found
-                    //         }
-                    //     }
-                    // }
-                    /*
-                        rule 1 end
-                    */
-                    /*
-                        rule 2 starts here
-                    */
-                    double check_record_numbers = 0.2;//0.2
-                    std::unordered_map<std::string,unsigned int> temp_res;
-                    const unsigned int checkRange = static_cast<unsigned int>(check_record_numbers * test_img_data.size());
-                    std::vector<cvLib::the_obj_in_an_image> test_pick;
-                    if (checkRange > 0) {
-                        for (unsigned int j = 0; j < checkRange; ++j) {
-                            test_pick.push_back(test_img_data[j].first);
-                        }
-                    }
-                    if (!test_pick.empty() && !_loaddataMap.empty()){
-                        unsigned int matchCount = 0;
-                        // Compare test_pick with the current slice of train_unit
-                        /*
-                            //apply to str_result
-                            str_result.objName = train_item.first;
-                            str_result.x = test_pick[k].x;
-                            str_result.y = test_pick[k].y;
-                            str_result.rec_topLeft = test_pick[k].rec_topLeft;
-                            str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
-                        */
-                        for (unsigned int k = 0; k < test_pick.size(); ++k) {
-                            if(k+7 < test_pick.size()){
-                                str_result.x = test_pick[k].x;
-                                str_result.y = test_pick[k].y;
-                                str_result.rec_topLeft = test_pick[k].rec_topLeft;
-                                str_result.rec_bottomRight = test_pick[k].rec_bottomRight;
-                                for (const auto& train_item : _loaddataMap) {
-                                    std::vector<pubstructs::RGB> train_unit = train_item.second;
-                                    if (train_unit.size() < test_pick.size()) {
-                                        continue;
-                                    }
-                                    for (unsigned int i = 0; i <= train_unit.size() - test_pick.size(); ++i){
-                                        if(test_pick[k].rgb == train_unit[i] &&
-                                        test_pick[k+1].rgb == train_unit[i+1] &&
-                                        test_pick[k+2].rgb == train_unit[i+2] &&
-                                        test_pick[k+3].rgb == train_unit[i+3] &&
-                                        test_pick[k+4].rgb == train_unit[i+4] &&
-                                        test_pick[k+5].rgb == train_unit[i+5] &&
-                                        test_pick[k+6].rgb == train_unit[i+6]){
-                                            temp_res[train_item.first]++;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        /*
-                            sort the result
-                        */
-                        if(!temp_res.empty()){
-                            std::vector<std::pair<std::string, unsigned int>> sorted_score_counting(temp_res.begin(), temp_res.end());
-                            // Sort the vector of pairs
-                            std::sort(sorted_score_counting.begin(), sorted_score_counting.end(), [](const auto& a, const auto& b) {
-                                return a.second > b.second;
-                            });
-                            auto it = sorted_score_counting.begin();
-                            str_result.objName = it->first;
-                        }
-                    }
-                    /*
-                        rule 2 ends here
-                    */
-                    //}
-                }
-                catch (const std::filesystem::filesystem_error& e) {  
-                    std::cerr << "Filesystem error: " << e.what() << std::endl;  
-                }  
-                catch (const std::exception& e) {
-                    std::cerr << "Error: " << e.what() << std::endl;
-                }
+                this->visual_recognize_obj(test_img_data,percent_check_sub,_loaddataMap,str_result);
+            }
+            else{
+                std::cerr << "cvLib::subfunctions::getObj_in_an_image(line:460): test_img is empty!" << std::endl;
             }
         }
-        // else{
-        //     std::cerr << "Test key is empty!" << std::endl;
-        // }
     }
     if(display_time){
         t_count_end = std::chrono::high_resolution_clock::now();   
@@ -422,7 +388,7 @@ cvLib::the_obj_in_an_image subfunctions::getObj_in_an_image(const cvLib& cvl_j,c
     }
     return str_result;
 }
-cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<pubstructs::RGB>>& dataset) { 
+cv::Mat cvLib::subfunctions::convertDatasetToMat(const std::vector<std::vector<pubstructs::RGB>>& dataset) { 
    if (dataset.empty() || dataset[pubstructs::C_0].empty()) {
         throw std::runtime_error("Dataset is empty or has no columns.");
     }
@@ -437,7 +403,7 @@ cv::Mat subfunctions::convertDatasetToMat(const std::vector<std::vector<pubstruc
     }
     return image;
 }  
-void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const cv::Scalar& bg_color){
+void cvLib::subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const cv::Scalar& bg_color){
     if(frame.empty()){
         return;
     }
@@ -455,7 +421,7 @@ void subfunctions::markVideo(cv::Mat& frame,const cv::Scalar& brush_color, const
     }
 }
 // Function to check if a point is inside a polygon  
-bool subfunctions::isPointInPolygon(int x, int y, const std::vector<std::pair<int, int>>& polygon) {  
+bool cvLib::subfunctions::isPointInPolygon(int x, int y, const std::vector<std::pair<int, int>>& polygon) {  
     bool inside = false;  
     int n = polygon.size();  
     for (int i = 0, j = n - 1; i < n; j = i++) {  
@@ -466,7 +432,7 @@ bool subfunctions::isPointInPolygon(int x, int y, const std::vector<std::pair<in
     }  
     return inside;  
 }  
-std::vector<std::vector<pubstructs::RGB>> subfunctions::getPixelsInsideObject(const std::vector<std::vector<pubstructs::RGB>>& image_rgb, const std::vector<std::pair<int, int>>& objEdges) {  
+std::vector<std::vector<pubstructs::RGB>> cvLib::subfunctions::getPixelsInsideObject(const std::vector<std::vector<pubstructs::RGB>>& image_rgb, const std::vector<std::pair<int, int>>& objEdges) {  
     if(image_rgb.empty() || image_rgb[pubstructs::C_0].empty() || objEdges.empty()) {  
         return {}; // Return an empty image if no data or edges
     }
@@ -481,7 +447,7 @@ std::vector<std::vector<pubstructs::RGB>> subfunctions::getPixelsInsideObject(co
     }
     return output_objs;
 }
-cv::Mat subfunctions::getObjectsInVideo(const cv::Mat& inVideo){
+cv::Mat cvLib::subfunctions::getObjectsInVideo(const cv::Mat& inVideo){
     cvLib cv_j;
     std::vector<std::vector<pubstructs::RGB>> objects_detect;
     std::vector<std::vector<pubstructs::RGB>> image_rgb = cv_j.cv_mat_to_dataset_color(inVideo);  
@@ -493,7 +459,7 @@ cv::Mat subfunctions::getObjectsInVideo(const cv::Mat& inVideo){
     cv::Mat finalV = this->convertDatasetToMat(objects_detect);
     return finalV;  
 }
-void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>& featureMap, const std::string& filename){
+void cvLib::subfunctions::saveModel(const std::unordered_map<std::string, std::vector<cv::Mat>>& featureMap, const std::string& filename){
     if(filename.empty()){
         return;
     }
@@ -521,7 +487,7 @@ void subfunctions::saveModel(const std::unordered_map<std::string, std::vector<c
     }
     ofs.close();
 }
-void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>& featureMap, const std::string& filename) {
+void cvLib::subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std::vector<std::vector<cv::KeyPoint>>>& featureMap, const std::string& filename) {
     if (filename.empty()) {
         return;
     }
@@ -557,7 +523,7 @@ void subfunctions::saveModel_keypoint(const std::unordered_map<std::string, std:
     }
     ofs.close();
 }
-void subfunctions::merge_without_duplicates(std::vector<uint8_t>& data_main, const std::vector<uint8_t>& data_append) {  
+void cvLib::subfunctions::merge_without_duplicates(std::vector<uint8_t>& data_main, const std::vector<uint8_t>& data_append) {  
     if(data_main.empty() || data_append.empty()){
         return;
     }
@@ -586,13 +552,13 @@ void subfunctions::merge_without_duplicates(std::vector<uint8_t>& data_main, con
         data_main.push_back(item.first);
     }
 }  
-bool subfunctions::isSimilar(const pubstructs::RGB& a, const pubstructs::RGB& b, const unsigned int& threshold) {
+bool cvLib::subfunctions::isSimilar(const pubstructs::RGB& a, const pubstructs::RGB& b, const unsigned int& threshold) {
     // Example similarity threshold comparison, adjust as necessary
     return (std::abs(static_cast<int>(a.r) - static_cast<int>(b.r)) < threshold &&
             std::abs(static_cast<int>(a.g) - static_cast<int>(b.g)) < threshold &&
             std::abs(static_cast<int>(a.b) - static_cast<int>(b.b)) < threshold);
 }
-std::tuple<double, double, double> subfunctions::rgbToHsv(unsigned int r, unsigned int g, unsigned int b){
+std::tuple<double, double, double> cvLib::subfunctions::rgbToHsv(unsigned int r, unsigned int g, unsigned int b){
     double rd = r / 255.0;
     double gd = g / 255.0;
     double bd = b / 255.0;
@@ -617,15 +583,15 @@ std::tuple<double, double, double> subfunctions::rgbToHsv(unsigned int r, unsign
     return {h, s * 100, v * 100}; // Return H, S, V
 }
 // Convert your pubstructs::RGB struct to OpenCV's Vec3b (BGR format)
-cv::Vec3b subfunctions::rgbToVec3b(const pubstructs::RGB& color) {
+cv::Vec3b cvLib::subfunctions::rgbToVec3b(const pubstructs::RGB& color) {
     // Directly use the color components since they are already uint8_t
     return cv::Vec3b(color.b, color.g, color.r);
 }
 // Convert OpenCV's Vec3b (BGR format) to your pubstructs::RGB struct
-pubstructs::RGB subfunctions::vec3bToRgb(const cv::Vec3b& color){
+pubstructs::RGB cvLib::subfunctions::vec3bToRgb(const cv::Vec3b& color){
     return pubstructs::RGB(color[pubstructs::C_2], color[pubstructs::C_1], color[pubstructs::C_0]); // Convert OpenCV's BGR to pubstructs::RGB
 }
-std::pair<cv::Scalar, cv::Scalar> subfunctions::determineHSVRange(const cv::Mat& hsv, double percentile) const{
+std::pair<cv::Scalar, cv::Scalar> cvLib::subfunctions::determineHSVRange(const cv::Mat& hsv, double percentile) const{
     cv::Mat hist;
     // Compute histograms for H, S, and V channels
     int histSize[] = {180, 256, 256}; // HistSize for H, S, V channels
@@ -646,7 +612,7 @@ std::pair<cv::Scalar, cv::Scalar> subfunctions::determineHSVRange(const cv::Mat&
     return std::make_pair(lowH, highH);
 }
 // Function to read a WebP image and convert it to a vector of tuples
-std::vector<std::tuple<double, double, double>> subfunctions::webpToTupleVector(const std::string& webpImagePath) {
+std::vector<std::tuple<double, double, double>> cvLib::subfunctions::webpToTupleVector(const std::string& webpImagePath) {
     if(webpImagePath.empty()){
         return {};
     }
@@ -668,7 +634,7 @@ std::vector<std::tuple<double, double, double>> subfunctions::webpToTupleVector(
     return dataset;
 }
 // Function to convert the tuple vector back to an pubstructs::RGB 2D vector
-std::vector<std::vector<pubstructs::RGB>> subfunctions::tupleVectorToRGBVector(
+std::vector<std::vector<pubstructs::RGB>> cvLib::subfunctions::tupleVectorToRGBVector(
     const std::vector<std::tuple<double, double, double>>& dataset, int width, int height) {
     if (dataset.empty() || width <= 0 || height <= 0 || dataset.size() != static_cast<size_t>(width * height)) {
         throw std::runtime_error("Dataset is empty or dimensions are incorrect.");
@@ -686,87 +652,75 @@ std::vector<std::vector<pubstructs::RGB>> subfunctions::tupleVectorToRGBVector(
     }
     return imageRGB;
 }
-//sigma = 0.33
-void subfunctions::automaticCanny(const cv::Mat& gray, cv::Mat& edges, double sigma){
-    // Calculate the median of the gradient magnitudes
-    if (gray.empty()) {
-        throw std::invalid_argument("The input image is empty");
+// Assuming the contours and other data have been prepared accordingly
+std::vector<cv::Mat> cvLib::subfunctions::extractAndTransformContours(
+    const cv::Mat& inputImage, double lowerCannyThreshold, double upperCannyThreshold, int minContourArea){
+    // Step 1: Preprocess the image
+    cv::Mat grayImage, blurredImage, edges, processedEdges;
+    cv::cvtColor(inputImage, grayImage, cv::COLOR_BGR2GRAY);
+    cv::GaussianBlur(grayImage, blurredImage, cv::Size(5, 5), 0);
+    // Step 2: Apply edge detection (Canny)
+    cv::Canny(blurredImage, edges, lowerCannyThreshold, upperCannyThreshold);
+    // Step 3: Apply morphological transformations
+    cv::dilate(edges, processedEdges, cv::Mat(), cv::Point(-1, -1), 2);
+    cv::erode(processedEdges, processedEdges, cv::Mat(), cv::Point(-1, -1), 1);
+    // Step 4: Find contours
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(processedEdges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    // Step 5: Filter and process each contour
+    std::vector<cv::Mat> contourImages;
+    const int canvasSize = 800;
+    const double targetScale = 0.80; // Target 80% of the image size
+    for (const auto& contour : contours) {
+        // Filter contours by minimum area
+        if (cv::contourArea(contour) < minContourArea) {
+            continue;
+        }
+        try{
+            // Calculate bounding box of the contour
+            cv::Rect boundingBox = cv::boundingRect(contour);
+            // Create a mask
+            cv::Mat mask = cv::Mat::zeros(inputImage.size(), CV_8UC1);
+            cv::drawContours(mask, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(255), cv::FILLED);
+            // Extract the colored image using mask
+            cv::Mat coloredRegion;
+            inputImage.copyTo(coloredRegion, mask);
+            // Extract the ROI based on bounding box and apply scaling
+            cv::Mat roi = coloredRegion(boundingBox);
+            // Calculate the scale to make the bounding box take up 80% of the canvas
+            double scaleX = (canvasSize * targetScale) / boundingBox.width;
+            double scaleY = (canvasSize * targetScale) / boundingBox.height;
+            double scale = std::min(scaleX, scaleY); // Maintain aspect ratio
+            // Resize the ROI
+            cv::Mat scaledROI;
+            cv::resize(roi, scaledROI, cv::Size(), scale, scale);
+            // Create a white background and place the scaled ROI in the center
+            cv::Mat whiteBackground = cv::Mat::ones(canvasSize, canvasSize, CV_8UC3) * 255;
+            int offsetX = (canvasSize - scaledROI.cols) / 2;
+            int offsetY = (canvasSize - scaledROI.rows) / 2;
+            scaledROI.copyTo(whiteBackground(cv::Rect(offsetX, offsetY, scaledROI.cols, scaledROI.rows)));
+            // Store the resulting image
+            contourImages.push_back(whiteBackground);
+        }
+        catch(const std::exception& e){
+            std::cerr << e.what() << " error ignored." << std::endl;
+        }
     }
-    // Compute gradients using Sobel
-    cv::Mat grad_x, grad_y;
-    cv::Sobel(gray, grad_x, CV_32F, 1, 0, 3);  // Use CV_32F
-    cv::Sobel(gray, grad_y, CV_32F, 0, 1, 3);  // Use CV_32F
-    // Compute the magnitude of gradients
-    cv::Mat grad;
-    cv::magnitude(grad_x, grad_y, grad);
-    // Flatten gradient values into a vector for median calculation
-    std::vector<float> gradientList(grad.begin<float>(), grad.end<float>());
-    // Compute the median of the gradient magnitudes
-    std::nth_element(gradientList.begin(), gradientList.begin() + gradientList.size() / 2, gradientList.end());
-    float medianGrad = gradientList[gradientList.size() / 2];
-    // Calculate thresholds based on the median
-    float lowerThresholdFloat = std::max(0.0f, (1.0f - static_cast<float>(sigma)) * medianGrad);
-    float upperThresholdFloat = std::min(255.0f, (1.0f + static_cast<float>(sigma)) * medianGrad);
-    int lowerThreshold = static_cast<int>(lowerThresholdFloat);
-    int upperThreshold = static_cast<int>(upperThresholdFloat);
-    // Perform Canny edge detection
-    cv::Canny(gray, edges, lowerThreshold, upperThreshold);
+    return contourImages;
 }
+/*
+    end subfunctions------------------------------------------------------
+*/
 /*
     start sub functions sdl2
 */
-class subsdl2{
-    public:
-        void cleanup(SDL_Window*, SDL_Renderer*);
-        SDL_Texture* loadTexture(const std::string&, SDL_Renderer*);
-        bool saveTextureToFile(SDL_Renderer*, SDL_Texture*, const std::string&);//save sdl image to file
-        std::vector<std::vector<pubstructs::RGB>> convertSurfaceToVector(SDL_Surface*);
-        /*
-            Function to put img2 to img1, and share the lighting effect and texture of img1
-            para1: image 1 (target image) path
-            para2: image 2 path
-            para3: image2's info, (width,height, and the position you want to put in image1)
-                struct img2info{
-                    const unsigned int width;
-                    const unsigned int height;
-                    const int left;
-                    const int top;
-                    const unsigned int alpha_modul; //alpha modulation 0-255 value to apply transparency.
-                                                    0: Fully transparent; the texture will not be visible at all.
-                                                    255: Fully opaque; the texture will be fully visible without any
-                }
-            para4: output image path
-            para5: target image1 width
-            para6: target image1 height
-            para7: output image width
-            para8: output image height
-            para9: inDepth 
-                int depth:
-                Purpose: The depth of the surface in bits per pixel (bpp). The value 32 in this context indicates that you're allocating space for 32 bits per pixel (typically used for a standard RGBA format with 8 bits per color channel).
-                Example Values: 32 for RGBA (4 bytes per pixel: 8 bits each for red, green, blue, and alpha).
-        */
-        cv::Mat put_img2_in_img1(
-            const std::string&, 
-            const std::string&, 
-            const int,
-            const int,
-            const int,
-            const int,
-            const uint8_t,  
-            const std::string&,
-            const unsigned int, 
-            const unsigned int, 
-            const unsigned int, 
-            const unsigned int, 
-            const unsigned int);
-};
-void subsdl2::cleanup(SDL_Window* window, SDL_Renderer* renderer){
+void cvLib::subsdl2::cleanup(SDL_Window* window, SDL_Renderer* renderer){
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);
     IMG_Quit();
     SDL_Quit();
 }
-SDL_Texture* subsdl2::loadTexture(const std::string& path, SDL_Renderer* renderer){
+SDL_Texture* cvLib::subsdl2::loadTexture(const std::string& path, SDL_Renderer* renderer){
     SDL_Texture* texture = nullptr;
     SDL_Surface* surface = IMG_Load(path.c_str());
     if (!surface) {
@@ -780,7 +734,7 @@ SDL_Texture* subsdl2::loadTexture(const std::string& path, SDL_Renderer* rendere
     }
     return texture;
 }
-bool subsdl2::saveTextureToFile(SDL_Renderer* renderer, SDL_Texture* texture, const std::string& filename) {
+bool cvLib::subsdl2::saveTextureToFile(SDL_Renderer* renderer, SDL_Texture* texture, const std::string& filename) {
     if(filename.empty()){
         return false;
     }
@@ -801,7 +755,7 @@ bool subsdl2::saveTextureToFile(SDL_Renderer* renderer, SDL_Texture* texture, co
     SDL_SetRenderTarget(renderer, nullptr);
     return true;
 }
-std::vector<std::vector<pubstructs::RGB>> subsdl2::convertSurfaceToVector(SDL_Surface* surface){
+std::vector<std::vector<pubstructs::RGB>> cvLib::subsdl2::convertSurfaceToVector(SDL_Surface* surface){
     std::vector<std::vector<pubstructs::RGB>> imageData;
     if (surface->format->BytesPerPixel != 4) {
         std::cerr << "Surface does not have 4 bytes per pixel" << std::endl;
@@ -823,7 +777,8 @@ std::vector<std::vector<pubstructs::RGB>> subsdl2::convertSurfaceToVector(SDL_Su
     }
     return imageData;
 }
-cv::Mat subsdl2::put_img2_in_img1(
+cv::Mat cvLib::subsdl2::put_img2_in_img1(
+    cvLib& parent,
     const std::string& img1, 
     const std::string& img2, 
     const int img2Width,
@@ -891,8 +846,7 @@ cv::Mat subsdl2::put_img2_in_img1(
         return {};
     }
     auto imageData = convertSurfaceToVector(surface);
-    subfunctions subf_j;
-    cv::Mat finalImg = subf_j.convertDatasetToMat(imageData);
+    cv::Mat finalImg = parent.subf_j.convertDatasetToMat(imageData);
     SDL_FreeSurface(surface);
     SDL_DestroyTexture(baseTexture);
     SDL_DestroyTexture(overlayTexture);
@@ -940,8 +894,13 @@ void cvLib::set_loaddataMap(const std::unordered_map<std::string, std::vector<pu
     this->_loaddataMap = lmap;
 }
 std::unordered_map<std::string, std::vector<pubstructs::RGB>> cvLib::get_loaddataMap() const{
-
     return _loaddataMap;
+}
+void cvLib::set_percent_to_check(const double& peCheck){
+    this->percent_to_check = peCheck;
+}
+double cvLib::get_percent_to_check() const{
+    return percent_to_check;
 }
 std::vector<std::string> cvLib::splitString(const std::string& input, char delimiter){
     std::vector<std::string> result;
@@ -1211,55 +1170,70 @@ std::unordered_map<std::string, std::vector<cv::KeyPoint>> cvLib::extractContour
     }
     return contourKeyPoints;
 }
-void cvLib::sub_find_contours_in_an_image(const std::string& imagePath,std::unordered_map<std::string, std::vector<cv::KeyPoint>>& imgclusters){
-    if(imagePath.empty()){
+void cvLib::sub_find_contours_in_an_image(const std::string& imagePath, std::vector<std::pair<std::string, cv::Mat>>& imgclusters) {
+    if (imagePath.empty()) {
+        std::cerr << "Error: Image path is empty." << std::endl;
         return;
     }
-    cv::Mat image = cv::imread(imagePath);
-    if (image.empty()) {
-        std::cerr << "Error: Could not open or find the image!" << std::endl;
-        return;
+    try {
+        // Read the input image
+        cv::Mat image = cv::imread(imagePath);
+        if (image.empty()) {
+            throw std::runtime_error("Error: Could not open or find the image!");
+        }
+        // Resize the image while maintaining the aspect ratio
+        cv::Mat imageResized;
+        float aspectRatio = static_cast<float>(image.cols) / image.rows;
+        if (aspectRatio > 1.0) {
+            cv::resize(image, imageResized, cv::Size(800, int(800 / aspectRatio)));
+        } else {
+            cv::resize(image, imageResized, cv::Size(int(800 * aspectRatio), 800));
+        }
+        // Convert to grayscale
+        cv::Mat gray;
+        cv::cvtColor(imageResized, gray, cv::COLOR_BGR2GRAY);
+        // Use Canny for edge detection
+        cv::Mat edges;
+        subf_j.automaticCanny(gray, edges, 0.33);
+        // Find contours
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        if (contours.empty()) {
+            std::cerr << "Warning: No contours found in the image!" << std::endl;
+            return;
+        }
+        // Iterate over contours and extract images
+        for (size_t i = 0; i < contours.size(); i++) {
+            // Create a mask for each contour
+            cv::Mat mask = cv::Mat::zeros(imageResized.size(), CV_8UC1);
+            cv::drawContours(mask, contours, static_cast<int>(i), cv::Scalar(255), cv::FILLED);
+            // Use mask to extract contour area from the resized image
+            cv::Mat contourContent;
+            imageResized.copyTo(contourContent, mask);
+            // Add the extracted contour content to the output list
+            std::string strK = "contour" + std::to_string(i);
+            imgclusters.emplace_back(strK, contourContent);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
-    // Convert to grayscale
-    cv::Mat gray;
-    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-    cv::Mat imgResize;
-    cv::resize(gray, imgResize, cv::Size(800, 800));
-    // Use Canny to detect edges
-    cv::Mat edges;
-    subfunctions subf_j;
-    subf_j.automaticCanny(imgResize,edges,0.05);//0.33
-    // Find contours
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-    // Create an output image to draw contours
-    cv::Mat contourImage = cv::Mat::zeros(image.size(), CV_8UC3);
-    // Draw each contour with a random color
-    for (size_t i = 0; i < contours.size(); ++i) {
-        cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
-        cv::drawContours(contourImage, contours, static_cast<int>(i), color, 2, cv::LINE_8, hierarchy, 0);
-    }
-    // Extract contours as keypoints
-    imgclusters = extractContoursAsKeyPoints(edges);
-    // Show the original and contour image
 }
 /*
     cv::Scalar markerColor(0,255,0);
     cv::Scalar txtColor(255, 255, 255);
     rec_thickness = 2;
 */
-// Function to draw a green rectangle on an image  
-void cvLib::drawRectangleWithText(cv::Mat& image, int x, int y, unsigned int width, unsigned int height, const std::string& text, unsigned int rec_thickness, const cv::Scalar& markerColor, const cv::Scalar& txtColor) {  
-    // Define rectangle vertices  
-    cv::Point top_left(x, y);  
-    cv::Point bottom_right(x + width, y + height);  
-    // Draw the rectangle  
-    cv::rectangle(image, top_left, bottom_right, markerColor, rec_thickness); // Rectangle with specified thickness and color  
-    // Define text position at the upper-left corner of the rectangle  
-    cv::Point text_position(x + 5, y - 15); // Adjust as necessary, '5' from left and '20' from top for padding  
-    // Add text  
-    cv::putText(image, text, text_position, cv::FONT_HERSHEY_SIMPLEX, 0.6, txtColor, 1); // Text positioning based on updated text_position  
+// Function to draw a green rectangle on an image 
+void cvLib::drawRectangleWithText(cv::Mat& image, int x, int y, unsigned int width, unsigned int height, const std::string& text, unsigned int rec_thickness, const cv::Scalar& markerColor, const cv::Scalar& txtColor, double fontScale, int fontface) {
+    // Define rectangle vertices
+    cv::Point top_left(x, y);
+    cv::Point bottom_right(x + width, y + height);
+    // Draw the rectangle
+    cv::rectangle(image, top_left, bottom_right, markerColor, rec_thickness);  // Rectangle with specified thickness and color
+    // Define text position at the upper-left corner of the rectangle
+    cv::Point text_position(x + 5, y - 15);  // Adjust as necessary, '5' from left and '20' from top for padding
+    // Add text
+    cv::putText(image, text, text_position, fontface, fontScale, txtColor, 1);  // Use fontScale and fontface
 }
 void cvLib::savePPM(const cv::Mat& image, const std::string& filename) {  
     std::ofstream ofs(filename, std::ios::binary);  
@@ -1721,11 +1695,10 @@ bool cvLib::isObjectInImage(const std::string& img1, const std::string& img2, un
     }  
     std::vector<std::vector<pubstructs::RGB>> dataset_img1(m_img1.rows, std::vector<pubstructs::RGB>(m_img1.cols));  
     std::vector<std::vector<pubstructs::RGB>> dataset_img2(m_img2.rows, std::vector<pubstructs::RGB>(m_img2.cols));  
-    subfunctions sub_j;
-    sub_j.convertToBlackAndWhite(m_img1, dataset_img1);
-    sub_j.convertToBlackAndWhite(m_img2, dataset_img2);
-    cv::Mat gray1 = sub_j.convertDatasetToMat(dataset_img1);
-    cv::Mat gray2 = sub_j.convertDatasetToMat(dataset_img2);
+    subf_j.convertToBlackAndWhite(m_img1, dataset_img1);
+    subf_j.convertToBlackAndWhite(m_img2, dataset_img2);
+    cv::Mat gray1 = subf_j.convertDatasetToMat(dataset_img1);
+    cv::Mat gray2 = subf_j.convertDatasetToMat(dataset_img2);
     // Use ORB for keypoint detection and description  
     cv::Ptr<cv::ORB> detector = cv::ORB::create(featureCount);  
     std::vector<cv::KeyPoint> keypoints1, keypoints2;  
@@ -1794,7 +1767,6 @@ std::vector<std::vector<pubstructs::RGB>> cvLib::objectsInImage(const std::strin
         std::cerr << "Error: Image path is empty." << std::endl;
         return {};
     }
-    subfunctions subfun;  
     imgSize img_size = this->get_image_size(imgPath);  
     std::vector<std::vector<pubstructs::RGB>> image_rgb;
     if(out_mode == pubstructs::inputImgMode::Color){
@@ -1805,7 +1777,7 @@ std::vector<std::vector<pubstructs::RGB>> cvLib::objectsInImage(const std::strin
     }
     if (!image_rgb.empty()) {
         auto outliers = this->findOutlierEdges(image_rgb, gradientMagnitude_threshold);
-        return subfun.getPixelsInsideObject(image_rgb, outliers);
+        return subf_j.getPixelsInsideObject(image_rgb, outliers);
     }
     return {};
 }
@@ -1852,7 +1824,6 @@ void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,c
     cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2(500, 16, true); 
     std::vector<cv::Rect> detectedBoxes;  
     // Capture frames in a loop 
-    subfunctions sub_j; 
     while (true) {  
         // Capture a new frame from the webcam  
         cap >> frame; // Alternatively, you can use cap.read(frame);  
@@ -1862,8 +1833,8 @@ void cvLib::StartWebCam(unsigned int webcame_index,const std::string& winTitle,c
             start marking on the input frame
         */
         //cv::Scalar bgColor(0,0,0);
-        // sub_j.markVideo(frame,brush_color,bgColor);
-        // cv::Mat oframe = sub_j.getObjectsInVideo(frame);
+        // subf_j.markVideo(frame,brush_color,bgColor);
+        // cv::Mat oframe = subf_j.getObjectsInVideo(frame);
         // // Apply background subtraction  
         pBackSub->apply(frame, thresh);  
         // Find contours  
@@ -1933,7 +1904,6 @@ cv::Mat cvLib::preprocessImage(const std::string& imgPath, const pubstructs::inp
         cv::resize(image, resizedImage, cv::Size(800, 800));
         cv::GaussianBlur(resizedImage, resizedImage, cv::Size(5, 5), 0);
         std::vector<std::vector<pubstructs::RGB>> datasets;
-        subfunctions subfun;
         if(img_mode == pubstructs::inputImgMode::Color){
             datasets = this->cv_mat_to_dataset_color(resizedImage);
         }
@@ -1943,8 +1913,8 @@ cv::Mat cvLib::preprocessImage(const std::string& imgPath, const pubstructs::inp
             datasets = this->cv_mat_to_dataset(gray_image);
         }
         auto outliers = this->findOutlierEdges(datasets, gradientMagnitude_threshold);
-        std::vector<std::vector<pubstructs::RGB>> trans_img = subfun.getPixelsInsideObject(datasets, outliers);
-        cv::Mat final_image = subfun.convertDatasetToMat(trans_img);//trans_img
+        std::vector<std::vector<pubstructs::RGB>> trans_img = subf_j.getPixelsInsideObject(datasets, outliers);
+        cv::Mat final_image = subf_j.convertDatasetToMat(trans_img);//trans_img
         return final_image;
     }
     catch(const std::exception& ex){
@@ -2157,15 +2127,14 @@ void cvLib::train_img_occurrences(const std::string& images_folder_path, const d
         std::cerr << "Error: " << e.what() << std::endl;
         return;
     }
-    subfunctions sub_j;
-    sub_j.saveModel(dataset, model_output_path); 
-    sub_j.saveModel_keypoint(dataset_keypoint,model_output_key_path); 
+    subf_j.saveModel(dataset, model_output_path); 
+    subf_j.saveModel_keypoint(dataset_keypoint,model_output_key_path); 
     this->save_keymap(dataMap,model_output_map_path);
     std::cout << "Successfully saved the images into the dataset, all jobs are done!" << std::endl;  
 }
 //cvl_j.loadImageRecog("/Users/dengfengji/ronnieji/lib/project/main/model_keymap.dat",99,true,3,0.05);
 void cvLib::loadImageRecog(const std::string& keymap_path,const unsigned int gradientMagnitude_threshold, 
-const bool display_time_spend,const unsigned int dis_bias, double learningrate){
+const bool display_time_spend,const unsigned int dis_bias, double learningrate, double percent_check){
     if(keymap_path.empty()){
         return;
     }
@@ -2176,6 +2145,7 @@ const bool display_time_spend,const unsigned int dis_bias, double learningrate){
     this->load_keymap(keymap_path,keymap);
     this->set_loaddataMap(keymap);
     this->set_learing_rate(learningrate);
+    this->set_percent_to_check(percent_check);
 }
 cvLib::the_obj_in_an_image cvLib::what_is_this(const std::string& img_path, const cvLib::mark_font_info& maker_info){
     cvLib::the_obj_in_an_image str_result;
@@ -2183,7 +2153,6 @@ cvLib::the_obj_in_an_image cvLib::what_is_this(const std::string& img_path, cons
         return str_result;
     }
     cv::Mat getImg = this->preprocessImage(img_path,pubstructs::inputImgMode::Gray,_gradientMagnitude_threshold);
-    subfunctions subf_j;
     if(!getImg.empty()){
         str_result = subf_j.getObj_in_an_image(*this,getImg,maker_info);
     }
@@ -2433,9 +2402,9 @@ cv::Mat cvLib::put_img2_in_img1(
     if (image1.empty() || image2.empty() || output_image_path.empty()) {
         return cv::Mat();
     }
-    subsdl2 subd2_j;
     try{
-        cv::Mat getMergedImg = subd2_j.put_img2_in_img1(
+        cv::Mat getMergedImg = subsd_j.put_img2_in_img1(
+            *this,
             image1,
             image2,
             img2Width,
@@ -2461,52 +2430,145 @@ cv::Mat cvLib::put_img2_in_img1(
     }  
     return cv::Mat();
 }
-std::vector<cvLib::the_obj_in_an_image> cvLib::what_are_these(const std::string& img_path,const cvLib::mark_font_info& maker_info){
-    std::vector<cvLib::the_obj_in_an_image> str_result;
-    if(img_path.empty()){
-        return str_result;
-    }
-    /*
-        preprocess image
-    */
-    std::chrono::time_point<std::chrono::high_resolution_clock> t_count_start;
-    std::chrono::time_point<std::chrono::high_resolution_clock> t_count_end;
-    /*
-        start
-    */
-    try{
-        // // Step 1: Open the image using cv::imread
-        std::unordered_map<std::string,std::vector<cv::KeyPoint>> da;
-        cv::Mat final_image = this->preprocessImage(img_path,pubstructs::inputImgMode::Gray,this->_gradientMagnitude_threshold);
-        if(!final_image.empty()){
-            // Use Canny to detect edges
-            cv::Mat edges;
-            subfunctions subf_j;
-            subf_j.automaticCanny(final_image,edges,0.05);//0.33
-            // Find contours
-            std::vector<std::vector<cv::Point>> contours;
-            std::vector<cv::Vec4i> hierarchy;
-            cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-            // Create an output image to draw contours
-            cv::Mat contourImage = cv::Mat::zeros(final_image.size(), CV_8UC3);
-            // Draw each contour with a random color
-            for (size_t i = 0; i < contours.size(); ++i) {
-                cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
-                cv::drawContours(contourImage, contours, static_cast<int>(i), color, 2, cv::LINE_8, hierarchy, 0);
-            }
-            // Extract contours as keypoints
-            da = extractContoursAsKeyPoints(edges);
-        }
-    } 
-    catch (const cv::Exception& e){  
-        std::cerr << "OpenCV error: " << e.what() << std::endl;  
-    } catch (const std::exception& e) {  
-        std::cerr << "Standard exception: " << e.what() << std::endl;  
-    } catch (...) {  
-        std::cerr << "Unknown exception occurred." << std::endl;  
-    }  
-    /*
-        end
-    */
-    return str_result;
+std::vector<cvLib::the_obj_in_an_image> cvLib::what_are_these(const std::string& img_path, const cvLib::mark_font_info& markerInfo){
+    // /*
+    //     preprocess image
+    // */
+    // std::vector<cvLib::the_obj_in_an_image> str_result;
+    // if(img_path.empty()){
+    //     return str_result;
+    // }
+    // std::chrono::time_point<std::chrono::high_resolution_clock> t_count_start;
+    // std::chrono::time_point<std::chrono::high_resolution_clock> t_count_end;
+    // std::unordered_map<std::string, std::vector<pubstructs::RGB>> _loaddataMap;
+    // unsigned int _gradientMagnitude_threshold = 33; 
+    // bool display_time = false;
+    // unsigned int distance_bias = 2;
+    // display_time = this->get_display_time();
+    // distance_bias = this->get_distance_bias();
+    // _gradientMagnitude_threshold = this->get_gradientMagnitude_threshold();
+    // _loaddataMap = this->get_loaddataMap();
+    // double percent_check_sub = this->get_percent_to_check();
+    // if(!img_path.empty()){
+    //     /*
+    //         start
+    //     */
+    //     // // Step 1: Open the image using cv::imread
+    //     cv::Mat image_ori = cv::imread(img_path);
+    //     if(!image_ori.empty()){
+    //         // Use Canny to detect edges
+    //         cv::Mat edges;
+    //         subfunctions subf_j;
+    //         subf_j.automaticCanny(image_ori,edges,0.05);//0.33
+    //         // Find contours
+    //         std::vector<std::vector<cv::Point>> contours;
+    //         std::vector<cv::Vec4i> hierarchy;
+    //         cv::findContours(edges, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    //         // // Create an output image to draw contours
+    //         // cv::Mat contourImage = cv::Mat::zeros(final_image.size(), CV_8UC3);
+    //         // // Draw each contour with a random color
+    //         // for (size_t i = 0; i < contours.size(); ++i) {
+    //         //     cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
+    //         //     cv::drawContours(contourImage, contours, static_cast<int>(i), color, 2, cv::LINE_8, hierarchy, 0);
+    //         // }
+    //         // Extract contours as keypoints
+    //         std::vector<cv::Mat> get_all_contours_in_the_image = subf_j.drawEachContourOnSeparateWhiteBackground(contours);
+    //         if(!get_all_contours_in_the_image.empty()){
+
+    //         }
+    //         std::unordered_map<std::string,std::vector<cv::KeyPoint>> da;
+    //         cv::Mat final_image = this->preprocessImage(img_path,pubstructs::inputImgMode::Gray,this->_gradientMagnitude_threshold);
+    //         da = this->extractContoursAsKeyPoints(edges);
+    //         if(!da.empty()){
+    //             for(const auto& item : da){
+    //                 /*
+    //                     start recognite
+    //                     searching for objs in the image
+    //                 */
+    //                 if(display_time){
+    //                     t_count_start = std::chrono::high_resolution_clock::now(); // Initialize start time 
+    //                 }
+    //                 std::vector<cv::KeyPoint> testKey = item.second;
+    //                 std::vector<std::pair<cvLib::the_obj_in_an_image,double>> test_img_data;
+    //                 cvLib::the_obj_in_an_image temp_obj;//one obj
+    //                 for (size_t i = 0; i < testKey.size(); ++i) {
+    //                     const cv::KeyPoint& kp = testKey[i]; 
+    //                     unsigned int x = static_cast<unsigned int>(kp.pt.x);
+    //                     unsigned int y = static_cast<unsigned int>(kp.pt.y);
+    //                     // Ensure the coordinates are within the image bounds
+    //                     //if (x < static_cast<unsigned int>(final_image.cols) && y < static_cast<unsigned int>(final_image.rows)) {
+    //                     if (x < 800 && y < 800) {
+    //                         // Get the pubstructs::RGB pixel value at (x, y)
+    //                         cv::Vec3b pixel = final_image.at<cv::Vec3b>(cv::Point(x, y));
+    //                         uint8_t blue = pixel[pubstructs::C_0];
+    //                         uint8_t green = pixel[pubstructs::C_1];
+    //                         uint8_t red = pixel[pubstructs::C_2];
+    //                         // Create an pubstructs::RGB object and add it to the vector
+    //                         /*
+    //                             start debug code
+    //                         */
+    //                         //pubstructs::RGB color(red, green, blue);
+    //                         /*
+    //                             end debug code
+    //                         */
+    //                         pubstructs::RGB color(0, 0, 0);
+    //                         temp_obj.rgb = color;
+    //                         temp_obj.fontface = markerInfo.fontface;
+    //                         temp_obj.fontScale = markerInfo.fontScale;
+    //                         temp_obj.thickness = markerInfo.thickness;
+    //                         temp_obj.fontcolor = markerInfo.fontcolor;
+    //                         temp_obj.text_position = markerInfo.text_position;
+    //                         temp_obj.x = static_cast<int>(kp.pt.x);
+    //                         temp_obj.y = static_cast<int>(kp.pt.y);
+    //                         temp_obj.rec_topLeft = cv::Point(kp.pt.x - kp.size / 2, kp.pt.y - kp.size / 2);
+    //                         temp_obj.rec_bottomRight = cv::Point(kp.pt.x + kp.size / 2, kp.pt.y + kp.size / 2);
+    //                         test_img_data.push_back(std::make_pair(temp_obj,static_cast<double>(kp.response)));
+    //                     } else {
+    //                         std::cerr << "Coordinate (" << x << ", " << y << ") is out of bounds" << std::endl;
+    //                     }
+    //                 }
+    //                 if(!test_img_data.empty()){
+    //                     std::sort(test_img_data.begin(),test_img_data.end(),[](const auto& a, const auto& b){
+    //                         return a.second > b.second;
+    //                     });
+    //                     /*
+    //                         start debug code
+    //                     */
+    //                     for(const auto& item : test_img_data){
+    //                         cvLib::the_obj_in_an_image obj_i = item.first;
+    //                         std::cout << obj_i.x << "  " << obj_i.y << std::endl;
+    //                     }
+    //                     /*
+    //                         end   debug code
+    //                     */
+    //                     subf_j.visual_recognize_obj(test_img_data,percent_check_sub,_loaddataMap,temp_obj);
+    //                     std::cout << "Obj detect: " << temp_obj.objName << std::endl;
+    //                 }
+    //                 else{
+    //                     std::cerr << "cvLib::what_are_these(line: 2537) test_img_data is empty!" << std::endl;
+    //                 }
+    //                 if(display_time){
+    //                     t_count_end = std::chrono::high_resolution_clock::now();   
+    //                     std::chrono::duration<double> duration = t_count_end - t_count_start;  
+    //                     //std::cout << "Execution time: " << duration.count() << " seconds\n"; 
+    //                     temp_obj.timespent = duration;
+    //                 }
+    //                 /*
+    //                     one obj is done
+    //                 */
+    //                 /*
+    //                     add to the collections
+    //                 */
+    //                 str_result.push_back(temp_obj);//it's not this simple
+    //             }
+    //         }
+    //         else{
+    //             std::cerr << "cvLib::what_are_these da is empty!" << std::endl;
+    //         }
+    //     }
+    //     else{
+    //         std::cerr << "The final image is empty!" << std::endl;
+    //     }
+    // }
+    // return str_result;
 }
