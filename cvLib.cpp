@@ -8,8 +8,6 @@
 #include <opencv2/video.hpp> 
 #include <tesseract/baseapi.h>  
 #include <tesseract/publictypes.h>  
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include "authorinfo/author_info.h" 
 #include <vector> 
 #include <tuple> 
@@ -1181,36 +1179,45 @@ void cvLib::sub_find_contours_in_an_image(const std::string& imagePath, std::vec
         if (image.empty()) {
             throw std::runtime_error("Error: Could not open or find the image!");
         }
-        // Resize the image while maintaining the aspect ratio
-        cv::Mat imageResized;
-        float aspectRatio = static_cast<float>(image.cols) / image.rows;
-        if (aspectRatio > 1.0) {
-            cv::resize(image, imageResized, cv::Size(800, int(800 / aspectRatio)));
-        } else {
-            cv::resize(image, imageResized, cv::Size(int(800 * aspectRatio), 800));
-        }
+        // // Resize the image to a manageable size while maintaining aspect ratio
+        // cv::Mat imageResized;
+        // float aspectRatio = static_cast<float>(image.cols) / image.rows;
+        // if (aspectRatio > 1.0) {
+        //     cv::resize(image, imageResized, cv::Size(800, int(800 / aspectRatio)));
+        // } else {
+        //     cv::resize(image, imageResized, cv::Size(int(800 * aspectRatio), 800));
+        // }
         // Convert to grayscale
         cv::Mat gray;
-        cv::cvtColor(imageResized, gray, cv::COLOR_BGR2GRAY);
-        // Use Canny for edge detection
-        cv::Mat edges;
-        subf_j.automaticCanny(gray, edges, 0.33);
-        // Find contours
+        cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+        // Apply Gaussian Blur
+        cv::GaussianBlur(gray, gray, cv::Size(9, 9), 2);
+        // Apply adaptive threshold
+        cv::Mat adaptiveThresh;
+        cv::adaptiveThreshold(gray, adaptiveThresh, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY_INV, 15, 4);
+        // Perform morphological closing to fill gaps
+        cv::Mat morph;
+        cv::morphologyEx(adaptiveThresh, morph, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 3);
+        // Find contours with hierarchy
         std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(edges, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-        if (contours.empty()) {
-            std::cerr << "Warning: No contours found in the image!" << std::endl;
-            return;
-        }
-        // Iterate over contours and extract images
-        for (size_t i = 0; i < contours.size(); i++) {
-            // Create a mask for each contour
-            cv::Mat mask = cv::Mat::zeros(imageResized.size(), CV_8UC1);
+        std::vector<cv::Vec4i> hierarchy;
+        cv::findContours(morph, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+        // Calculate area threshold (5% of total image area)
+        double totalImageArea = image.cols * image.rows;
+        double areaThreshold = 0.05 * totalImageArea;  // 5% of total image area
+        // Process valid contours
+        for (size_t i = 0; i < contours.size(); ++i) {
+            double contourArea = cv::contourArea(contours[i]);
+            // Check if contour's area is larger than the minimum threshold
+            if (contourArea < areaThreshold || hierarchy[i][pubstructs::C_3] != -1) {
+                continue;  // Skip small or nested contours
+            }
+            // Draw the contour and extract the contained area
+            cv::Mat mask = cv::Mat::zeros(image.size(), CV_8UC1);
             cv::drawContours(mask, contours, static_cast<int>(i), cv::Scalar(255), cv::FILLED);
-            // Use mask to extract contour area from the resized image
             cv::Mat contourContent;
-            imageResized.copyTo(contourContent, mask);
-            // Add the extracted contour content to the output list
+            image.copyTo(contourContent, mask);
+            // Save filtered contour to disk
             std::string strK = "contour" + std::to_string(i);
             imgclusters.emplace_back(strK, contourContent);
         }
@@ -1218,6 +1225,7 @@ void cvLib::sub_find_contours_in_an_image(const std::string& imagePath, std::vec
         std::cerr << "Error: " << e.what() << std::endl;
     }
 }
+
 /*
     cv::Scalar markerColor(0,255,0);
     cv::Scalar txtColor(255, 255, 255);
@@ -1281,7 +1289,7 @@ std::vector<std::vector<pubstructs::RGB>> cvLib::get_img_matrix(const std::strin
         datasets = this->cv_mat_to_dataset(gray_image);
     }
     else{
-        datasets = this->cv_mat_to_dataset(resized_image);
+        datasets = this->cv_mat_to_dataset_color(resized_image);
     }
     return datasets;  
 }
