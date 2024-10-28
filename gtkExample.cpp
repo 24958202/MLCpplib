@@ -1,6 +1,9 @@
 #include <gtkmm.h>
 #include <iostream>
 
+#include "/Users/dengfengji/ronnieji/MLCpplib-main/bitmap.xpm"
+#include "/Users/dengfengji/ronnieji/MLCpplib-main/bitmap2.xpm"
+
 // Forward declaration of the PreviewWindow class
 class PreviewWindow;
 
@@ -61,9 +64,9 @@ protected:
     class ModelColumns : public Gtk::TreeModel::ColumnRecord
     {
     public:
-        ModelColumns() { add(m_col_icon); add(m_col_name); }
+        ModelColumns() { add(m_col_pixbuf); add(m_col_name); }
 
-        Gtk::TreeModelColumn<Glib::ustring> m_col_icon; // Icon name
+        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> m_col_pixbuf; // Pixbuf for actual pixmap
         Gtk::TreeModelColumn<Glib::ustring> m_col_name;
     };
     ModelColumns m_Columns;
@@ -138,37 +141,37 @@ ExampleWindow::ExampleWindow()
     m_ComboBox.append("Option 2");
     m_ComboBox.set_active(0);
 
+    // Load the XPM images into Gdk::Pixbuf
+    auto pixbuf1 = Gdk::Pixbuf::create_from_xpm_data(bitmap_xpm);
+    auto pixbuf2 = Gdk::Pixbuf::create_from_xpm_data(bitmap2_xpm);
+
     // TreeView setup with hierarchical data
     m_RefTreeModel = Gtk::TreeStore::create(m_Columns);
     m_TreeView.set_model(m_RefTreeModel);
 
-    // Add icon and name columns
-    m_TreeView.append_column("Icon", m_Columns.m_col_icon);
+    // Add pixbuf and name columns
+    m_TreeView.append_column("Icon", m_Columns.m_col_pixbuf);
     m_TreeView.append_column("Name", m_Columns.m_col_name);
 
     // Populate TreeStore with hierarchical data and icons
     Gtk::TreeModel::Row row = *(m_RefTreeModel->append());
-    row[m_Columns.m_col_icon] = "branch_icon"; // Main branch icon
+    row[m_Columns.m_col_pixbuf] = pixbuf1; // Assign the first pixbuf
     row[m_Columns.m_col_name] = "Level 1";
 
     Gtk::TreeModel::Row childrow = *(m_RefTreeModel->append(row.children()));
-    childrow[m_Columns.m_col_icon] = "subtree_icon"; // Subtree icon
+    childrow[m_Columns.m_col_pixbuf] = pixbuf2; // Assign the second pixbuf
     childrow[m_Columns.m_col_name] = "Level 2.1";
 
     row = *(m_RefTreeModel->append());
-    row[m_Columns.m_col_icon] = "branch_icon";
+    row[m_Columns.m_col_pixbuf] = pixbuf1;
     row[m_Columns.m_col_name] = "Level 2.2";
 
     childrow = *(m_RefTreeModel->append(row.children()));
-    childrow[m_Columns.m_col_icon] = "subtree_icon";
+    childrow[m_Columns.m_col_pixbuf] = pixbuf2;
     childrow[m_Columns.m_col_name] = "Level 3.1";
 
-    childrow = *(m_RefTreeModel->append(row.children()));
-    childrow[m_Columns.m_col_icon] = "subtree_icon";
-    childrow[m_Columns.m_col_name] = "Level 3.2";
-
     row = *(m_RefTreeModel->append());
-    row[m_Columns.m_col_icon] = "branch_icon";
+    row[m_Columns.m_col_pixbuf] = pixbuf1;
     row[m_Columns.m_col_name] = "Level 2.3";
 
     m_TreeView.set_size_request(200, 150);  // Ensure TreeView gets an appropriate size
@@ -272,7 +275,7 @@ PreviewWindow::PreviewWindow(const Glib::RefPtr<Gtk::ListStore>& model, const Ex
       m_Columns(columns)
 {
     set_title("Print Preview");
-    set_default_size(600, 600);
+    set_default_size(600, 400);
 
     add(m_VBox);
 
