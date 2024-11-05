@@ -315,6 +315,7 @@ void train_model(){
         std::cout << "CUDA is available! Training on GPU." << std::endl;
         device = torch::Device(torch::kCUDA);
     }
+    std::cout << "Start training, please wait..." << std::endl;
     // Parameters
     const std::string datasetPath = "/Users/dengfengji/ronnieji/Kaggle/archive-2/train"; // Path to your main dataset folder
     const int imageSize = 100; // Resize images to 100x100
