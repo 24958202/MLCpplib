@@ -4,6 +4,12 @@
     export LIBTORCH_PATH=/opt/homebrew/Cellar/libtorch
     export DYLD_LIBRARY_PATH=$LIBTORCH_PATH/lib:$DYLD_LIBRARY_PATH
 
+    training folder:
+    main folder
+    |------------
+       |       |
+    catalog1, catalog2 ....
+
     g++ -std=c++20 /Users/dengfengji/ronnieji/lib/project/main/libtorch.cpp -o /Users/dengfengji/ronnieji/lib/project/main/libtorch \
 -I/Users/dengfengji/ronnieji/lib/project/include \
 -I/Users/dengfengji/ronnieji/lib/project/src \
@@ -80,6 +86,92 @@ std::map<int,std::string> read_label_map(const std::string& lable_map_path){
     ifile.close();
     return label_mapping;
 }
+/*
+    Serialize the image
+*/
+// Function to serialize images into a .dat file
+void serializeImages(int imageSize, const std::string& mainFolderPath, const std::string& outputPath) {
+    std::ofstream outFile(outputPath, std::ios::binary);
+    if (!outFile.is_open()) {
+        std::cerr << "Error opening output file for writing: " << outputPath << std::endl;
+        return;
+    }
+    // Loop through directories
+    for (const auto& dirEntry : std::filesystem::directory_iterator(mainFolderPath)) {
+        if (std::filesystem::is_directory(dirEntry)) {
+            std::string catalog = dirEntry.path().filename().string();
+            // Loop through images in the catalog
+            for (const auto& imageEntry : std::filesystem::directory_iterator(dirEntry.path())) {
+                if (std::filesystem::is_regular_file(imageEntry)) {
+                    std::string imagePath = imageEntry.path().string();
+                    if (!isValidImageFile(imagePath)) {
+                        std::cout << "Not a valid image file: " << imagePath << std::endl;
+                        continue;
+                    }
+                    cv::Mat image = cv::imread(imagePath);
+                    if (image.empty()) {
+                        std::cout << "Failed to load image: " << imagePath << std::endl;
+                        continue;
+                    }
+                    // Resize image
+                    cv::resize(image, image, cv::Size(imageSize, imageSize));
+                    std::cout << "Saving the image: " << imagePath << std::endl;
+                    // Convert to tensor format
+                    cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+                    image.convertTo(image, CV_32F, 1.0 / 255.0);
+                    // Write catalog name length
+                    size_t catalogLength = catalog.size();
+                    outFile.write(reinterpret_cast<const char*>(&catalogLength), sizeof(size_t));
+                    // Write catalog name
+                    outFile.write(catalog.c_str(), catalogLength);
+                    // Write image size
+                    size_t serializedImageSize = image.total() * image.elemSize();
+                    outFile.write(reinterpret_cast<const char*>(&serializedImageSize), sizeof(size_t));
+                    // Write image data
+                    outFile.write(reinterpret_cast<const char*>(image.data), serializedImageSize);
+                }
+            }
+        }
+    }
+    outFile.close();
+}
+// Function to load images from a .dat file
+// Function to load images from a .dat file
+std::map<std::string, std::vector<cv::Mat>> loadImages(int imageSize,const std::string& inputPath) {
+    std::ifstream inFile(inputPath, std::ios::binary);
+    if (!inFile.is_open()) {
+        std::cerr << "Error opening input file for reading: " << inputPath << std::endl;
+        return {};
+    }
+    std::map<std::string, std::vector<cv::Mat>> dataset;
+    while (true) {
+        // Read catalog name length
+        size_t catalogLength;
+        if (!inFile.read(reinterpret_cast<char*>(&catalogLength), sizeof(size_t))) break;
+        // Read catalog name
+        std::string catalog(catalogLength, '\0');
+        inFile.read(&catalog[0], catalogLength);
+        // Read image size
+        size_t serializedImageSize;
+        inFile.read(reinterpret_cast<char*>(&serializedImageSize), sizeof(size_t));
+        // Read image data
+        std::vector<uchar> buffer(serializedImageSize);
+        inFile.read(reinterpret_cast<char*>(buffer.data()), serializedImageSize);
+        // Create cv::Mat for the image directly from buffer
+        cv::Mat image(imageSize, imageSize, CV_32FC3, buffer.data());  // Assuming images are resized to (imageSize, imageSize)
+        if (!image.empty()) {
+            // No need to convert back to CV_32F, as it's already in the tensor format
+            dataset[catalog].push_back(image.clone());  // Clone to store in the map
+        } else {
+            std::cerr << "Failed to create image for catalog: " << catalog << std::endl;
+        }
+    }
+    inFile.close();
+    return dataset;
+}
+/*
+    end Serialize the image
+*/
 // ---------------------
 // Siamese Network Model
 // ---------------------
@@ -168,38 +260,30 @@ torch::Tensor load_and_preprocess_image(const std::string& imagePath, int imageS
     tensor[2] = tensor[2].sub_(0.406).div_(0.225);
     return tensor;
 }
-std::vector<ImageData> loadDataset(const std::string& datasetPath, int imageSize) {
+std::vector<ImageData> loadDataset(const std::string& dataset_dat_Path, int imageSize) {
     std::vector<ImageData> dataset;
     std::map<int,std::string> label_mapping;
-    int currentLabel = 0;
-    for (const auto& entry : std::filesystem::directory_iterator(datasetPath)) {
-        if (std::filesystem::is_directory(entry.status())) {
-            std::string sub_folder_name = entry.path().filename().string();  
-            std::string sub_folder_path = entry.path().string();  
-            int label = currentLabel;
-            for (const auto& imgEntry : std::filesystem::directory_iterator(sub_folder_path)) {
-                if (std::filesystem::is_regular_file(imgEntry.status())) {
-                    std::string imagePath = imgEntry.path().string();
-                    if(isValidImageFile(imagePath)){
-                        // Read image using OpenCV
-                        cv::Mat img = cv::imread(imagePath);
-                        if (img.empty()) {
-                            std::cerr << "Could not read image: " << imagePath << std::endl;
-                            continue;
-                        }
-                        // Resize image
-                        cv::resize(img, img, cv::Size(imageSize, imageSize));
-                        // Convert to tensor
-                        cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-                        img.convertTo(img, CV_32F, 1.0 / 255.0);
-                        auto imgTensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kFloat32);
-                        imgTensor = imgTensor.permute({2, 0, 1}); // [H,W,C] -> [C,H,W]
-                        dataset.push_back({imgTensor.clone(), label});
-                        label_mapping[label]=sub_folder_name;
-                    }
+    if(dataset_dat_Path.empty()){
+        return dataset;
+    }
+    if(std::filesystem::exists(dataset_dat_Path)){
+        int currentLabel = 0;
+        std::map<std::string,std::vector<cv::Mat>> img_to_train = loadImages(imageSize,dataset_dat_Path);
+        if(!img_to_train.empty()){
+            for(const auto& item : img_to_train){
+                const auto& item_value = item.second;
+                for(const auto& img : item_value){
+                    auto imgTensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kFloat32);
+                    imgTensor = imgTensor.permute({2, 0, 1}); // [H,W,C] -> [C,H,W]
+                    imgTensor = imgTensor.clone(); // Ensure that tensor owns its memory
+                    imgTensor[0] = imgTensor[0].sub_(0.485).div_(0.229);
+                    imgTensor[1] = imgTensor[1].sub_(0.456).div_(0.224);
+                    imgTensor[2] = imgTensor[2].sub_(0.406).div_(0.225);
+                    dataset.push_back({imgTensor, currentLabel});
+                    label_mapping[currentLabel]=item.first;
                 }
+                currentLabel++;
             }
-            currentLabel++;
         }
     }
     if(!label_mapping.empty()){
@@ -317,14 +401,14 @@ void train_model(){
     }
     std::cout << "Start training, please wait..." << std::endl;
     // Parameters
-    const std::string datasetPath = "/Users/dengfengji/ronnieji/Kaggle/archive-2/train"; // Path to your main dataset folder
+    const std::string dataset_dat_Path = "/Users/dengfengji/ronnieji/lib/project/main/images.dat"; // Path to your main dataset folder
     const int imageSize = 100; // Resize images to 100x100
     const int numEpochs = 10;
     const int batchSize = 16;
     const float learningRate = 1e-3;
     const std::string modelPath = "/Users/dengfengji/ronnieji/lib/project/main/siamese_model.pt";
     // Load dataset
-    auto dataset = loadDataset(datasetPath, imageSize);
+    auto dataset = loadDataset(dataset_dat_Path, imageSize);
     // Create image pairs and labels
     std::vector<std::pair<torch::Tensor, torch::Tensor>> imagePairs;
     std::vector<int> pairLabels;
@@ -340,50 +424,53 @@ void train_model(){
     torch::save(model, modelPath);
     std::cout << "Successfully saved the model to: " << modelPath << std::endl;
 }
-void computeAndSaveEmbeddings(const std::string& datasetPath, const std::string& label_map_path, SiameseNetwork& model, torch::Device& device, const std::string& embeddingsPath, int imageSize) {
-    if(datasetPath.empty()){
+void computeAndSaveEmbeddings(const std::string& dataset_dat_Path, SiameseNetwork& model, torch::Device& device, const std::string& embeddingsPath, int imageSize) {
+    if(dataset_dat_Path.empty()){
+        std::cerr << "computeAndSaveEmbeddings: dataset_dat_Path or labelMap_path is empty!" << std::endl;
         return;
     }
-    std::vector<ImageData> dataset;
-    std::map<int,std::string> lbl_map = read_label_map(label_map_path); 
-    if(lbl_map.empty()){
-        return;
-    }
-    // Create a directory to save embeddings if it doesn't exist
-    std::filesystem::create_directories(embeddingsPath);
-    for (const auto& dirEntry : std::filesystem::directory_iterator(datasetPath)) {
-        if (std::filesystem::is_directory(dirEntry)) {
-            std::string className = dirEntry.path().filename().string();
-            int currentLabel = -1;
-            for(const auto& lbl_item : lbl_map){
-                if(lbl_item.second == className){
-                    currentLabel = lbl_item.first;
+    std::map<std::string, std::vector<cv::Mat>> img_to_train = loadImages(imageSize,dataset_dat_Path);
+    if(!img_to_train.empty()){
+        for(const auto& item : img_to_train){
+            std::cout << "Processing class: " << item.first << std::endl;
+            const auto& item_value = item.second;
+            unsigned int img_count = 0;
+            for(const auto& img : item_value){
+                img_count++;
+                auto imgTensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kFloat32);
+                imgTensor = imgTensor.permute({2, 0, 1}); // [H,W,C] -> [C,H,W]
+                imgTensor = imgTensor.clone(); // Ensure that tensor owns its memory
+                imgTensor[0] = imgTensor[0].sub_(0.485).div_(0.229);
+                imgTensor[1] = imgTensor[1].sub_(0.456).div_(0.224);
+                imgTensor[2] = imgTensor[2].sub_(0.406).div_(0.225);
+                if (imgTensor.numel() == 0) continue;
+                // Move to device
+                imgTensor = imgTensor.to(device);
+                // Compute embedding
+                torch::Tensor embedding = model->subnetwork->forward(imgTensor);
+                embedding = embedding.flatten(); // Flatten embedding
+                std::string ofile_name = item.first;
+                ofile_name.append(std::to_string(img_count));
+                // Save the embedding (std::filesystem::path(imagePath).stem().string())
+                if(!std::filesystem::exists(embeddingsPath)){
+                    if(!std::filesystem::create_directory(embeddingsPath)){
+                        std::cout << "Failed to create the directory: " << embeddingsPath << std::endl;
+                        return;
+                    }
                 }
-            }
-            std::cout << "Processing class: " << className << std::endl;
-            for (const auto& imgEntry : std::filesystem::directory_iterator(dirEntry.path())) {
-                if (std::filesystem::is_regular_file(imgEntry)) {
-                    std::string imagePath = imgEntry.path().string();
-                    // Load and preprocess image
-                    torch::Tensor imageTensor = load_and_preprocess_image(imagePath, imageSize);
-                    if (imageTensor.numel() == 0) continue;
-                    // Move to device
-                    imageTensor = imageTensor.to(device);
-                    // Compute embedding
-                    torch::Tensor embedding = model->subnetwork->forward(imageTensor);
-                    embedding = embedding.flatten(); // Flatten embedding
-                    // Save the embedding
-                    std::string embeddingFilename = embeddingsPath + "/" + std::filesystem::path(imagePath).stem().string() + ".pt";
-                    torch::save(embedding, embeddingFilename);
-                }
+                std::string embeddingFilename = embeddingsPath + "/" + ofile_name + ".pt";
+                torch::save(embedding, embeddingFilename);
             }
         }
     }
+    else{
+        std::cerr << "computeAndSaveEmbeddings img_to_train is empty!" << std::endl;
+    }
 }
-std::vector<std::vector<testImageData>> loadDatasetWithEmbeddings(const std::string& datasetPath, const std::string& labelMap_path, int imageSize, SiameseNetwork& model, torch::Device& device) {
+std::vector<std::vector<testImageData>> loadDatasetWithEmbeddings(const std::string& dataset_dat_Path, const std::string& labelMap_path, int imageSize, SiameseNetwork& model, torch::Device& device) {
     std::vector<std::vector<testImageData>> dataset;
-    if (datasetPath.empty()) {
-        std::cerr << "Dataset path is empty!" << std::endl;
+    if (dataset_dat_Path.empty()) {
+        std::cerr << "Dataset image.dat file path is empty!" << std::endl;
         return dataset;
     }
     // Load label mapping file
@@ -392,36 +479,36 @@ std::vector<std::vector<testImageData>> loadDatasetWithEmbeddings(const std::str
         std::cerr << "Label map file is empty or not found!" << std::endl;
         return dataset;
     }
-    for (const auto& dirEntry : std::filesystem::directory_iterator(datasetPath)) {
-        if (std::filesystem::is_directory(dirEntry)) {
+    std::map<std::string, std::vector<cv::Mat>> img_to_train = loadImages(imageSize,dataset_dat_Path);
+    if(!img_to_train.empty()){
+        for(const auto& item : img_to_train){
+            std::vector<testImageData> d_item;
             int currentLabel = -1;
-            std::string sub_folder_name = dirEntry.path().filename().string();
-            std::string sub_folder_path = dirEntry.path().string();
             for (const auto& lbm : label_m) {
-                if (lbm.second == sub_folder_name) {
+                if (lbm.second == item.first) {
                     currentLabel = lbm.first;
                     break;
                 }
             }
             if (currentLabel == -1) {
-                std::cerr << "No matching label found for directory: " << sub_folder_name << std::endl;
+                std::cerr << "No matching label found for directory: " << item.first << std::endl;
                 continue;
             }
-            std::vector<testImageData> d_item;
-            for (const auto& imgEntry : std::filesystem::directory_iterator(sub_folder_path)) {
-                if (std::filesystem::is_regular_file(imgEntry)) {
-                    std::string imagePath = imgEntry.path().string();
-                    if (isValidImageFile(imagePath)) {
-                        torch::Tensor imageTensor = load_and_preprocess_image(imagePath, imageSize);
-                        if (imageTensor.numel() > 0) {
-                            imageTensor = imageTensor.to(device);
-                            torch::Tensor embedding = model->subnetwork->forward(imageTensor);
-                            embedding = embedding.flatten();
-                            d_item.push_back({imageTensor, embedding, currentLabel});
-                        } else {
-                            std::cerr << "Failed to load or preprocess image: " << imagePath << std::endl;
-                        }
-                    }
+            const auto& item_value = item.second;
+            for(const auto& img : item_value){
+                auto imgTensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kFloat32);
+                imgTensor = imgTensor.permute({2, 0, 1}); // [H,W,C] -> [C,H,W]
+                imgTensor = imgTensor.clone(); // Ensure that tensor owns its memory
+                imgTensor[0] = imgTensor[0].sub_(0.485).div_(0.229);
+                imgTensor[1] = imgTensor[1].sub_(0.456).div_(0.224);
+                imgTensor[2] = imgTensor[2].sub_(0.406).div_(0.225);
+                if (imgTensor.numel() > 0) {
+                    imgTensor = imgTensor.to(device);
+                    torch::Tensor embedding = model->subnetwork->forward(imgTensor);
+                    embedding = embedding.flatten();
+                    d_item.push_back({imgTensor, embedding, currentLabel});
+                } else {
+                    std::cerr << "Failed to load one of the catalog preprocess image: " << item.first << std::endl;
                 }
             }
             if (!d_item.empty()) {
@@ -439,8 +526,7 @@ std::vector<std::vector<testImageData>> loadDatasetWithEmbeddings(const std::str
     //const std::string modelPath = "/Users/dengfengji/ronnieji/lib/project/main/siamese_model.pt";
 */
 void initialize_embeddings(
-    const std::string& embeddingsPath, 
-    const std::string& datasetPath, 
+    const std::string& dataset_dat_Path, 
     const std::string& modelPath, 
     const std::string& labelMapPath, 
     SiameseNetwork& model, 
@@ -448,7 +534,7 @@ void initialize_embeddings(
     int imageSize, 
     std::vector<std::vector<testImageData>>& oDataSet
 ) {
-    if (embeddingsPath.empty() || datasetPath.empty() || modelPath.empty() || labelMapPath.empty()) {
+    if (dataset_dat_Path.empty() || modelPath.empty() || labelMapPath.empty()) {
         std::cerr << "Error: One or more paths are empty." << std::endl;
         return;
     }
@@ -458,16 +544,9 @@ void initialize_embeddings(
         std::cerr << "Error: Label map could not be loaded." << std::endl;
         return;
     }
-    if (!std::filesystem::exists(embeddingsPath) || std::filesystem::is_empty(embeddingsPath)) {
-        std::cout << "Embeddings not found. Computing and saving embeddings..." << std::endl;
-        computeAndSaveEmbeddings(datasetPath, labelMapPath, model, device, embeddingsPath, imageSize);
-        std::cout << "Embeddings computed and saved." << std::endl;
-    } else {
-        std::cout << "Embeddings directory already exists and is not empty. Loading embeddings..." << std::endl;
-    }
     // Load dataset and embeddings
     std::cout << "Loading dataset with embeddings..." << std::endl;
-    oDataSet = loadDatasetWithEmbeddings(datasetPath, labelMapPath, imageSize, model, device);
+    oDataSet = loadDatasetWithEmbeddings(dataset_dat_Path, labelMapPath, imageSize, model, device);
     if (oDataSet.empty()) {
         std::cerr << "Error: Failed to load dataset with embeddings." << std::endl;
     } else {
@@ -540,7 +619,15 @@ void testModel(const std::string& imagePath, int imageSize, const std::vector<st
     }
 }
 int main() {
-    //train_model();
+    /*
+        preprocess image, searialize images, 
+        and save it to a images.dat file.
+    */
+    serializeImages(100,"/Users/dengfengji/ronnieji/Kaggle/archive-2/train","/Users/dengfengji/ronnieji/lib/project/main/images.dat");
+    /*
+        end 
+    */
+    train_model();
     // ---------------------
     // Recognize New Images
     // ---------------------
@@ -562,8 +649,7 @@ int main() {
     std::vector<std::vector<testImageData>> trainedDataSet;
     std::cout << "Initialize the recognization engine..." << std::endl;
     initialize_embeddings(
-        "/Users/dengfengji/ronnieji/lib/project/main/embeddings",
-        "/Users/dengfengji/ronnieji/Kaggle/archive-2/train",
+        "/Users/dengfengji/ronnieji/lib/project/main/images.dat",
         "/Users/dengfengji/ronnieji/lib/project/main/siamese_model.pt",
         "/Users/dengfengji/ronnieji/lib/project/main/labelMap.txt",
         model,
