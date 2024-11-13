@@ -1,3 +1,7 @@
+/*
+    Program to pick up trained image from the image net according to the marked image location and size
+    It also provide a compress function to compress the image after the image is saved.
+*/
 #include <iostream>
 #include <vector>
 #include <string>
@@ -11,6 +15,8 @@
 #include <stdexcept>
 #include <utility>
 #include <opencv2/opencv.hpp>
+#include <jpeglib.h>
+#include <stdlib.h>
 
 std::vector<std::string> splitString(const std::string& input, char delimiter){
     std::vector<std::string> result;
@@ -65,6 +71,70 @@ std::vector<std::string> tokenize_en(const std::string& str_line) {
         result.push_back(token);
     }
     return result;
+}
+/*
+    compress an image
+*/
+void compressJPEG(const std::string& inputFilename, const std::string& outputFilename, int quality) {
+    if(inputFilename.empty() || outputFilename.empty()){
+        return;
+    }
+    // Create a JPEG compression struct and error handler
+    jpeg_compress_struct cinfo;
+    jpeg_error_mgr jerr;
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_compress(&cinfo);
+    // Open the input file
+    FILE* infile = fopen(inputFilename.c_str(), "rb");
+    if (!infile) {
+        throw std::runtime_error("Unable to open input file: " + inputFilename);
+    }
+    // Initialize JPEG decompression
+    jpeg_decompress_struct dinfo;
+    dinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_decompress(&dinfo);
+    jpeg_stdio_src(&dinfo, infile);
+    jpeg_read_header(&dinfo, TRUE);
+    jpeg_start_decompress(&dinfo);
+    // Get image properties
+    int width = dinfo.output_width;
+    int height = dinfo.output_height;
+    int numChannels = dinfo.num_components;
+    // Allocate memory for the image data
+    unsigned char* buffer = new unsigned char[width * height * numChannels];
+    while (dinfo.output_scanline < height) {
+        unsigned char* row_pointer = buffer + dinfo.output_scanline * width * numChannels;
+        jpeg_read_scanlines(&dinfo, &row_pointer, 1);
+    }
+    // Finish decompression and close the input file
+    jpeg_finish_decompress(&dinfo);
+    fclose(infile);
+    jpeg_destroy_decompress(&dinfo);
+    // Set up compression
+    FILE* outfile = fopen(outputFilename.c_str(), "wb");
+    if (!outfile) {
+        delete[] buffer;
+        throw std::runtime_error("Unable to open output file: " + outputFilename);
+    }
+    cinfo.image_width = width;
+    cinfo.image_height = height;
+    cinfo.input_components = numChannels;
+    cinfo.in_color_space = (numChannels == 3) ? JCS_RGB : JCS_GRAYSCALE;
+    jpeg_set_defaults(&cinfo);
+    jpeg_set_quality(&cinfo, quality, TRUE);
+    jpeg_stdio_dest(&cinfo, outfile);
+    // Start compression
+    jpeg_start_compress(&cinfo, TRUE);
+    while (cinfo.next_scanline < cinfo.image_height) {
+        unsigned char* row_pointer = buffer + cinfo.next_scanline * width * numChannels;
+        jpeg_write_scanlines(&cinfo, &row_pointer, 1);
+    }
+    // Finish compression and clean up
+    jpeg_finish_compress(&cinfo);
+    fclose(outfile);
+    jpeg_destroy_compress(&cinfo);
+    delete[] buffer;
+    std::cout << "JPEG image compressed and saved to " << outputFilename << std::endl;
 }
 std::unordered_map<std::string,std::string> get_synset_mapping(const std::string& synset_file_path){
     std::unordered_map<std::string,std::string> result;
@@ -306,6 +376,38 @@ void renamefolder_get_image_by_pos(const std::string& folder_path,
         std::cerr << ex.what() << std::endl;
     }
 }
+void img_compress(const std::string& input_folder){
+    if(input_folder.empty()){
+        return;
+    }
+     if (!std::filesystem::exists(input_folder)) {
+        std::cerr << "The folder does not exist" << std::endl;
+        return;
+    }
+    try {
+        for (const auto& entryMainFolder : std::filesystem::directory_iterator(input_folder)) {  
+            if (entryMainFolder.is_directory()) {  
+                std::string sub_folder_path = entryMainFolder.path().string();
+                std::cout << "Start working on folder: " << sub_folder_path << std::endl;
+                for (const auto& entrySubFolder : std::filesystem::directory_iterator(sub_folder_path)) {  
+                    if (entrySubFolder.is_regular_file() && 
+                        (entrySubFolder.path().extension() == ".JPEG" || entrySubFolder.path().extension() == ".jpeg")) {   
+                        std::string imgFilePath = entrySubFolder.path().string(); 
+                        compressJPEG(imgFilePath,imgFilePath,18);
+                        std::cout << "Successfully compressed the image: " << imgFilePath << std::endl;
+                    }
+                }
+            }
+        }
+    }
+    catch(std::exception& ex){
+        std::cerr << ex.what() << std::endl;
+    }
+    catch(...){
+        std::cerr << "Unknown errors." << std::endl;
+    }
+
+}
 int main(){
     std::unordered_map<std::string,std::string> getmapping = get_synset_mapping("/Users/dengfengji/ronnieji/Kaggle/imagenet/ILSVRC/LOC_synset_mapping.txt");
     std::vector<std::pair<std::string,std::vector<int>>> get_img_pos = get_pos_info("/Users/dengfengji/ronnieji/Kaggle/imagenet/ILSVRC/LOC_train_pos.csv");
@@ -320,5 +422,8 @@ int main(){
     else{
         std::cout << "getmapping is empty!" << std::endl;
     }
+    std::cout << "All jobs are done! Start compressing images..." << std::endl;
+    img_compress("/Users/dengfengji/ronnieji/Kaggle/imagenet/ILSVRC/Done");
+    std::cout << "All jobs are done!" << std::endl;
     return 0;
 }
