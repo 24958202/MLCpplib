@@ -19,7 +19,97 @@
 #include <filesystem>  
 #include <fstream>
 #include <cstdio>
+class SysLogLib{
+    /*
+        get current date and time
+    */
+    private:
+        struct CurrentDateTime{
+            std::string current_date;
+            std::string current_time;
+        };
+        CurrentDateTime getCurrentDateTime();
+    /*
+        write system log
+        example path: "/Volumes/WorkDisk/MacBk/pytest/NLP_test/src/log/"
+    */
+    public:
+        void sys_timedelay(size_t&);//3000 = 3 seconds
+        void writeLog(const std::string&, const std::string&);
 
+};
+/*
+    start SysLogLib
+*/
+/*
+    get current date and time
+*/
+SysLogLib::CurrentDateTime SysLogLib::getCurrentDateTime() {
+    std::chrono::system_clock::time_point current_time = std::chrono::system_clock::now();
+    std::time_t current_time_t = std::chrono::system_clock::to_time_t(current_time);
+    std::tm* current_time_tm = std::localtime(&current_time_t);
+    SysLogLib::CurrentDateTime currentDateTime;
+    currentDateTime.current_date = std::to_string(current_time_tm->tm_year + 1900) + "-" + std::to_string(current_time_tm->tm_mon + 1) + "-" + std::to_string(current_time_tm->tm_mday);
+    currentDateTime.current_time = std::to_string(current_time_tm->tm_hour) + ":" + std::to_string(current_time_tm->tm_min) + ":" + std::to_string(current_time_tm->tm_sec);
+    return currentDateTime;
+}
+/*
+    write system log
+*/
+void SysLogLib::sys_timedelay(size_t& mini_sec){
+    std::this_thread::sleep_for(std::chrono::milliseconds(mini_sec));
+}
+void SysLogLib::writeLog(const std::string& logpath, const std::string& log_message) {
+    if(logpath.empty() || log_message.empty()){
+        std::cerr << "SysLogLib::writeLog input empty!" << '\n'; 
+        return;
+    }
+    std::string strLog = logpath;
+    if(strLog.back() != '/'){
+        strLog.append("/");
+    }
+    if (!std::filesystem::exists(strLog)) {
+        try {
+            std::filesystem::create_directory(strLog);
+        } catch (const std::exception& e) {
+            std::cout << "Error creating log folder: " << e.what() << std::endl;
+            return;
+        }
+    }
+    SysLogLib::CurrentDateTime currentDateTime = SysLogLib::getCurrentDateTime();
+    strLog.append(currentDateTime.current_date);
+    strLog.append(".txt");
+    std::ofstream file(strLog, std::ios::app);
+    if (!file.is_open()) {
+        file.open(strLog, std::ios::app);
+    }
+    file << currentDateTime.current_time + " : " + log_message << std::endl;
+    file.close();
+    //std::cout << currentDateTime.current_date << " " << currentDateTime.current_time << " : " << log_message << std::endl;
+}
+void readSystemLogs(const std::string& command) {
+    // Create an array to hold the output
+    std::array<char, 128> buffer;
+    // Open a pipe to read the command output
+    std::shared_ptr<FILE> pipe(popen(command.c_str(), "r"), pclose);
+    if (!pipe) {
+        std::cerr << "popen() failed!" << std::endl;
+        return;
+    }
+    // Read the output a line at a time and print to console
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        std::string msgLog = buffer.data();
+        if(msgLog.find("/dengfengji/ronnieji") != std::string::npos){
+            SysLogLib syslog_j;
+            syslog_j.writeLog("/Users/dengfengji/ronnieji/watchdog/mac_sys_logs",msgLog);
+        }
+    }
+}
+void write_log_related_to_my_folder(){
+    std::string command = "log show --last 1m --info"; // Adjust time frame as needed
+    std::cout << "Reading system logs..." << std::endl;
+    readSystemLogs(command);
+}
 // Global variable to control UFW checking  
 static bool ufw_checking = false;  
 void removeLogs() {  
@@ -112,6 +202,7 @@ void monitorUfwRules(Gtk::Window &window, Gtk::Label &label) {
             disable_443();  
         }  
         removeLogs();  
+        write_log_related_to_my_folder();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));  
     }  
 }  
