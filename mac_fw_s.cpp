@@ -10,7 +10,6 @@
 #include <gtkmm/menu.h>  
 #include <gtkmm/menuitem.h>  
 #include <gtkmm/label.h>
-#include <cstdlib>  
 #include <iostream>  
 #include <vector>  
 #include <string>   
@@ -19,6 +18,13 @@
 #include <filesystem>  
 #include <fstream>
 #include <cstdio>
+#include <csignal>
+#include <sys/types.h>
+#include <signal.h>
+#include <unistd.h>
+#include <cstdlib> // For exit()
+#include <sstream>
+#include <array>
 class SysLogLib{
     /*
         get current date and time
@@ -99,7 +105,7 @@ void readSystemLogs(const std::string& command) {
     // Read the output a line at a time and print to console
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
         std::string msgLog = buffer.data();
-        if(msgLog.find("/dengfengji/ronnieji") != std::string::npos){
+        if(msgLog.find("/Users/dengfengji/ronnieji/lib") != std::string::npos){
             SysLogLib syslog_j;
             syslog_j.writeLog("/Users/dengfengji/ronnieji/watchdog/mac_sys_logs",msgLog);
         }
@@ -191,7 +197,81 @@ void on_menu_open() {
 void on_menu_close() {  
     std::cout << "Disable WiFi...\n";  
     disable_443();  
-}  
+} 
+std::vector<pid_t> getPIDsByName(const std::string& processName) {
+    std::vector<pid_t> pids;
+    std::string command = "pgrep " + processName;
+
+    // Use popen to execute the command and read the output
+    FILE* pipe = popen(command.c_str(), "r");
+    if (!pipe) {
+        perror("popen() failed");
+        return pids;
+    }
+
+    std::array<char, 128> buffer;
+    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+        pid_t pid = static_cast<pid_t>(std::stoi(buffer.data())); // Convert to pid_t
+        pids.push_back(pid);
+    }
+
+    pclose(pipe);
+    return pids;
+}
+void terminateProcess(pid_t pid) {
+    std::cout << "Attempting to terminate process with PID: " << pid << std::endl;
+
+    // Send SIGTERM (terminate signal) to the specified process
+    if (kill(pid, SIGTERM) == -1) {
+        perror("Failed to terminate the process with SIGTERM");
+
+        // If the process doesn't terminate, use SIGKILL
+        if (kill(pid, SIGKILL) == -1) {
+            perror("Failed to terminate the process with SIGKILL");
+            return;
+            //std::exit(EXIT_FAILURE); // Exit with failure
+        } else {
+            std::cout << "Process " << pid << " killed successfully with SIGKILL." << std::endl;
+        }
+    } else {
+        std::cout << "Process " << pid << " terminated successfully with SIGTERM." << std::endl;
+    }
+} 
+void terminateProcessesByName(const std::vector<std::string>& processNames) {
+    if(processNames.empty()){
+        return;
+    }
+    for (const auto& name : processNames) {
+        std::cout << "Searching for processes with name: " << name << std::endl;
+        auto pids = getPIDsByName(name);
+        if (pids.empty()) {
+            std::cout << "No processes found with name: " << name << std::endl;
+        } else {
+            for (pid_t pid : pids) {
+                terminateProcess(pid);
+            }
+        }
+    }
+}
+void terminate_processes_in_the_list(const std::string& list_file, std::vector<std::string>& list_pro){
+    if(list_file.empty()){
+        std::cerr << "List file path is empty!" << std::endl;
+        return;
+    }
+    std::ifstream i_file(list_file);
+    if(!i_file.is_open()){
+        std::cerr << "Could not read the list file!" << std::endl;
+        return;
+    }
+    std::string line;
+    while(std::getline(i_file, line)){
+        if(!line.empty()){
+            list_pro.push_back(line);
+        }
+    }
+    i_file.close();
+    
+}
 void monitorUfwRules(Gtk::Window &window, Gtk::Label &label) {  
     while (true) {  
         std::string newRules = getPfRules();  
@@ -203,7 +283,17 @@ void monitorUfwRules(Gtk::Window &window, Gtk::Label &label) {
         }  
         removeLogs();  
         write_log_related_to_my_folder();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));  
+        /*
+         * Terminal processes in the txt file
+         */
+        std::vector<std::string> fileList;
+        terminate_processes_in_the_list("/Users/dengfengji/ronnieji/watchdog/process_list.txt",fileList);
+        if(fileList.empty()){
+           std::cerr << "Process file list is empty!" << std::endl;
+           continue;
+        }
+        terminateProcessesByName(fileList);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));  
     }  
 }  
 void create_menu(Gtk::Box& vbox) {  
@@ -226,7 +316,7 @@ void create_menu(Gtk::Box& vbox) {
 int main(int argc, char** argv) {  
     auto app = Gtk::Application::create(argc, argv, "org.24958202.pf_monitor");  
     Gtk::Window window;  
-    window.set_title("<<<PF Rule Change Detector>>>");  
+    window.set_title("<<<24958202@qq.com Ronnie Ji>>>");  
     window.set_default_size(400, 200);  
     Gtk::Box vbox(Gtk::ORIENTATION_VERTICAL);  
     window.add(vbox);  
