@@ -118,6 +118,7 @@ void write_log_related_to_my_folder(){
 }
 // Global variable to control UFW checking  
 static bool ufw_checking = false;  
+static bool processes_checking = false;
 void removeLogs() {  
     std::vector<std::string> logfolders = {  
         "/private/var/log",  
@@ -275,10 +276,12 @@ void terminate_processes_in_the_list(const std::string& list_file, std::vector<s
 void monitorUfwRules(Gtk::Window &window, Gtk::Label &label) {  
     while (true) {  
         std::string newRules = getPfRules();  
-        if(ufw_checking){  
+        if(ufw_checking){ 
+	    processes_checking = false; 
             enable_443();  
         }  
         else{  
+            processes_checking = true;
             disable_443();  
         }  
         removeLogs();  
@@ -286,13 +289,15 @@ void monitorUfwRules(Gtk::Window &window, Gtk::Label &label) {
         /*
          * Terminal processes in the txt file
          */
-        std::vector<std::string> fileList;
-        terminate_processes_in_the_list("/Users/dengfengji/ronnieji/watchdog/process_list.txt",fileList);
-        if(fileList.empty()){
-           std::cerr << "Process file list is empty!" << std::endl;
-           continue;
-        }
-        terminateProcessesByName(fileList);
+        if(processes_checking){
+        	std::vector<std::string> fileList;
+        	terminate_processes_in_the_list("/Users/dengfengji/ronnieji/watchdog/process_list.txt",fileList);
+        	if(fileList.empty()){
+           		std::cerr << "Process file list is empty!" << std::endl;
+           		continue;
+        	}
+        	terminateProcessesByName(fileList);
+	}
         std::this_thread::sleep_for(std::chrono::milliseconds(500));  
     }  
 }  
