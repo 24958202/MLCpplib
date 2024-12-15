@@ -1,0 +1,58 @@
+<!-- work with mycgi.cpp -->
+<html>
+<head>
+    <title>Registration Form</title>
+</head>
+<body>
+    <h2>Registration Form</h2>
+    <form action="/cgi-bin/your_script.cgi" method="post" enctype="multipart/form-data">
+        <!-- Textbox -->
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        
+        <!-- Password -->
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br><br>
+        
+        <!-- Dropdown Menu -->
+        <label for="country">Country:</label>
+        <select id="country" name="country">
+            <option value="usa">USA</option>
+            <option value="canada">Canada</option>
+            <option value="others">Others</option>
+        </select><br><br>
+        
+        <!-- Radio Buttons -->
+        <p>Gender:</p>
+        <input type="radio" id="male" name="gender" value="male">
+        <label for="male">Male</label><br>
+        
+        <input type="radio" id="female" name="gender" value="female">
+        <label for="female">Female</label><br>
+        
+        <input type="radio" id="other" name="gender" value="other">
+        <label for="other">Other</label><br><br>
+        
+        <!-- Checkboxes -->
+        <p>Interests:</p>
+        <input type="checkbox" id="sports" name="interests" value="sports">
+        <label for="sports">Sports</label><br>
+        
+        <input type="checkbox" id="music" name="interests" value="music">
+        <label for="music">Music</label><br>
+        
+        <input type="checkbox" id="reading" name="interests" value="reading">
+        <label for="reading">Reading</label><br><br>
+        
+        <!-- File Upload (Single) -->
+        <label for="profile_pic">Upload Profile Picture:</label>
+        <input type="file" id="profile_pic" name="profile_pic" accept="image/*"><br><br>
+        
+        <!-- File Upload (Multiple) -->
+        <label for="documents">Upload Documents:</label>
+        <input type="file" id="documents" name="documents" multiple><br><br>
+        
+        <input type="submit" value="Register">
+    </form>
+</body>
+</html>
