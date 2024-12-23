@@ -26,6 +26,7 @@
 #include <array>
 #include <libproc.h> // For proc_pidpath and other process-related functions
 #include <unistd.h>  // For getpid()
+#include <mach/mach.h> //use mac's system api, much add '-framework System' at the compile command
 // Global variable to control UFW checking  
 static bool ufw_checking = false;  
 static bool processes_checking = false;
@@ -175,8 +176,6 @@ static std::map<std::string,int> pure_mac_processes{
   {"WallpaperVideoExtension",29787},
   {"WardaSynthesizer_arm64",921},
   {"WeatherWidget",71338},
-  {"WiFiAgent",17188},
-  {"WiFiCloudAssetsXPCService",474},
   {"WindowManager",592},
   {"WindowServer",358},
   {"WirelessRadioManagerd",463},
@@ -344,7 +343,6 @@ static std::map<std::string,int> pure_mac_processes{
   {"icdd",802},
   {"iconservicesagent",676},
   {"iconservicesd",320},
-  {"identityservicesd",71457},
   {"idleassetsd",670},
   {"imagent",716},
   {"imklaunchagent",799},
@@ -624,12 +622,21 @@ void removeLogs() {
 // Function to terminate a process by its name and PID
 void terminateProcessByName(const std::string& processName, int pid) {
     try{
-        // Attempt to terminate the process
-        if (kill(pid, SIGKILL) == 0) {
-            std::cout << "Terminated process: " << processName << " (PID: " << pid << ")" << std::endl;
-        } else {
-            perror(("Failed to terminate process: " + processName + " (PID: " + std::to_string(pid) + ")").c_str());
-        }
+//        //Attempt to terminate the process
+//        if (kill(pid, SIGKILL) == 0) {
+//            std::cout << "Terminated process: " << processName << " (PID: " << pid << ")" << std::endl;
+//        } else {
+//            perror(("Failed to terminate process: " + processName + " (PID: " + std::to_string(pid) + ")").c_str());
+//        }
+          task_t task;
+          if(task_for_pid(mach_task_self(),pid,&task) == KERN_SUCCESS){
+              if(task_terminate(task) == KERN_SUCCESS){
+                  std::cout << "Terminated process: " << processName << " (PID: " << pid << ")" << std::endl;
+              }
+              else{
+                  std::cout << "Failed to terminate process: " << processName << " (PID: " << std::to_string(pid) << ")" << std::endl;
+              }
+          }
     }
     catch(...){
         std::cerr << "Error removing the process, but continue." << std::endl;
@@ -786,7 +793,7 @@ void monitorUfwRules(Gtk::Window &window, Gtk::Label &label) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));  
 }  
 void on_process_open(){
-	std::cout << "Accept new processes..." << std::endl;  
+	std::cout << "Accept new processes..." << std::endl;
     enable_new_process = false;
 }
 void on_process_close(){
@@ -795,19 +802,20 @@ void on_process_close(){
 }
 void monitorProcesses(){
     while (true) {  
-		if(enable_new_process){
-			std::map<std::string, int> currentProcesses = getCurrentProcesses();  
-			// Find new processes  
-			for (const auto& [processName, pid] : currentProcesses) {  
-				if (pure_mac_processes.find(processName) == pure_mac_processes.end()) {  
-					// New process detected  
-					std::cout << "New process detected: " << processName << " (PID: " << pid << ")" << std::endl;  
-					terminateProcessByName(processName, pid); // Terminate the new process  
-				}  
-			} 
-			// Sleep for a short interval before checking again  
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));  
-		}
+        // Lock the mutex and wait for enable_new_process to become true
+        if(enable_new_process){
+            std::map<std::string, int> currentProcesses = getCurrentProcesses();  
+            // Find new processes  
+            for (const auto& [processName, pid] : currentProcesses) {  
+                if (pure_mac_processes.find(processName) == pure_mac_processes.end()) {  
+                    // New process detected  
+                    std::cout << "New process detected: " << processName << " (PID: " << pid << ")" << std::endl;  
+                    terminateProcessByName(processName, pid); // Terminate the new process  
+                }  
+            } 
+            // Sleep for a short interval before checking again  
+            std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+        }
 	}
 }
 void create_menu(Gtk::Box& vbox) {  
