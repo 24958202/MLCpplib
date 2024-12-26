@@ -168,7 +168,7 @@ void onFacesDetected(const std::vector<cv::Rect>& faces, cv::Mat& frame, const s
         const std::string smtpServer = "smtp.office365.com";
         const int port = 587;
         const std::string username = "ronniedengfengji@hotmail.com";
-        const std::string password = "#Njxl2307"; // or app-password if MFA is enabled
+        const std::string password = ""; // or app-password if MFA is enabled
         // Email details
         const std::string from = "ronniedengfengji@hotmail.com";
         const std::string to = "dengfeng@hotmail.com";
