@@ -1,6 +1,6 @@
 /*
     Program to detect faces in a video and save unique face images.
-	-I/usr/include/x86_64-linux-gnu/curl -lcurl
+	-I/usr/include/x86_64-linux-gnu/curl -lcurl -I/usr/include -lboost_system -lboost_filesystem -lboost_thread -lssl -lcrypto 
 */
 #include <opencv2/opencv.hpp>
 #include <iostream>
@@ -8,10 +8,10 @@
 #include <string>
 #include <filesystem>
 #include <fstream>  
-#include <curl/curl.h> 
 #include <stdexcept>
 #include <chrono>
 #include <thread>
+#include <curl/curl.h> 
 const unsigned int MAX_FEATURES = 1000;   // Max number of features to detect
 const float RATIO_THRESH = 0.95f;          // Ratio threshold for matching
 const unsigned int DE_THRESHOLD = 10;      // Min matches to consider a face as existing
@@ -30,67 +30,60 @@ std::string readFile(const std::string& filePath) {
     }  
     return buffer;  
 }  
-
-// Function to send an email with an attachment  
+// Function to send an email with an image attachment using libcurl  
 void sendEmailWithAttachment(const std::string& smtpServer, int port,  
                              const std::string& username, const std::string& password,  
                              const std::string& from, const std::string& to,  
                              const std::string& subject, const std::string& body,  
                              const std::string& attachmentPath) {  
     CURL* curl = curl_easy_init();  
-    if (!curl) {  
+    if (!curl){  
         throw std::runtime_error("Failed to initialize CURL");  
     }  
-    // Read the attachment file into memory  
-    std::string attachmentData = readFile(attachmentPath);  
-    // Email headers and body  
-    std::string emailData;  
-    emailData += "To: " + to + "\r\n";  
-    emailData += "From: " + from + "\r\n";  
-    emailData += "Subject: " + subject + "\r\n";  
-    emailData += "MIME-Version: 1.0\r\n";  
-    emailData += "Content-Type: multipart/mixed; boundary=\"boundary123\"\r\n";  
-    emailData += "\r\n";  
-    emailData += "--boundary123\r\n";  
-    emailData += "Content-Type: text/plain; charset=utf-8\r\n";  
-    emailData += "Content-Transfer-Encoding: 7bit\r\n";  
-    emailData += "\r\n";  
-    emailData += body + "\r\n";  
-    emailData += "\r\n";  
-    emailData += "--boundary123\r\n";  
-    emailData += "Content-Type: application/octet-stream\r\n";  
-    emailData += "Content-Transfer-Encoding: base64\r\n";  
-    emailData += "Content-Disposition: attachment; filename=\"attachment.txt\"\r\n";  
-    emailData += "\r\n";  
-    emailData += attachmentData + "\r\n";  
-    emailData += "--boundary123--\r\n";  
-    // Set CURL options  
-    //curl_easy_setopt(curl, CURLOPT_URL, (smtpServer + ":" + std::to_string(port)).c_str());  
-	curl_easy_setopt(curl, CURLOPT_URL, "smtp://smtp.office365.com:587");
-    curl_easy_setopt(curl, CURLOPT_USERNAME, username.c_str());  
-    curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());  
-    curl_easy_setopt(curl, CURLOPT_MAIL_FROM, from.c_str());  
-    // Recipients  
     struct curl_slist* recipients = nullptr;  
-    recipients = curl_slist_append(recipients, to.c_str());  
-    curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);  
-    // Email data  
-    curl_easy_setopt(curl, CURLOPT_READFUNCTION, nullptr);  
-    curl_easy_setopt(curl, CURLOPT_READDATA, &emailData);  
-    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);  
-    // Enable TLS  
-    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);  
-    // Enable verbose output for debugging  
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);  
-    // Perform the request  
-    CURLcode res = curl_easy_perform(curl);  
-    if (res != CURLE_OK) {  
-        std::cerr << "CURL error: " << curl_easy_strerror(res) << std::endl;  
-    } else {  
+    struct curl_mime* mime = nullptr;  
+    struct curl_mimepart* part = nullptr;  
+    try {  
+        // Set the SMTP server and port  
+        std::string smtpUrl = "smtp://" + smtpServer + ":" + std::to_string(port);  
+        curl_easy_setopt(curl, CURLOPT_URL, smtpUrl.c_str());  
+        // Enable TLS  
+        curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);  
+        // Set authentication details  
+        curl_easy_setopt(curl, CURLOPT_USERNAME, username.c_str());  
+        curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());  
+        // Set the sender  
+        curl_easy_setopt(curl, CURLOPT_MAIL_FROM, from.c_str());  
+        // Set the recipient  
+        recipients = curl_slist_append(recipients, to.c_str());  
+        curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);  
+        // Create the MIME message  
+        mime = curl_mime_init(curl);  
+        // Add the email body  
+        part = curl_mime_addpart(mime);  
+        curl_mime_data(part, body.c_str(), CURL_ZERO_TERMINATED);  
+        curl_mime_type(part, "text/plain");  
+        // Add the image attachment  
+        part = curl_mime_addpart(mime);  
+        curl_mime_filedata(part, attachmentPath.c_str());  
+        curl_mime_type(part, "image/jpeg"); // Change this to the correct MIME type if needed  
+        curl_mime_filename(part, "image.jpg");  
+        // Set the MIME message  
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);  
+        // Enable verbose output for debugging  
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);  
+        // Perform the request  
+        CURLcode res = curl_easy_perform(curl);  
+        if (res != CURLE_OK) {  
+            throw std::runtime_error("CURL error: " + std::string(curl_easy_strerror(res)));  
+        }  
         std::cout << "Email sent successfully!" << std::endl;  
+    } catch (const std::exception& ex) {  
+        std::cerr << "Error: " << ex.what() << std::endl;  
     }  
     // Clean up  
-    curl_slist_free_all(recipients);  
+    if (mime) curl_mime_free(mime);  
+    if (recipients) curl_slist_free_all(recipients);  
     curl_easy_cleanup(curl);  
 }  
 bool checkExistingFace(const std::string& faces_folder_path, const cv::Mat& img_input) {
@@ -159,21 +152,17 @@ void onFacesDetected(const std::vector<cv::Rect>& faces, cv::Mat& frame, const s
 	 * send email
 	 */
 	try {  
-        // SMTP server details  
+        // SMTP server configuration  
         const std::string smtpServer = "smtp.office365.com";  
         const int port = 587;  
-
-        // Your Hotmail credentials  
         const std::string username = "ronniedengfengji@hotmail.com";  
         const std::string password = "";  
-
         // Email details  
         const std::string from = "ronniedengfengji@hotmail.com";  
-        const std::string to = "ronniedengfengji@hotmail.com";  
-        const std::string subject = "New faces";  
-        const std::string body = "New faces detected in security cameras.";  
+        const std::string to = "dengfeng@hotmail.com";  
+        const std::string subject = "dengfeng Inc. work mail reminder: New faces";  
+        const std::string body = "New faces detected.";  
         const std::string attachmentPath = fileName;  
-
         // Send the email  
         sendEmailWithAttachment(smtpServer, port, username, password, from, to, subject, body, attachmentPath);  
     } catch (const std::exception& e) {  
