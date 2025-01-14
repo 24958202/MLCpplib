@@ -61,3 +61,43 @@ int main() {
 
     return 0;
 }
+
+#include <torch/torch.h>
+#include "darknet.h"
+
+int main() {
+    // Load the PyTorch model
+    torch::jit::script::Module model = torch::jit::load("best.pt");
+
+    // Get the model's parameters
+    auto params = model.named_parameters();
+
+    // Create a Darknet model
+    network *net = make_network(params.size());
+    net->n = params.size();
+
+    // Set the Darknet model's parameters
+    int i = 0;
+    for (auto param : params) {
+        // Get the parameter's values
+        torch::Tensor values = param.value();
+
+        // Convert the values to a Darknet tensor
+        float *data = values.data_ptr<float>();
+        int size = values.numel();
+
+        // Set the Darknet model's parameters
+        layer *layer = net->layers + i;
+        layer->weights = data;
+        layer->nweights = size;
+        i++;
+    }
+
+    // Save the Darknet model to a file
+    save_weights(net, "best.cfg");
+
+    // Free the Darknet model
+    free_network(net);
+
+    return 0;
+}
