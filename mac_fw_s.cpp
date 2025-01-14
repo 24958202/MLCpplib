@@ -27,6 +27,7 @@
 #include <libproc.h> // For proc_pidpath and other process-related functions
 #include <unistd.h>  // For getpid()
 #include <mach/mach.h> //use mac's system api, much add '-framework System' at the compile command
+#include <stdexcept> 
 // Global variable to control UFW checking  
 static bool ufw_checking = false;  
 static bool processes_checking = false;
@@ -226,7 +227,6 @@ static std::map<std::string,int> pure_mac_processes{
   {"biomed",306},
   {"biomesyncd",80715},
   {"biometrickitd",388},
-  {"bird",665},
   {"bluetoothd",51336},
   {"bluetoothuserd",698},
   {"bootinstalld",506},
@@ -239,7 +239,6 @@ static std::map<std::string,int> pure_mac_processes{
   {"cfprefsd",359},
   {"chronod",71334},
   {"ciphermld",5287},
-  {"cloudd",850},
   {"codelite",74311},
   {"colorsync.displayservices",482},
   {"colorsync.useragent",789},
@@ -271,15 +270,11 @@ static std::map<std::string,int> pure_mac_processes{
   {"com.apple.audio.SandboxHelper",464},
   {"com.apple.cmio.registerassistantservice",356},
   {"com.apple.dock.extra",703},
-  {"com.apple.geod",497},
   {"com.apple.hiservices-xpcservice",522},
   {"com.apple.ifdreader",825},
   {"com.apple.quicklook.ThumbnailsAgent",849},
   {"com.apple.sbd",589},
-  {"com.apple.siri-distributed-evaluation",25525},
   {"com.apple.tonelibraryd",959},
-  {"configd",302},
-  {"contactsd",633},
   {"contactsdonationagent",5615},
   {"containermanagerd",508},
   {"containermanagerd_system",390},
@@ -295,14 +290,11 @@ static std::map<std::string,int> pure_mac_processes{
   {"corespeechd",795},
   {"corespotlightd",736},
   {"coresymbolicationd",755},
-  {"countryd",904},
   {"cryptexd",405},
   {"csnameddatad",435},
   {"ctkahp",810},
   {"ctkd",632},
   {"dasd",340},
-  {"deleted",680},
-  {"deleted_helper",845},
   {"devicecheckd",11783},
   {"diagnosticextensionsd",900},
   {"diagnostics_agent",806},
@@ -335,7 +327,6 @@ static std::map<std::string,int> pure_mac_processes{
   {"gamecontrollerd",582},
   {"gamepolicyd",656},
   {"geodMachServiceBridge",854},
-  {"heard",686},
   {"hidd",449},
   {"homed",6238},
   {"homeenergyd",18869},
@@ -365,9 +356,6 @@ static std::map<std::string,int> pure_mac_processes{
   {"locationd",337},
   {"lockdownmoded",899},
   {"log",86487},
-  {"logd",290},
-  {"logd_helper",357},
-  {"logd_reporter",68928},
   {"login",9460},
   {"logind",346},
   {"loginwindow",362},
@@ -412,13 +400,10 @@ static std::map<std::string,int> pure_mac_processes{
   {"parentalcontrolsd",814},
   {"parsec-fbf",80717},
   {"parsecd",738},
-  {"passd",787},
   {"pboard",590},
   {"pbs",694},
-  {"peopled",958},
   {"periodic-wrapper",5111},
   {"photoanalysisd",758},
-  {"photolibraryd",751},
   {"pkd",636},
   {"powerd",304},
   {"powerdatad",3613},
@@ -443,17 +428,9 @@ static std::map<std::string,int> pure_mac_processes{
   {"searchpartyuseragent",941},
   {"secd",610},
   {"secinitd",456},
-  {"securityd",335},
-  {"securityd_service",570},
-  {"securityd_system",476},
   {"seld",583},
   {"seserviced",765},
   {"sharedfilelistd",649},
-  {"sharingd",639},
-  {"siriactionsd",659},
-  {"siriinferenced",897},
-  {"siriknowledged",770},
-  {"sirittsd",769},
   {"smd",291},
   {"sociallayerd",685},
   {"softwareupdated",313},
@@ -495,19 +472,11 @@ static std::map<std::string,int> pure_mac_processes{
   {"usbd",387},
   {"usbmuxd",334},
   {"useractivityd",701},
-  {"userfs_helper",24822},
-  {"userfsd",24820},
   {"usermanagerd",349},
   {"usernoted",602},
   {"usernotificationsd",595},
-  {"voicebankingd",911},
-  {"wallpaperexportd",669},
   {"watchdogd",315},
-  {"weatherd",943},
   {"webprivacyd",89767},
-  {"wifianalyticsd",553},
-  {"wifip2pd",467},
-  {"wifivelocityd",903},
   {"xpcroleaccountd",572},
   {"zsh",9465}
 };
@@ -800,6 +769,18 @@ void on_process_close(){
 	std::cout << "Deny new processes..." << std::endl;  
     enable_new_process = true;
 }
+void on_history_clean(){
+	try{
+		std::string cmd = "sudo rm ~/.zsh_history";  
+		system(cmd.c_str());  
+	}
+	catch(const std::exception& ex){
+		std::cerr << ex.what() << std::endl;
+	}
+	catch(...){
+		std::cerr << "Unknown errors." << std::endl;
+	}
+}
 void monitorProcesses(){
     while (true) {  
         // Lock the mutex and wait for enable_new_process to become true
@@ -841,6 +822,12 @@ void create_menu(Gtk::Box& vbox) {
     auto close_process_item = Gtk::make_managed<Gtk::MenuItem>("Deny new processes", true);  
     close_process_item->signal_activate().connect(sigc::ptr_fun(&on_process_close)); // Connect to on_process_close  
     file_menu->append(*close_process_item);  
+	// Add a separator  
+	auto separator2 = Gtk::make_managed<Gtk::SeparatorMenuItem>(); 
+	file_menu->append(*separator2);  
+	auto clear_history_item = Gtk::make_managed<Gtk::MenuItem>("Clean terminal history", true);  
+    clear_history_item->signal_activate().connect(sigc::ptr_fun(&on_history_clean));
+	file_menu->append(*clear_history_item);  
     vbox.pack_start(*menu_bar, Gtk::PACK_SHRINK);  
 }  
 int main(int argc, char** argv) {  
