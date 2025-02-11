@@ -70,6 +70,7 @@
 #include <ranges>
 #include <thread>
 #include <chrono>
+#include <ctime>
 #include <opencv2/opencv.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #if defined(_WIN32) || defined(_WIN64)
@@ -33449,7 +33450,31 @@ public:
         return std::filesystem::path(getExecutablePath()).parent_path().string();
     }
 };
-                // Counter for faces detected
+void AddDateTimeOverlay(cv::Mat& frame){
+	try{
+		// Get the current date and time
+		time_t now = time(0);
+		tm* local_time = localtime(&now);
+		// Format the date and time as a string (e.g., "2025-01-24 19:52:14")
+		char time_buffer[100];
+		strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", local_time);
+		// Define the position for the text (upper-right corner)
+		int font_face = cv::FONT_HERSHEY_SIMPLEX;
+		double font_scale = 1.0; // Font size
+		int thickness = 2;      // Thickness of the text
+		cv::Scalar green_color(0, 255, 0); // Green color in BGR format
+		// Calculate the text size to adjust the position to the upper-right corner
+		int baseline = 0;
+		cv::Size text_size = cv::getTextSize(time_buffer, font_face, font_scale, thickness, &baseline);
+		// Position the text in the upper-right corner
+		int x = frame.cols - text_size.width - 10; // 10-pixel padding from the right edge
+		int y = text_size.height + 10;             // 10-pixel padding from the top edge
+		// Put the text on the frame
+		cv::putText(frame, time_buffer, cv::Point(x, y), font_face, font_scale, green_color, thickness);
+	}
+	catch(...){}
+}
+// Counter for faces detected
 bool checkExistingFace(const std::string& faces_folder_path, const cv::Mat& img_input) {
     if (!std::filesystem::exists(faces_folder_path) || !std::filesystem::is_directory(faces_folder_path)) {
         std::cerr << "The folder does not exist or cannot be accessed." << std::endl;
@@ -33509,8 +33534,11 @@ void onFacesDetected(const std::vector<cv::Rect>& faces, cv::Mat& frame, const s
     if (checkExistingFace(face_folder, faceImage)) {
         return;
     }
-    std::string fileName = face_folder + "/face_" + std::to_string(faceCount++) + ".jpg";
+	std::string file_name_to_save = std::to_string(faceCount++);
+    std::string fileName = face_folder + "/captured/face_" + file_name_to_save + ".jpg";
     cv::imwrite(fileName, faceImage);
+	std::string fileName_large = face_folder + "/captured_large/face_" + file_name_to_save + ".jpg";
+	cv::imwrite(fileName_large, frame);
     std::cout << "Saved snapshot: " << fileName << std::endl;
 }
 void startRecording(const std::string& facial_model, const std::string& faces_img_folder) {
@@ -33533,8 +33561,10 @@ void startRecording(const std::string& facial_model, const std::string& faces_im
             // Resize the frame to fit the wxStaticBitmap
             cv::Mat resized_frame;
             cv::resize(low_quality_frame, resized_frame, cv::Size(640, 320));//0.5, 0.5
+			AddDateTimeOverlay(resized_frame);
             cv::Mat gray;
             cv::cvtColor(resized_frame, gray, cv::COLOR_BGR2GRAY);
+			cv::equalizeHist(gray, gray);//can help the classifier detect faces in varying lighting conditions.
             std::vector<cv::Rect> faces;
             faceCascade.detectMultiScale(gray, faces, 1.1, 10, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(50, 50));
             if (!faces.empty()) {
@@ -33560,6 +33590,10 @@ void save_face_model_file_to_disk(const std::string& curr_dir){
 		if (!std::filesystem::exists(curr_dir + "/captured")) {
 			std::filesystem::create_directory(curr_dir + "/captured");
 		}
+		//create captured large image directory
+		if (!std::filesystem::exists(curr_dir + "/captured_large")) {
+			std::filesystem::create_directory(curr_dir + "/captured_large");
+		}
 		//face_reg_model
 		std::ofstream ofile(curr_dir + "/haarcascade_frontalface_default.xml", std::ios::out);
 		if(!ofile.is_open()){
@@ -33581,7 +33615,7 @@ int main() {
 	save_face_model_file_to_disk(CurrDir);
 	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	std::string facial_model_file = CurrDir + "/haarcascade_frontalface_default.xml";
-	std::string faces_img_storage_folder_path = CurrDir + "/captured";
+	std::string faces_img_storage_folder_path = CurrDir;
     int webcamID = 0;
     if (!cap.open(webcamID)) {
         std::cerr << "Error: Unable to open the webcam!" << std::endl;
