@@ -192,38 +192,6 @@ void loadModel(std::vector<testImageData>& trainedDataSet, const std::string& fi
 		std::cerr << "Unknown errors." << std::endl;
 	}
 }
-std::map<std::string, std::vector<cv::Mat>> loadImages(int imageSize,const std::string& inputPath) {
-    std::ifstream inFile(inputPath, std::ios::binary);
-    if (!inFile.is_open()) {
-        std::cerr << "Error opening input file for reading: " << inputPath << std::endl;
-        return {};
-    }
-    std::map<std::string, std::vector<cv::Mat>> dataset;
-    while (true) {
-        // Read catalog name length
-        size_t catalogLength;
-        if (!inFile.read(reinterpret_cast<char*>(&catalogLength), sizeof(size_t))) break;
-        // Read catalog name
-        std::string catalog(catalogLength, '\0');
-        inFile.read(&catalog[0], catalogLength);
-        // Read image size
-        size_t serializedImageSize;
-        inFile.read(reinterpret_cast<char*>(&serializedImageSize), sizeof(size_t));
-        // Read image data
-        std::vector<uchar> buffer(serializedImageSize);
-        inFile.read(reinterpret_cast<char*>(buffer.data()), serializedImageSize);
-        // Create cv::Mat for the image directly from buffer
-        cv::Mat image(imageSize, imageSize, CV_32FC3, buffer.data());  // Assuming images are resized to (imageSize, imageSize)
-        if (!image.empty()) {
-            // No need to convert back to CV_32F, as it's already in the tensor format
-            dataset[catalog].push_back(image.clone());  // Clone to store in the map
-        } else {
-            std::cerr << "Failed to create image for catalog: " << catalog << std::endl;
-        }
-    }
-    inFile.close();
-    return dataset;
-}
 /*
     end Serialize the image
 */
