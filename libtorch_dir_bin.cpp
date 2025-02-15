@@ -192,9 +192,6 @@ void loadModel(std::vector<testImageData>& trainedDataSet, const std::string& fi
 		std::cerr << "Unknown errors." << std::endl;
 	}
 }
-/*
-    end Serialize the image
-*/
 // ---------------------
 // Siamese Network Model
 // ---------------------
