@@ -192,6 +192,9 @@ void loadModel(std::vector<testImageData>& trainedDataSet, const std::string& fi
 		std::cerr << "Unknown errors." << std::endl;
 	}
 }
+/*
+    end Serialize the image
+*/
 // ---------------------
 // Siamese Network Model
 // ---------------------
@@ -470,7 +473,11 @@ void initialize_embeddings(
 void train_model(
 		const std::string& train_folder, 
 		const std::string& model_output_path, //siamese_model.pt
-		const std::string& model_embedded_output_path //trained_model.dat
+		const std::string& model_embedded_output_path,//trained_model.dat
+		const int imageSize = 128,
+		const int numEpochs = 10,
+		const int batchSize = 16,
+		const float learningRate = 1e-3
 	){
     // Set device to CPU or CUDA if available
     torch::Device device(torch::kCPU);
@@ -479,13 +486,9 @@ void train_model(
         device = torch::Device(torch::kCUDA);
     }
     std::cout << "Start training, please wait..." << std::endl;
-    // Parameters
-    const int imageSize = 128; // Resize images to 100x100
-    const int numEpochs = 10;
-    const int batchSize = 16;
-    const float learningRate = 1e-3;
     // Load dataset
     auto dataset = loadDataset(train_folder, imageSize);
+	std::cout << "Successfully loaded the dataset, start creating image pairs..." << std::endl;
     // Create image pairs and labels
     std::vector<std::pair<torch::Tensor, torch::Tensor>> imagePairs;
     std::vector<int> pairLabels;
@@ -496,6 +499,7 @@ void train_model(
 	//model->eval(); // Set model to evaluation mode
     // Create Adam optimizer
     torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(learningRate));
+	std::cout << "Successfully finished image pairing, start training the model..." << std::endl;
     // Train the model
     trainModel(model, imagePairs, pairLabels, optimizer, numEpochs, batchSize);
     // Save the model
@@ -517,7 +521,7 @@ void train_model(
         "/Users/dengfengji/ronnieji/lib/MLCpplib-main/labelMap.txt",
         model,
         device,
-        128,//default image size
+        imageSize,//default image size
         trainedDataSet
     );
 	if(!trainedDataSet.empty()){
@@ -525,7 +529,17 @@ void train_model(
 	}
 	std::cout << "trained_model.dat was successfully saved to: " << model_embedded_output_path << std::endl;
 }
-void testModel(const std::string& imagePath, int imageSize, const std::vector<testImageData>& dataset, const std::map<int, std::string>& labelMap, SiameseNetwork& model, torch::Device& device) {
+void testModel(
+	const std::string& imagePath, 
+	int imageSize, 
+	const std::vector<testImageData>& dataset, 
+	const std::map<int, std::string>& labelMap, 
+	SiameseNetwork& model, 
+	torch::Device& device,
+	double similarityThreshold = 0.75, // Similarity threshold
+	double obj_left_bound = 0.99,//obj.second >
+	double obj_right_bound = 1.0 //obj.second < 
+	) {
     if (imagePath.empty() || dataset.empty() || labelMap.empty()) {
         return;
     }
@@ -537,7 +551,6 @@ void testModel(const std::string& imagePath, int imageSize, const std::vector<te
         newImageTensor = newImageTensor.to(device);
         torch::Tensor newImageEmbedding = model->subnetwork->forward(newImageTensor);
         newImageEmbedding = newImageEmbedding.flatten(); // Flatten the embedding
-        double similarityThreshold = 0.75; // Similarity threshold
         std::map<int, double> detectedObjects; // Store object labels with their max similarity
         for (const auto& data : dataset) {
             torch::Tensor datasetEmbedding = data.embedding.to(device);
@@ -559,7 +572,7 @@ void testModel(const std::string& imagePath, int imageSize, const std::vector<te
                     if(obj.second == 1.0){
                         objs_found.push_back(it->second);
                     }
-                    else if(obj.second > 0.99 && obj.second < 1.0){//adjust parameters as needed
+                    else if(obj.second > obj_left_bound && obj.second < obj_right_bound){//adjust parameters as needed
                         obj_scores[it->second] = obj.second;
                         //std::cout << "- " << it->second << " (similarity: " << obj.second << ")" << std::endl;
                     }
@@ -589,10 +602,16 @@ void testModel(const std::string& imagePath, int imageSize, const std::vector<te
     }
 }
 int main() {
-	const std::string dataset_dat_Path = "/Users/dengfengji/ronnieji/kaggle/train_sample"; // Path to your main dataset folder
+	/*
+		const int imageSize = 443,
+		const int numEpochs = 10,
+		const int batchSize = 16,
+		const float learningRate = 1e-3 
+	*/
+	const std::string dataset_dat_Path = "/Users/dengfengji/ronnieji/kaggle/chest_xray/train"; // Path to your main dataset folder
 	const std::string modelPath = "/Users/dengfengji/ronnieji/lib/MLCpplib-main/siamese_model.pt";
 	const std::string model_embedded_path = "/Users/dengfengji/ronnieji/lib/MLCpplib-main/trained_model.dat";
-	train_model(dataset_dat_Path, modelPath, model_embedded_path);
+	train_model(dataset_dat_Path, modelPath, model_embedded_path,128,10,16,1e-3);
 	/*
         Use models to predict new images
     */
@@ -637,6 +656,11 @@ int main() {
         }
     }
     std::cout << "Number of test images: " << testimgs.size() << std::endl;
+	/*
+		double similarityThreshold = 0.75, // Similarity threshold
+		double obj_left_bound = 0.99,//obj.second >
+		double obj_right_bound = 1.0 //obj.second < 
+	*/
     if(!testimgs.empty()){
         for(const auto& item : testimgs){
             testModel(
@@ -645,7 +669,10 @@ int main() {
             trainedDataSet,
             labelMap,
             model,
-            device
+            device,
+			0.75,
+			0.99,
+			1.0
             );
         }
     }
