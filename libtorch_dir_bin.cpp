@@ -10,7 +10,7 @@
        |       |
     catalog1, catalog2 ....
 
-g++ -std=c++20 /Users/dengfengji/ronnieji/lib/MLCpplib-main/libtorch_dir.cpp -o /Users/dengfengji/ronnieji/lib/MLCpplib-main/libtorch_dir -I/opt/homebrew/Cellar/tesseract/5.5.0/include \
+g++ -std=c++20 /Users/dengfengji/ronnieji/lib/MLCpplib-main/libtorch_dir_bin.cpp -o /Users/dengfengji/ronnieji/lib/MLCpplib-main/libtorch_dir_bin -I/opt/homebrew/Cellar/tesseract/5.5.0/include \
 -I/opt/homebrew/Cellar/tesseract/5.5.0/include \
 -L/opt/homebrew/Cellar/tesseract/5.5.0/lib -ltesseract \
 -I/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3 \
@@ -43,6 +43,20 @@ g++ -std=c++20 /Users/dengfengji/ronnieji/lib/MLCpplib-main/libtorch_dir.cpp -o 
 // ---------------------
 // Data Preparation
 // ---------------------
+int audoBatchSize(int dataset_size){ //auto caculate batch size
+    if(dataset_size < 5000){
+        return 32;
+    }
+    else if(dataset_size < 50000){
+        return 64;
+    }
+    else{
+        return 128;
+    }
+}
+int autoEpochs(int dataset_size){
+    return 30 + (100000 - dataset_size) / 2000;
+}
 struct ImageData {
     torch::Tensor imageTensor;
     int label;
@@ -75,21 +89,29 @@ std::map<int,std::string> read_label_map(const std::string& lable_map_path){
     if(lable_map_path.empty()){
         return label_mapping;
     }
-    std::ifstream ifile(lable_map_path);
-    if(ifile.is_open()){
-        std::string line;
-        while(std::getline(ifile, line)){
-            if(!line.empty()){
-                std::vector<std::string> get_line = JsplitString(line,',');
-                if(!get_line.empty()){
-                    int label = std::stoi(get_line[0]);
-                    std::string className = get_line[1];
-                    label_mapping[label] = className;
+    try{
+        std::ifstream ifile(lable_map_path);
+        if(ifile.is_open()){
+            std::string line;
+            while(std::getline(ifile, line)){
+                if(!line.empty()){
+                    std::vector<std::string> get_line = JsplitString(line,',');
+                    if(!get_line.empty()){
+                        int label = std::stoi(get_line[0]);
+                        std::string className = get_line[1];
+                        label_mapping[label] = className;
+                    }
                 }
             }
         }
+        ifile.close();
     }
-    ifile.close();
+    catch(const std::exception& ex){
+        std::cerr << ex.what() << std::endl;
+    }
+    catch(...){
+        std::cerr << "Unknown errors" << std::endl;
+    }
     return label_mapping;
 }
 void saveModel(const std::vector<testImageData>& trainedDataSet, const std::string& filename) {  
@@ -268,7 +290,11 @@ torch::Tensor load_and_preprocess_image(const std::string& imagePath, int imageS
     tensor[2] = tensor[2].sub_(0.406).div_(0.225);
     return tensor;
 }
-std::vector<ImageData> loadDataset(const std::string& dataset_dat_Path, int imageSize) {
+std::vector<ImageData> loadDataset(
+        const std::string& dataset_dat_Path, 
+        int imageSize,
+        const std::string& label_map_path
+    ) {
     std::vector<ImageData> dataset;
     std::map<int,std::string> label_mapping;
     if(dataset_dat_Path.empty()){
@@ -276,50 +302,66 @@ std::vector<ImageData> loadDataset(const std::string& dataset_dat_Path, int imag
     }
     if(std::filesystem::exists(dataset_dat_Path)){
         int currentLabel = 0;
-		for (const auto& dirEntry : std::filesystem::directory_iterator(dataset_dat_Path)) {
-			if (std::filesystem::is_directory(dirEntry)) {
-				std::string catalog = dirEntry.path().filename().string();
-				// Loop through images in the catalog
-				for (const auto& imageEntry : std::filesystem::directory_iterator(dirEntry.path())) {
-					if (std::filesystem::is_regular_file(imageEntry)) {
-						std::string imagePath = imageEntry.path().string();
-						if (!isValidImageFile(imagePath)) {
-							std::cout << "Not a valid image file: " << imagePath << std::endl;
-							continue;
-						}
-						cv::Mat image = cv::imread(imagePath);
-						if (image.empty()) {
-							std::cout << "Failed to load image: " << imagePath << std::endl;
-							continue;
-						}
-						// Resize image
-						cv::resize(image, image, cv::Size(imageSize, imageSize));
-						// Convert to tensor format
-						cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
-						image.convertTo(image, CV_32F, 1.0 / 255.0);
-						auto imgTensor = torch::from_blob(image.data, {image.rows, image.cols, 3}, torch::kFloat32);
-						imgTensor = imgTensor.permute({2, 0, 1}); // [H,W,C] -> [C,H,W]
-						imgTensor = imgTensor.clone(); // Ensure that tensor owns its memory
-						imgTensor[0] = imgTensor[0].sub_(0.485).div_(0.229);
-						imgTensor[1] = imgTensor[1].sub_(0.456).div_(0.224);
-						imgTensor[2] = imgTensor[2].sub_(0.406).div_(0.225);
-						dataset.push_back({imgTensor, currentLabel});
-						label_mapping[currentLabel]= catalog;
-					}//if
-				}//for
-				currentLabel++;
-			}//if
-		}//for
+        try{
+            for (const auto& dirEntry : std::filesystem::directory_iterator(dataset_dat_Path)) {
+                if (std::filesystem::is_directory(dirEntry)) {
+                    std::string catalog = dirEntry.path().filename().string();
+                    // Loop through images in the catalog
+                    for (const auto& imageEntry : std::filesystem::directory_iterator(dirEntry.path())) {
+                        if (std::filesystem::is_regular_file(imageEntry)) {
+                            std::string imagePath = imageEntry.path().string();
+                            if (!isValidImageFile(imagePath)) {
+                                std::cout << "Not a valid image file: " << imagePath << std::endl;
+                                continue;
+                            }
+                            cv::Mat image = cv::imread(imagePath);
+                            if (image.empty()) {
+                                std::cout << "Failed to load image: " << imagePath << std::endl;
+                                continue;
+                            }
+                            // Resize image
+                            cv::resize(image, image, cv::Size(imageSize, imageSize));
+                            // Convert to tensor format
+                            cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+                            image.convertTo(image, CV_32F, 1.0 / 255.0);
+                            auto imgTensor = torch::from_blob(image.data, {image.rows, image.cols, 3}, torch::kFloat32);
+                            imgTensor = imgTensor.permute({2, 0, 1}); // [H,W,C] -> [C,H,W]
+                            imgTensor = imgTensor.clone(); // Ensure that tensor owns its memory
+                            imgTensor[0] = imgTensor[0].sub_(0.485).div_(0.229);
+                            imgTensor[1] = imgTensor[1].sub_(0.456).div_(0.224);
+                            imgTensor[2] = imgTensor[2].sub_(0.406).div_(0.225);
+                            dataset.push_back({imgTensor, currentLabel});
+                            label_mapping[currentLabel]= catalog;
+                        }//if
+                    }//for
+                    currentLabel++;
+                }//if
+            }//for
+        }
+        catch(const std::exception& ex){
+            std::cerr << ex.what() << std::endl;
+        }
+        catch(...){
+            std::cerr << "Unknown errors" << std::endl;
+        }
 	}//if
 	if(!label_mapping.empty()){
-		std::ofstream ofile("/Users/dengfengji/ronnieji/lib/MLCpplib-main/labelMap.txt", std::ios::out);
-		if(!ofile.is_open()){
-			ofile.open("/Users/dengfengji/ronnieji/lib/MLCpplib-main/labelMap.txt", std::ios::out);
-		}
-		for(const auto & item : label_mapping){
-			ofile << item.first << "," << item.second << '\n';
-		}
-		ofile.close();
+        try{
+            std::ofstream ofile(label_map_path, std::ios::out);
+            if(!ofile.is_open()){
+                ofile.open(label_map_path, std::ios::out);
+            }
+            for(const auto & item : label_mapping){
+                ofile << item.first << "," << item.second << '\n';
+            }
+            ofile.close();
+        }
+        catch(const std::exception& ex){
+            std::cerr << ex.what() << std::endl;
+        }
+        catch(...){
+            std::cerr << "Unknown errors" << std::endl;
+        }
 	}
 	return dataset;
 }
@@ -396,11 +438,11 @@ double computeCosineSimilarity(const torch::Tensor& tensor1, const torch::Tensor
 }
 std::vector<testImageData> loadDatasetWithEmbeddings(const std::string& dataset_dat_Path, const std::string& labelMap_path, int imageSize, SiameseNetwork& model, torch::Device& device) {
     std::vector<testImageData> d_item;
-    if (dataset_dat_Path.empty()) {
-        std::cerr << "Dataset image.dat file path is empty!" << std::endl;
+    if (dataset_dat_Path.empty() || labelMap_path.empty()) {
+        std::cerr << "Dataset image.dat or labelMap_path.txt file path is empty!" << std::endl;
         return d_item;
     }
-	std::vector<ImageData> image_to_train = loadDataset(dataset_dat_Path,imageSize);
+	std::vector<ImageData> image_to_train = loadDataset(dataset_dat_Path,imageSize, labelMap_path);
     // Load label mapping file
     std::map<int, std::string> label_m = read_label_map(labelMap_path);
     if (label_m.empty()) {
@@ -465,11 +507,12 @@ void initialize_embeddings(
     }
 }
 // ---------------------
-// Main Function
+// Main Function train_model(dataset_dat_Path, modelPath, model_embedded_path,128,10,16,1e-3);
 // ---------------------
 void train_model(
 		const std::string& train_folder, 
 		const std::string& model_output_path, //siamese_model.pt
+        const std::string& output_label_map_path,
 		const std::string& model_embedded_output_path,//trained_model.dat
 		const int imageSize = 128,
 		const int numEpochs = 10,
@@ -484,7 +527,7 @@ void train_model(
     }
     std::cout << "Start training, please wait..." << std::endl;
     // Load dataset
-    auto dataset = loadDataset(train_folder, imageSize);
+    auto dataset = loadDataset(train_folder, imageSize, output_label_map_path);
 	std::cout << "Successfully loaded the dataset, start creating image pairs..." << std::endl;
     // Create image pairs and labels
     std::vector<std::pair<torch::Tensor, torch::Tensor>> imagePairs;
@@ -513,9 +556,9 @@ void train_model(
     std::vector<testImageData> trainedDataSet;
     std::cout << "Initialize the recognization engine..." << std::endl;
     initialize_embeddings(
-		"/Users/dengfengji/ronnieji/kaggle/train_sample",
-        "/Users/dengfengji/ronnieji/lib/MLCpplib-main/siamese_model.pt",
-        "/Users/dengfengji/ronnieji/lib/MLCpplib-main/labelMap.txt",
+        train_folder,
+        model_output_path,
+        output_label_map_path,
         model,
         device,
         imageSize,//default image size
@@ -605,18 +648,34 @@ int main() {
 		const int batchSize = 16,
 		const float learningRate = 1e-3 
 	*/
-	const std::string dataset_dat_Path = "/Users/dengfengji/ronnieji/kaggle/chest_xray/train"; // Path to your main dataset folder
-	const std::string modelPath = "/Users/dengfengji/ronnieji/lib/MLCpplib-main/siamese_model.pt";
-	const std::string model_embedded_path = "/Users/dengfengji/ronnieji/lib/MLCpplib-main/trained_model.dat";
-	train_model(dataset_dat_Path, modelPath, model_embedded_path,128,10,16,1e-3);
+	const std::string dataset_dat_Path = "/Users/dengfengji/ronnieji/kaggle/Fruits_new/train"; // Path to your main dataset folder
+	const std::string output_lable_map_path = "/Users/dengfengji/ronnieji/kaggle/Fruits_new/labelMap.txt";//label map
+    const std::string output_modelPath = "/Users/dengfengji/ronnieji/kaggle/Fruits_new/siamese_model.pt";//output siamese_model
+	const std::string output_model_embedded_path = "/Users/dengfengji/ronnieji/kaggle/Fruits_new/trained_model.dat";// trained images dataset
+	if(std::filesystem::exists(dataset_dat_Path)){
+        train_model(dataset_dat_Path, output_modelPath, output_lable_map_path, output_model_embedded_path, 128, 10, 16, 1e-3);
+    }
+    else{
+        std::cerr << dataset_dat_Path << " does not exists." << std::endl;
+        return -1;
+    }
 	/*
-        Use models to predict new images
+        -----------------  Use models to predict new images --------------------------------
     */
 	//load labels
-    std::map<int,std::string> labelMap = read_label_map("/Users/dengfengji/ronnieji/lib/MLCpplib-main/labelMap.txt");
+    std::map<int,std::string> labelMap;
+    if(std::filesystem::exists(output_lable_map_path)){
+        labelMap = read_label_map(output_lable_map_path);
+    }
 	//load trained_model.dat
 	std::vector<testImageData> trainedDataSet;  
-	loadModel(trainedDataSet,model_embedded_path);
+    if(std::filesystem::exists(output_model_embedded_path)){
+        loadModel(trainedDataSet,output_model_embedded_path);
+    }
+    else{
+        std::cerr << output_model_embedded_path << " could not be found." << std::endl;
+        return -1;
+    }
 	if(trainedDataSet.empty()){
 		std::cerr << "trained_model is empty, exist." << std::endl;
 		return -1;
@@ -631,7 +690,7 @@ int main() {
         device = torch::Device(torch::kCUDA);
     }
 	SiameseNetwork model;
-    torch::load(model, modelPath);//siamese_model.pt
+    torch::load(model, output_modelPath);//siamese_model.pt
     model->to(device);
     model->eval(); // Set model to evaluation mode
     std::cout << "Successfully load the engine, start recognizating..." << std::endl;
@@ -654,9 +713,15 @@ int main() {
     }
     std::cout << "Number of test images: " << testimgs.size() << std::endl;
 	/*
-		double similarityThreshold = 0.75, // Similarity threshold
-		double obj_left_bound = 0.99,//obj.second >
-		double obj_right_bound = 1.0 //obj.second < 
+		const std::string& imagePath, 
+        int imageSize, 
+        const std::vector<testImageData>& dataset, 
+        const std::map<int, std::string>& labelMap, 
+        SiameseNetwork& model, 
+        torch::Device& device,
+        double similarityThreshold = 0.75, // Similarity threshold
+        double obj_left_bound = 0.99,//obj.second >
+        double obj_right_bound = 1.0 //obj.second < 
 	*/
     if(!testimgs.empty()){
         for(const auto& item : testimgs){
