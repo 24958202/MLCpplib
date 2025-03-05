@@ -82,7 +82,8 @@
     #include <mach-o/dyld.h> // For _NSGetExecutablePath
     #include <limits.h>      // For PATH_MAX
 #endif
-const std::string face_reg_model = R"(<?xml version="1.0"?><!--
+const std::string face_reg_model = R"(<?xml version="1.0"?>
+<!--
     Stump-based 24x24 discrete(?) adaboost frontal face detector.
     Created by Rainer Lienhart.
 
@@ -33398,16 +33399,12 @@ const std::string face_reg_model = R"(<?xml version="1.0"?><!--
 )";
 const unsigned int MAX_FEATURES = 1000;   // Max number of features to detect
 const float RATIO_THRESH = 0.9;          // Ratio threshold for matching
-const unsigned int DE_THRESHOLD = 10;      // Min matches to consider a face as existing
+const unsigned int DE_THRESHOLD = 15;      // Min matches to consider a face as existing
 unsigned int faceCount = 0;
 unsigned int cvMatlevels = 4; // Levels per channel (e.g., 4, 8, 16)
 cv::VideoCapture cap;
-cv::CascadeClassifier faceCascade;
-const int THUMBNAIL_SIZE = 50; // Size of each face thumbnail  
-const int SCROLL_AREA_WIDTH = 50; // 5% of a 1000px width screen  
-const int MAX_VISIBLE_THUMBNAILS = 10; // Number of thumbnails visible at a time  
+cv::CascadeClassifier faceCascade;  
 std::vector<cv::Mat> faceThumbnails; // Store detected face thumbnails  
-int scrollIndex = 0; // Index for scrolling  
 std::chrono::time_point<std::chrono::high_resolution_clock> t_count_start;
 std::chrono::time_point<std::chrono::high_resolution_clock> t_count_end;
 std::string CurrDir;
@@ -33422,7 +33419,7 @@ void loadCapturedFaces(const std::string& folderPath) {
             if (entry.is_regular_file() && entry.path().extension() == ".jpg") {  
                 cv::Mat img = cv::imread(entry.path().string());  
                 if (!img.empty()) {  
-                    faceThumbnails.push_back(img);  
+                    faceThumbnails.push_back(img);
                 } else {  
                     std::cerr << "Warning: Could not load image: " << entry.path() << std::endl;  
                 }  
@@ -33437,21 +33434,6 @@ void loadCapturedFaces(const std::string& folderPath) {
         std::cerr << "Unknown errors" << std::endl;
     }
 }  
-// Function to draw the scrollable list of thumbnails  
-void drawScrollArea(cv::Mat& canvas) {  
-    // Create a blank scroll area  
-    cv::Mat scrollArea(canvas.rows, SCROLL_AREA_WIDTH, CV_8UC3, cv::Scalar(50, 50, 50));  
-    // Draw thumbnails in the scroll area  
-    int yOffset = 0;  
-    for (int i = scrollIndex; i < faceThumbnails.size() && yOffset < canvas.rows; ++i) {  
-        cv::Mat thumbnail;  
-        cv::resize(faceThumbnails[i], thumbnail, cv::Size(THUMBNAIL_SIZE, THUMBNAIL_SIZE));  
-        thumbnail.copyTo(scrollArea(cv::Rect(0, yOffset, THUMBNAIL_SIZE, THUMBNAIL_SIZE)));  
-        yOffset += THUMBNAIL_SIZE + 5; // Add spacing between thumbnails  
-    }  
-    // Copy the scroll area to the left side of the canvas  
-    scrollArea.copyTo(canvas(cv::Rect(0, 0, SCROLL_AREA_WIDTH, canvas.rows)));  
-}   
 class nemslib_webcam{
 public:
     std::string getExecutablePath(){
@@ -33632,17 +33614,19 @@ void startRecording(
                 std::cerr << "Error: Empty frame." << std::endl;  
                 continue;  
             }
+            //cv::Mat low_quality_frame;
+            //frame.convertTo(low_quality_frame, CV_8UC3, 1.0 / (256 / cvMatlevels));
             cv::Mat low_quality_frame = frame / (256 / cvMatlevels) * (256 / cvMatlevels);
             // Resize the frame to fit the wxStaticBitmap
-            //cv::Mat resized_frame;
-            //cv::resize(low_quality_frame, resized_frame, cv::Size(640, 320));//0.5, 0.5
+            cv::Mat resized_frame;
+            cv::resize(low_quality_frame, resized_frame, cv::Size(640, 320));//0.5, 0.5
             cv::Mat gray;
-            cv::cvtColor(low_quality_frame, gray, cv::COLOR_BGR2GRAY);
+            cv::cvtColor(resized_frame, gray, cv::COLOR_BGR2GRAY);
 			cv::equalizeHist(gray, gray);//can help the classifier detect faces in varying lighting conditions.
             std::vector<cv::Rect> faces;
             faceCascade.detectMultiScale(gray, faces, 1.1, 10, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(50, 50));
             if (!faces.empty()) {
-                onFacesDetected(faces, low_quality_frame, faces_img_folder, faces_img_folder_large);  
+                onFacesDetected(faces, resized_frame, faces_img_folder, faces_img_folder_large);  
             }  
             char key = cv::waitKey(30);  
 			if (key == 27) {  //Exit on 'Esc' key
@@ -33650,7 +33634,8 @@ void startRecording(
             }  
             //if (key == 'w' && scrollIndex > 0) scrollIndex--;  
             //if (key == 's' && scrollIndex < faceThumbnails.size() - MAX_VISIBLE_THUMBNAILS) scrollIndex++;  
-            // Check if one minute has passed to refresh the list  
+            // Check if one minute has passed to refresh the list 
+            //faceThumbnails
 			t_count_end = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double> duration = t_count_end - t_count_start;   
 			if (duration >= std::chrono::seconds(10)) { // 3 seconds 
@@ -33662,13 +33647,21 @@ void startRecording(
 				t_count_start = t_count_end;   // Reset the timer 
 			}  
             try{
-                // Create a canvas for the combined display   resized_frame.cols + SCROLL_AREA_WIDTH
-                cv::Mat canvas(low_quality_frame.rows, low_quality_frame.cols + SCROLL_AREA_WIDTH, CV_8UC3, cv::Scalar(0, 0, 0)); 
-                // Draw the main frame  
-                low_quality_frame.copyTo(canvas(cv::Rect(SCROLL_AREA_WIDTH, 0, low_quality_frame.cols, low_quality_frame.rows)));
-                // Draw the scrollable list  
-                drawScrollArea(canvas); 
-                cv::imshow("Face Detection", canvas); 
+                //THUMBNAIL_SIZE
+                // Preprocess images: Resize all images to the same width  
+                if(!faceThumbnails.empty()){
+                    cv::Mat compositeImage;  
+                    cv::vconcat(faceThumbnails, compositeImage);  
+                    cv::Rect screenRect = cv::getWindowImageRect("Face Detection");
+                    // Calculate the visible region of the composite image  
+                    int visibleHeight = std::max(screenRect.height, compositeImage.rows);  
+                    cv::Rect visibleRegion(0, 0, compositeImage.cols, visibleHeight); 
+                    // Crop the visible region from the composite image  
+                    cv::Mat visibleThumbnails = compositeImage(visibleRegion);  
+                    // Display the visible thumbnails in a separate window  
+                    cv::imshow("Thumbnails", visibleThumbnails);  
+                }
+                cv::imshow("Face Detection", resized_frame); 
             }
             catch(const std::exception& ex){
                 std::cerr << ex.what() << std::endl;
