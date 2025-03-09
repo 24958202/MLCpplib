@@ -56,6 +56,9 @@
     ```bash
     make -j$(nproc)  # For Linux
     make -j$(sysctl -n hw.ncpu)  # For macOS
+    
+    compile parameters:
+    -framework ApplicationServices //on mac
 
 */
 #include <iostream>
@@ -78,10 +81,39 @@
 #elif defined(__linux__)
     #include <unistd.h>
     #include <limits.h> // For PATH_MAX
+    #include <X11/Xlib.h>
 #elif defined(__APPLE__)
     #include <mach-o/dyld.h> // For _NSGetExecutablePath
     #include <limits.h>      // For PATH_MAX
+    #include <ApplicationServices/ApplicationServices.h>
 #endif
+// Function to get screen size  
+void getScreenSize(int &screen_width, int &screen_height) {  
+#ifdef __linux__  
+    // Use X11 to get screen size on Linux  
+    Display* display = XOpenDisplay(nullptr);  
+    if (display) {  
+        Screen* screen = DefaultScreenOfDisplay(display);  
+        screen_width = screen->width;  
+        screen_height = screen->height;  
+        XCloseDisplay(display);  
+    } else {  
+        std::cerr << "Error: Unable to open X display." << std::endl;  
+        screen_width = 640;  // Default fallback  
+        screen_height = 480; // Default fallback  
+    }  
+#elif __APPLE__  
+    // Use Quartz to get screen size on macOS  
+    CGDirectDisplayID display_id = CGMainDisplayID();  
+    screen_width = CGDisplayPixelsWide(display_id);  
+    screen_height = CGDisplayPixelsHigh(display_id);  
+#else  
+    // Default fallback for unsupported platforms  
+    std::cerr << "Error: Unsupported platform." << std::endl;  
+    screen_width = 640;  
+    screen_height = 480;  
+#endif  
+}
 const std::string face_reg_model = R"(<?xml version="1.0"?>
 <!--
     Stump-based 24x24 discrete(?) adaboost frontal face detector.
@@ -33398,10 +33430,13 @@ const std::string face_reg_model = R"(<?xml version="1.0"?>
 </opencv_storage>
 )";
 const unsigned int MAX_FEATURES = 1000;   // Max number of features to detect
-const float RATIO_THRESH = 0.9;          // Ratio threshold for matching
+const float RATIO_THRESH = 0.95;          // Ratio threshold for matching
 const unsigned int DE_THRESHOLD = 15;      // Min matches to consider a face as existing
 unsigned int faceCount = 0;
 unsigned int cvMatlevels = 4; // Levels per channel (e.g., 4, 8, 16)
+unsigned int MAX_THUMBNAILS = 10; //max number of thumbnails display
+int screenWidth = 0;
+int screenHeight = 0;
 cv::VideoCapture cap;
 cv::CascadeClassifier faceCascade;  
 std::vector<cv::Mat> faceThumbnails; // Store detected face thumbnails  
@@ -33410,30 +33445,32 @@ std::chrono::time_point<std::chrono::high_resolution_clock> t_count_end;
 std::string CurrDir;
 // Function to load all .jpg images from the ./capture folder  
 void loadCapturedFaces(const std::string& folderPath) {  
-    if(folderPath.empty()){
-        return;
-    }
+    if (folderPath.empty()) {  
+        std::cerr << "Error: Folder path is empty." << std::endl;  
+        return;  
+    }  
     faceThumbnails.clear(); // Clear any previously loaded thumbnails  
-    try{
-        for (const auto& entry : std::filesystem::directory_iterator(folderPath)) {  
+    try {  
+        for (const auto& entry : std::filesystem::directory_iterator(folderPath, std::filesystem::directory_options::skip_permission_denied)) {  
             if (entry.is_regular_file() && entry.path().extension() == ".jpg") {  
                 cv::Mat img = cv::imread(entry.path().string());  
-                if (!img.empty()) {  
-                    faceThumbnails.push_back(img);
-                } else {  
-                    std::cerr << "Warning: Could not load image: " << entry.path() << std::endl;  
+                // Validate the image  
+                if (img.empty()) {  
+                    std::cerr << "Error: Could not load image: " << entry.path() << std::endl;  
+                    continue;  
                 }  
+                // Resize image to reduce memory usage (optional)  
+                cv::resize(img, img, cv::Size(80, 80)); // Example size  
+                faceThumbnails.push_back(img);  
             }  
         }  
-        std::cout << "Loaded " << faceThumbnails.size() << " images from " << folderPath << std::endl; 
-    } 
-    catch(const std::exception& ex){
-        std::cerr << ex.what() << std::endl;
-    }
-    catch(...){
-        std::cerr << "Unknown errors" << std::endl;
-    }
-}  
+        std::cout << "Loaded " << faceThumbnails.size() << " images from " << folderPath << std::endl;  
+    } catch (const std::exception& ex) {  
+        std::cerr << "Filesystem error: " << ex.what() << std::endl;  
+    } catch (...) {  
+        std::cerr << "Unknown error occurred while loading images." << std::endl;  
+    }  
+}
 class nemslib_webcam{
 public:
     std::string getExecutablePath(){
@@ -33593,90 +33630,79 @@ void save_face_model_file_to_disk(const std::string& curr_dir){
 		std::cerr << "Unknown errors" << std::endl;
 	}
 }
-void startRecording(
-    const std::string& facial_model, 
-    const std::string& faces_img_folder,
-    const std::string& faces_img_folder_large
-    ) {
+void startRecording(  
+    const std::string& facial_model,   
+    const std::string& faces_img_folder,  
+    const std::string& faces_img_folder_large  
+) {  
     if (!cap.isOpened()) {  
         std::cerr << "Error: Could not open video stream." << std::endl;  
         return;  
     }  
-    // Create a named window and set it to full screen  
     cv::namedWindow("Face Detection", cv::WINDOW_NORMAL);  
-    cv::setWindowProperty("Face Detection", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
-    cv::Mat frame;
+    cv::setWindowProperty("Face Detection", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);  
+    cv::Mat frame;  
     try {  
-        t_count_start = std::chrono::high_resolution_clock::now(); // Initialize start time 
-        while (true) { 
+        t_count_start = std::chrono::high_resolution_clock::now(); // Initialize start time   
+        while (true) {   
             cap >> frame;  
             if (frame.empty()) {  
                 std::cerr << "Error: Empty frame." << std::endl;  
                 continue;  
-            }
-            //cv::Mat low_quality_frame;
-            //frame.convertTo(low_quality_frame, CV_8UC3, 1.0 / (256 / cvMatlevels));
-            cv::Mat low_quality_frame = frame / (256 / cvMatlevels) * (256 / cvMatlevels);
-            // Resize the frame to fit the wxStaticBitmap
-            cv::Mat resized_frame;
-            cv::resize(low_quality_frame, resized_frame, cv::Size(640, 320));//0.5, 0.5
-            cv::Mat gray;
-            cv::cvtColor(resized_frame, gray, cv::COLOR_BGR2GRAY);
-			cv::equalizeHist(gray, gray);//can help the classifier detect faces in varying lighting conditions.
-            std::vector<cv::Rect> faces;
-            faceCascade.detectMultiScale(gray, faces, 1.1, 10, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(50, 50));
-            if (!faces.empty()) {
-                onFacesDetected(faces, resized_frame, faces_img_folder, faces_img_folder_large);  
             }  
-            char key = cv::waitKey(30);  
-			if (key == 27) {  //Exit on 'Esc' key
+            if (cvMatlevels <= 0) {  
+                std::cerr << "Error: cvMatlevels must be greater than 0." << std::endl;  
                 break;  
             }  
-            //if (key == 'w' && scrollIndex > 0) scrollIndex--;  
-            //if (key == 's' && scrollIndex < faceThumbnails.size() - MAX_VISIBLE_THUMBNAILS) scrollIndex++;  
-            // Check if one minute has passed to refresh the list 
-            //faceThumbnails
-			t_count_end = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double> duration = t_count_end - t_count_start;   
-			if (duration >= std::chrono::seconds(10)) { // 3 seconds 
-                 if(!CurrDir.empty()){
-                    save_face_model_file_to_disk(CurrDir);
-                 }
-				std::cout << "Refreshing the list..." << std::endl;  
-				loadCapturedFaces(faces_img_folder); // Reload the images 
-				t_count_start = t_count_end;   // Reset the timer 
-			}  
-            try{
-                //THUMBNAIL_SIZE
-                // Preprocess images: Resize all images to the same width  
-                if(!faceThumbnails.empty()){
-                    cv::Mat compositeImage;  
-                    cv::vconcat(faceThumbnails, compositeImage);  
-                    cv::Rect screenRect = cv::getWindowImageRect("Face Detection");
-                    // Calculate the visible region of the composite image  
-                    int visibleHeight = std::max(screenRect.height, compositeImage.rows);  
-                    cv::Rect visibleRegion(0, 0, compositeImage.cols, visibleHeight); 
-                    // Crop the visible region from the composite image  
-                    cv::Mat visibleThumbnails = compositeImage(visibleRegion);  
-                    // Display the visible thumbnails in a separate window  
-                    cv::imshow("Thumbnails", visibleThumbnails);  
+            cv::Mat low_quality_frame = frame / (256 / cvMatlevels) * (256 / cvMatlevels);  
+            cv::Mat resized_frame;  
+            cv::resize(low_quality_frame, resized_frame, cv::Size(640, 320));  
+            cv::Mat gray;  
+            cv::cvtColor(resized_frame, gray, cv::COLOR_BGR2GRAY);  
+            cv::equalizeHist(gray, gray);  
+            std::vector<cv::Rect> faces;  
+            faceCascade.detectMultiScale(gray, faces, 1.2, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(50, 50));  
+            if (!faces.empty()) {  
+                onFacesDetected(faces, resized_frame, faces_img_folder, faces_img_folder_large);  
+            }  
+            char key = cv::waitKey(1); // Reduce delay  
+            if (key == 27) { // Exit on 'Esc' key  
+                break;  
+            }  
+            t_count_end = std::chrono::high_resolution_clock::now();  
+            std::chrono::duration<double> duration = t_count_end - t_count_start;   
+            if (duration >= std::chrono::seconds(10)) {  
+                if (!CurrDir.empty()) {  
+                    save_face_model_file_to_disk(CurrDir);  
+                }  
+                std::cout << "Refreshing the list..." << std::endl;  
+                loadCapturedFaces(faces_img_folder);  
+                t_count_start = t_count_end;  
+            }  
+            if (!faceThumbnails.empty()) {  
+                if (faceThumbnails.size() > MAX_THUMBNAILS) {  
+                    faceThumbnails.erase(faceThumbnails.begin());  
+                }  
+                cv::Mat compositeImage;  
+                cv::vconcat(faceThumbnails, compositeImage);  
+                cv::Rect screenRect = cv::getWindowImageRect("Face Detection");  
+                int visibleHeight = std::min(screenRect.height, compositeImage.rows);  
+                cv::Rect visibleRegion(0, 0, compositeImage.cols, visibleHeight);  
+                cv::Mat visibleThumbnails = compositeImage(visibleRegion);  
+                cv::imshow("Thumbnails", visibleThumbnails); 
+                if(screenWidth != 0 && screenHeight != 0){
+                    cv::moveWindow("Thumbnails", screenWidth - 90, 0);
                 }
-                cv::imshow("Face Detection", resized_frame); 
-            }
-            catch(const std::exception& ex){
-                std::cerr << ex.what() << std::endl;
-            }
-            catch(...){
-                std::cerr << "Unknown errors" << std::endl;
-            }
+            }  
+            cv::imshow("Face Detection", resized_frame);   
         }  
-        cap.release();  
-        cv::destroyAllWindows();  
     } catch (const std::exception& ex) {  
         std::cerr << ex.what() << std::endl;  
     } catch (...) {  
         std::cerr << "Unknown errors" << std::endl;  
     }  
+    cap.release();  
+    cv::destroyAllWindows();  
 }
 int main() {
     nemslib_webcam nemslib_j;
@@ -33694,6 +33720,7 @@ int main() {
         std::cerr << "Error: Could not load Haar Cascade model." << std::endl;
         return -1;
     }
+    getScreenSize(screenWidth,screenHeight);
     startRecording(facial_model_file,faces_img_storage_folder_path, faces_img_storage_folder_path_large);
     return 0;
 }
