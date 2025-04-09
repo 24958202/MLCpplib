@@ -79,7 +79,9 @@
 #include <thread>
 #include <chrono>
 #include <ctime>
+#include <cmath>
 #include <opencv2/opencv.hpp>
+#include <opencv2/features2d.hpp> 
 #include <opencv2/xfeatures2d.hpp>
 #if defined(_WIN32) || defined(_WIN64)
     #include <windows.h>
@@ -45648,7 +45650,7 @@ const std::string eye_reg_model = R"(<?xml version="1.0"?>
           2 10 5 4 2.</_></rects></_></features></cascade>
 </opencv_storage>)";
 const unsigned int MAX_FEATURES = 1000;   // Max number of features to detect
-const float RATIO_THRESH = 0.95;          // Ratio threshold for matching
+const float RATIO_THRESH = 0.9;          // Ratio threshold for matching
 const unsigned int DE_THRESHOLD = 15;      // Min matches to consider a face as existing
 unsigned int faceCount = 0;
 unsigned int cvMatlevels = 4; // Levels per channel (e.g., 4, 8, 16)
@@ -45769,6 +45771,7 @@ bool checkExistingFace(const std::string& faces_folder_path, const cv::Mat& img_
     cv::Mat img_gray;
     cv::cvtColor(img_input, img_gray, cv::COLOR_BGR2GRAY);
     cv::GaussianBlur(img_gray, img_gray, cv::Size(5, 5), 0);
+	cv::equalizeHist(img_gray, img_gray);
     cv::Ptr<cv::SIFT> detector = cv::SIFT::create(MAX_FEATURES);
     std::vector<cv::KeyPoint> keypoints_input;
     cv::Mat descriptors_input;
@@ -45784,6 +45787,8 @@ bool checkExistingFace(const std::string& faces_folder_path, const cv::Mat& img_
             if (existing_face.empty()) continue;
             cv::Mat existing_face_gray;
             cv::cvtColor(existing_face, existing_face_gray, cv::COLOR_BGR2GRAY);
+		    cv::GaussianBlur(existing_face_gray, existing_face_gray, cv::Size(5, 5), 0); 
+		    cv::equalizeHist(existing_face_gray, existing_face_gray); 
             std::vector<cv::KeyPoint> keypoints_existing;
             cv::Mat descriptors_existing;
             detector->detectAndCompute(existing_face_gray, cv::noArray(), keypoints_existing, descriptors_existing);
@@ -45800,19 +45805,36 @@ bool checkExistingFace(const std::string& faces_folder_path, const cv::Mat& img_
                 catch(...){}
                 continue;
             }
-            cv::BFMatcher matcher(cv::NORM_L2);
-            std::vector<std::vector<cv::DMatch>> knnMatches;
-            matcher.knnMatch(descriptors_existing, descriptors_input, knnMatches, 2);
-            std::vector<cv::DMatch> goodMatches;
-            for (const auto& match : knnMatches) {
-                if (match.size() > 1 && match[0].distance < RATIO_THRESH * match[1].distance) {
-                    goodMatches.push_back(match[0]);
-                }
-            }
-            if (goodMatches.size() > DE_THRESHOLD) {
-                std::cout << "The face image already exists." << std::endl;
-                return true;
-            }
+			// Match descriptors using FLANN matcher  
+            cv::FlannBasedMatcher matcher;  
+            std::vector<std::vector<cv::DMatch>> knnMatches;  
+            matcher.knnMatch(descriptors_existing, descriptors_input, knnMatches, 2);  
+            // Filter matches using the ratio test  
+            std::vector<cv::DMatch> goodMatches;  
+            for (const auto& match : knnMatches) {  
+                if (match.size() > 1 && match[0].distance < RATIO_THRESH * match[1].distance) {  
+                    goodMatches.push_back(match[0]);  
+                }  
+            }  
+            // Dynamically adjust the threshold based on the number of keypoints  
+            int dynamicThreshold = std::max(10, static_cast<int>(keypoints_input.size() * 0.3));  
+            if (goodMatches.size() > dynamicThreshold) {  
+                std::cout << "The face image already exists." << std::endl;  
+                return true;  
+            }  
+//            cv::BFMatcher matcher(cv::NORM_L2);
+//            std::vector<std::vector<cv::DMatch>> knnMatches;
+//            matcher.knnMatch(descriptors_existing, descriptors_input, knnMatches, 2);
+//            std::vector<cv::DMatch> goodMatches;
+//            for (const auto& match : knnMatches) {
+//                if (match.size() > 1 && match[0].distance < RATIO_THRESH * match[1].distance) {
+//                    goodMatches.push_back(match[0]);
+//                }
+//            }
+//            if (goodMatches.size() > DE_THRESHOLD) {
+//                std::cout << "The face image already exists." << std::endl;
+//                return true;
+//            }
         }
     }
     return false;
@@ -45832,7 +45854,7 @@ void onFacesDetected(
     cv::Rect faceROI = faces[0]; // Save the first detected face
     cv::Mat faceImage = frame(faceROI).clone();
 	std::vector<cv::Rect> eyes;  
-	eyeCascade.detectMultiScale(faceImage, eyes, 1.5, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(20, 20));  
+	eyeCascade.detectMultiScale(faceImage, eyes, 1.4, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(20, 20));  
 	if (eyes.size() >= 2) { // Confirm it's a face   
 		cv::resize(faceImage, faceImage, cv::Size(80, 80));
 		if (checkExistingFace(face_folder, faceImage)) {
@@ -45918,7 +45940,7 @@ void startRecording(
 			cv::GaussianBlur(gray, gray, cv::Size(3, 3), 0);
             cv::equalizeHist(gray, gray);  
             std::vector<cv::Rect> faces;  
-            faceCascade.detectMultiScale(gray, faces, 1.5, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(80, 80));  //
+            faceCascade.detectMultiScale(gray, faces, 1.4, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(80, 80));  //
             if (!faces.empty()) {
                 onFacesDetected(faces, resized_frame, faces_img_folder, faces_img_folder_large);  
             }  
@@ -45928,7 +45950,7 @@ void startRecording(
             }  
             t_count_end = std::chrono::high_resolution_clock::now();  
             std::chrono::duration<double> duration = t_count_end - t_count_start;   
-            if (duration >= std::chrono::seconds(10)) {  
+            if (duration >= std::chrono::seconds(3)) {  
                 if (!CurrDir.empty()) {  
                     save_face_model_file_to_disk(CurrDir);  
                 }  
@@ -45943,12 +45965,14 @@ void startRecording(
                 cv::Mat compositeImage;  
                 cv::vconcat(faceThumbnails, compositeImage);  
                 cv::Rect screenRect = cv::getWindowImageRect("Face Detection");  
-                int visibleHeight = std::min(screenRect.height, compositeImage.rows);  
-                cv::Rect visibleRegion(0, 0, compositeImage.cols, visibleHeight);  
+                //int visibleHeight = std::min(screenRect.height, compositeImage.rows);  //visibleHeight
+                cv::Rect visibleRegion(0, 0, compositeImage.cols, compositeImage.rows);  
                 cv::Mat visibleThumbnails = compositeImage(visibleRegion);  
                 cv::imshow("Thumbnails", visibleThumbnails); 
                 if(screenWidth != 0 && screenHeight != 0){
-                    cv::moveWindow("Thumbnails", screenWidth - 90, 0);
+					cv::moveWindow("Thumbnails", screenWidth - 90, 0);
+					cv::waitKey(1);
+					cv::imshow("Thumbnails", visibleThumbnails); 
                 }
             }  
             cv::imshow("Face Detection", resized_frame);   
@@ -45963,6 +45987,32 @@ void startRecording(
 	}
     cv::destroyAllWindows();  
 }
+//faceCount
+int countJpgFiles(const std::string& folderPath) {  
+    if (!std::filesystem::exists(folderPath) || !std::filesystem::is_directory(folderPath)) {  
+        std::cerr << "Invalid folder path: " << folderPath << std::endl;  
+        return 0;  
+    }  
+    int jpgCount = 0;  
+	try{
+		// Iterate through the directory  
+		for (const auto& entry : std::filesystem::directory_iterator(folderPath)) {  
+			if (entry.is_regular_file()) { // Check if it's a regular file  
+				// Check if the file extension is .jpg (case-insensitive)  
+				if (entry.path().extension() == ".jpg" || entry.path().extension() == ".JPG") {  
+					++jpgCount;  
+				}  
+			}  
+		} 
+	}
+	catch(const std::exception& ex){
+		std::cerr << ex.what() << std::endl;
+	}
+	catch(...){
+		std::cerr << "Unknown errors." << std::endl; 
+	}
+    return jpgCount;  
+}  
 int main() {
     nemslib_webcam nemslib_j;
     CurrDir = nemslib_j.getExecutableDirectory();
@@ -45972,7 +46022,7 @@ int main() {
 	std::string eye_model_file = CurrDir + "/haarcascade_eye.xml";
 	std::string faces_img_storage_folder_path = CurrDir + "/captured";
     std::string faces_img_storage_folder_path_large = CurrDir + "/captured_large";
-    int webcamID = 1;
+    int webcamID = 0;
     if (!cap.open(webcamID)) {
         std::cerr << "Error: Unable to open the webcam!" << std::endl;
     }
@@ -45983,6 +46033,9 @@ int main() {
 	if(!eyeCascade.load(eye_model_file)){
 		std::cerr << "Error: Could not load eye Cascade model." << std::endl;
         return -1;
+	}
+	if(std::filesystem::exists(faces_img_storage_folder_path)){
+		faceCount = countJpgFiles(faces_img_storage_folder_path);
 	}
     getScreenSize(screenWidth,screenHeight);
     startRecording(facial_model_file, eye_model_file, faces_img_storage_folder_path, faces_img_storage_folder_path_large);
