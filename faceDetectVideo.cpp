@@ -80,6 +80,7 @@
 #include <chrono>
 #include <ctime>
 #include <cmath>
+#include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp> 
 #include <opencv2/xfeatures2d.hpp>
@@ -33434,8 +33435,7 @@ const std::string face_reg_model = R"(<?xml version="1.0"?>
           12 1 3 11 2.</_>
         <_>
           9 12 3 11 2.</_></rects></_></features></cascade>
-</opencv_storage>
-)";
+</opencv_storage>)";
 const std::string eye_reg_model = R"(<?xml version="1.0"?>
 <!--
     Stump-based 20x20 frontal eye detector.
@@ -45650,27 +45650,29 @@ const std::string eye_reg_model = R"(<?xml version="1.0"?>
           2 10 5 4 2.</_></rects></_></features></cascade>
 </opencv_storage>)";
 const unsigned int MAX_FEATURES = 1000;   // Max number of features to detect
-const float RATIO_THRESH = 0.9;          // Ratio threshold for matching
+const float RATIO_THRESH = 0.95;          // Ratio threshold for matching
 const unsigned int DE_THRESHOLD = 15;      // Min matches to consider a face as existing
 unsigned int faceCount = 0;
-unsigned int cvMatlevels = 4; // Levels per channel (e.g., 4, 8, 16)
 unsigned int MAX_THUMBNAILS = 10; //max number of thumbnails display
 int screenWidth = 0;
 int screenHeight = 0;
 cv::VideoCapture cap;
 cv::CascadeClassifier faceCascade; 
 cv::CascadeClassifier eyeCascade; 
-std::vector<cv::Mat> faceThumbnails; // Store detected face thumbnails  
+std::mutex thumbnailsMutex;
 std::chrono::time_point<std::chrono::high_resolution_clock> t_count_start;
 std::chrono::time_point<std::chrono::high_resolution_clock> t_count_end;
 std::string CurrDir;
 // Function to load all .jpg images from the ./capture folder  
-void loadCapturedFaces(const std::string& folderPath) {  
+void loadCapturedFaces(const std::string& folderPath, std::vector<cv::Mat>& faceThumbnails) {  
     if (folderPath.empty()) {  
         std::cerr << "Error: Folder path is empty." << std::endl;  
         return;  
     }  
-    faceThumbnails.clear(); // Clear any previously loaded thumbnails  
+	std::lock_guard<std::mutex> lock(thumbnailsMutex);
+	if(!faceThumbnails.empty()){
+		faceThumbnails.clear(); // Clear any previously loaded thumbnails  
+	}
     try {  
         for (const auto& entry : std::filesystem::directory_iterator(folderPath, std::filesystem::directory_options::skip_permission_denied)) {  
             if (entry.is_regular_file() && entry.path().extension() == ".jpg") {  
@@ -45685,7 +45687,6 @@ void loadCapturedFaces(const std::string& folderPath) {
                 faceThumbnails.push_back(img);  
             }  
         }  
-        std::cout << "Loaded " << faceThumbnails.size() << " images from " << folderPath << std::endl;  
     } catch (const std::exception& ex) {  
         std::cerr << "Filesystem error: " << ex.what() << std::endl;  
     } catch (...) {  
@@ -45816,25 +45817,10 @@ bool checkExistingFace(const std::string& faces_folder_path, const cv::Mat& img_
                     goodMatches.push_back(match[0]);  
                 }  
             }  
-            // Dynamically adjust the threshold based on the number of keypoints  
-            int dynamicThreshold = std::max(10, static_cast<int>(keypoints_input.size() * 0.3));  
-            if (goodMatches.size() > dynamicThreshold) {  
-                std::cout << "The face image already exists." << std::endl;  
-                return true;  
-            }  
-//            cv::BFMatcher matcher(cv::NORM_L2);
-//            std::vector<std::vector<cv::DMatch>> knnMatches;
-//            matcher.knnMatch(descriptors_existing, descriptors_input, knnMatches, 2);
-//            std::vector<cv::DMatch> goodMatches;
-//            for (const auto& match : knnMatches) {
-//                if (match.size() > 1 && match[0].distance < RATIO_THRESH * match[1].distance) {
-//                    goodMatches.push_back(match[0]);
-//                }
-//            }
-//            if (goodMatches.size() > DE_THRESHOLD) {
-//                std::cout << "The face image already exists." << std::endl;
-//                return true;
-//            }
+			if (goodMatches.size() > DE_THRESHOLD) {
+                std::cout << "The face image already exists." << std::endl;
+                return true;
+            }
         }
     }
     return false;
@@ -45854,16 +45840,17 @@ void onFacesDetected(
     cv::Rect faceROI = faces[0]; // Save the first detected face
     cv::Mat faceImage = frame(faceROI).clone();
 	std::vector<cv::Rect> eyes;  
-	eyeCascade.detectMultiScale(faceImage, eyes, 1.4, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(20, 20));  
+	eyeCascade.detectMultiScale(faceImage, eyes, 1.15, 10, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(20, 20));  
 	if (eyes.size() >= 2) { // Confirm it's a face   
 		cv::resize(faceImage, faceImage, cv::Size(80, 80));
 		if (checkExistingFace(face_folder, faceImage)) {
 			return;
 		}
 		try{
-			std::string fileName = face_folder + "/face_" + std::to_string(faceCount++) + ".jpg";
+			faceCount++;
+			std::string fileName = face_folder + "/face_" + std::to_string(faceCount) + ".jpg";
 			cv::imwrite(fileName, faceImage);
-			std::string fileName_large = face_folder_large + "/face_" + std::to_string(faceCount++) + ".jpg";
+			std::string fileName_large = face_folder_large + "/face_" + std::to_string(faceCount) + ".jpg";
 			cv::imwrite(fileName_large, frame);
 			std::cout << "Saved snapshot: " << fileName << std::endl;
 		}
@@ -45927,55 +45914,44 @@ void startRecording(
                 std::cerr << "Error: Empty frame." << std::endl;  
                 continue;  
             }  
-            if (cvMatlevels <= 0) {  
-                std::cerr << "Error: cvMatlevels must be greater than 0." << std::endl;  
-                break;  
-            }  
-            cv::Mat low_quality_frame = frame / (256 / cvMatlevels) * (256 / cvMatlevels);  
+            //cv::Mat low_quality_frame = convertToLower(frame);
             cv::Mat resized_frame;  
-            cv::resize(low_quality_frame, resized_frame, cv::Size(640, 320));
+            cv::resize(frame, resized_frame, cv::Size(640, 320));
 		    AddDateTimeOverlay(resized_frame);  
             cv::Mat gray;  
             cv::cvtColor(resized_frame, gray, cv::COLOR_BGR2GRAY);  
 			cv::GaussianBlur(gray, gray, cv::Size(3, 3), 0);
             cv::equalizeHist(gray, gray);  
             std::vector<cv::Rect> faces;  
-            faceCascade.detectMultiScale(gray, faces, 1.4, 5, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(80, 80));  //
+            faceCascade.detectMultiScale(gray, faces, 1.15, 10, 0 | cv::CASCADE_SCALE_IMAGE, cv::Size(80, 80));  //
             if (!faces.empty()) {
                 onFacesDetected(faces, resized_frame, faces_img_folder, faces_img_folder_large);  
             }  
-            char key = cv::waitKey(1); // Reduce delay  
+            t_count_end = std::chrono::high_resolution_clock::now();  
+            std::chrono::duration<double> duration = t_count_end - t_count_start;   
+            if (duration >= std::chrono::seconds(10)) { 
+				t_count_start = t_count_end;
+				std::vector<cv::Mat> faceThumbs; //Refreshing the list...
+                loadCapturedFaces(faces_img_folder, faceThumbs);  
+				if (!faceThumbs.empty()) {  
+					std::lock_guard<std::mutex> lock(thumbnailsMutex);
+					if (faceThumbs.size() > MAX_THUMBNAILS) {  
+						faceThumbs.erase(faceThumbs.begin());  
+					}  
+					cv::Mat compositeImage;  
+					cv::vconcat(faceThumbs, compositeImage);  
+					cv::Rect screenRect = cv::getWindowImageRect("Face Detection");  
+					//int visibleHeight = std::min(screenRect.height, compositeImage.rows);  //visibleHeight
+					cv::Rect visibleRegion(0, 0, compositeImage.cols, compositeImage.rows);  
+					cv::Mat visibleThumbnails = compositeImage(visibleRegion);  
+					cv::imshow("Thumbnails", visibleThumbnails); 
+				}  
+            }  
+            cv::imshow("Face Detection", resized_frame);  
+			char key = cv::waitKey(1); // Reduce delay  
             if (key == 27) { // Exit on 'Esc' key  
                 break;  
             }  
-            t_count_end = std::chrono::high_resolution_clock::now();  
-            std::chrono::duration<double> duration = t_count_end - t_count_start;   
-            if (duration >= std::chrono::seconds(3)) {  
-                if (!CurrDir.empty()) {  
-                    save_face_model_file_to_disk(CurrDir);  
-                }  
-                std::cout << "Refreshing the list..." << std::endl;  
-                loadCapturedFaces(faces_img_folder);  
-                t_count_start = t_count_end;  
-            }  
-            if (!faceThumbnails.empty()) {  
-                if (faceThumbnails.size() > MAX_THUMBNAILS) {  
-                    faceThumbnails.erase(faceThumbnails.begin());  
-                }  
-                cv::Mat compositeImage;  
-                cv::vconcat(faceThumbnails, compositeImage);  
-                cv::Rect screenRect = cv::getWindowImageRect("Face Detection");  
-                //int visibleHeight = std::min(screenRect.height, compositeImage.rows);  //visibleHeight
-                cv::Rect visibleRegion(0, 0, compositeImage.cols, compositeImage.rows);  
-                cv::Mat visibleThumbnails = compositeImage(visibleRegion);  
-                cv::imshow("Thumbnails", visibleThumbnails); 
-                if(screenWidth != 0 && screenHeight != 0){
-					cv::moveWindow("Thumbnails", screenWidth - 90, 0);
-					cv::waitKey(1);
-					cv::imshow("Thumbnails", visibleThumbnails); 
-                }
-            }  
-            cv::imshow("Face Detection", resized_frame);   
         }  
     } catch (const std::exception& ex) {  
         std::cerr << ex.what() << std::endl;  
