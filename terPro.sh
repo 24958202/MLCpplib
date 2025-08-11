@@ -1,18 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # kill_processes.sh
 # Repeatedly checks for target processes and terminates them.
-# Works on Linux and macOS.
+# Works on Linux and macOS (including the default Bash 3.2 on macOS).
 # Poll interval default: 200 ms (configurable via POLL_MS env var or -i flag).
-#
-# Usage:
-#   ./kill_processes.sh -p "procname1,procname2,..." [-i 200] [-f]
-#   or set env vars:
-#     TARGET_PROCS="proc1,proc2" POLL_MS=200 ./kill_processes.sh
-#
-# Notes:
-# - Matches by process name (command name as seen in ps/pgrep).
-# - Use -f to match full command line (pgrep -f).
-# - Excludes the script’s own PID.
 
 set -euo pipefail
 
@@ -27,6 +17,10 @@ usage() {
   echo "  -f   Match full command line (pgrep -f); default matches command name only"
   exit 1
 }
+
+# Initialize arrays early (important with set -u on macOS Bash 3.2)
+PGREP_OPTS=()
+PKILL_OPTS=()
 
 # Parse args
 while getopts ":p:i:f" opt; do
@@ -49,10 +43,6 @@ if ! [[ "$POLL_MS" =~ ^[0-9]+$ ]] || [[ "$POLL_MS" -le 0 ]]; then
   exit 2
 fi
 
-# Determine sleep command that supports sub-second timing
-SLEEP_CMD="sleep"
-SLEEP_ARG="$(awk -v ms="$POLL_MS" 'BEGIN{printf "%.3f", ms/1000}')"
-
 # Ensure pgrep/pkill exist
 if ! command -v pgrep >/dev/null 2>&1 || ! command -v pkill >/dev/null 2>&1; then
   echo "Error: pgrep/pkill required but not found. Install procps (Linux) or use macOS default tools."
@@ -62,25 +52,31 @@ fi
 # Convert comma/space-separated list to array
 IFS=', ' read -r -a PROC_LIST <<< "$TARGET_PROCS"
 
-# Build pgrep options
-PGREP_OPTS=()
-PKILL_OPTS=()
+# Build pgrep/pkill options
 if $FULLCMD_MATCH; then
   PGREP_OPTS+=("-f")
   PKILL_OPTS+=("-f")
 fi
 
+# Correctly set self PID
 SELF_PID="$"
 
 echo "Monitoring processes every ${POLL_MS} ms..."
 echo "Targets: ${PROC_LIST[*]}"
-$FULLCMD_MATCH && echo "Matching mode: full command line" || echo "Matching mode: command name"
+if $FULLCMD_MATCH; then
+  echo "Matching mode: full command line"
+else
+  echo "Matching mode: command name"
+fi
 
 # Helper: get PIDs for a single name, excluding self
 get_pids_for_name() {
   local name="$1"
-  # -x ensures exact match of the name when not using -f; keep off when -f is set
-  local opts=("${PGREP_OPTS[@]}")
+  # Use nounset-safe array expansion pattern
+  local opts=()
+  # Append PGREP_OPTS if any
+  eval 'opts+=(${PGREP_OPTS[@]+"${PGREP_OPTS[@]}"})'
+  # -x ensures exact match when not using -f
   if ! $FULLCMD_MATCH; then
     opts+=("-x")
   fi
@@ -90,25 +86,39 @@ get_pids_for_name() {
 
 terminate_pids() {
   local name="$1"
-  local pids=("$@"); pids=("${pids[@]:1}") # drop name
+  shift
+  local pids=("$@")
   if [[ "${#pids[@]}" -eq 0 ]]; then
     return 0
   fi
   echo "Found $name: PIDs ${pids[*]} -> sending SIGTERM"
+
   # Graceful stop
-  pkill "${PKILL_OPTS[@]}" -TERM -x -- "$name" 2>/dev/null || true
+  if $FULLCMD_MATCH; then
+    pkill ${PKILL_OPTS[@]+"${PKILL_OPTS[@]}"} -TERM -- "$name" 2>/dev/null || true
+  else
+    pkill ${PKILL_OPTS[@]+"${PKILL_OPTS[@]}"} -TERM -x -- "$name" 2>/dev/null || true
+  fi
+
   # Wait briefly (500 ms) to allow clean exit
   sleep 0.5
+
   # Re-check remaining PIDs
   local remaining=()
+  local pid
   for pid in "${pids[@]}"; do
     if kill -0 "$pid" 2>/dev/null; then
       remaining+=("$pid")
     fi
   done
+
   if [[ "${#remaining[@]}" -gt 0 ]]; then
     echo "Forcing SIGKILL for $name: remaining PIDs ${remaining[*]}"
-    pkill "${PKILL_OPTS[@]}" -KILL -x -- "$name" 2>/dev/null || true
+    if $FULLCMD_MATCH; then
+      pkill ${PKILL_OPTS[@]+"${PKILL_OPTS[@]}"} -KILL -- "$name" 2>/dev/null || true
+    else
+      pkill ${PKILL_OPTS[@]+"${PKILL_OPTS[@]}"} -KILL -x -- "$name" 2>/dev/null || true
+    fi
   fi
 }
 
@@ -116,10 +126,18 @@ terminate_pids() {
 while true; do
   for name in "${PROC_LIST[@]}"; do
     [[ -z "$name" ]] && continue
-    mapfile -t pids < <(get_pids_for_name "$name" || true)
+    # Bash 3.2-compatible replacement for mapfile
+    pids=()
+    while IFS= read -r pid; do
+      [[ -n "$pid" ]] && pids+=("$pid")
+    done < <(get_pids_for_name "$name" || true)
+
     if [[ "${#pids[@]}" -gt 0 ]]; then
       terminate_pids "$name" "${pids[@]}"
     fi
   done
-  $SLEEP_CMD "$SLEEP_ARG"
+
+  # Sleep in seconds with millisecond precision
+  SLEEP_SEC="$(awk -v ms="$POLL_MS" 'BEGIN{printf "%.3f", ms/1000}')"
+  sleep "$SLEEP_SEC"
 done
