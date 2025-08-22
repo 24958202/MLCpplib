@@ -15,7 +15,7 @@ def check_ffmpeg_installed():
 
 def download_youtube_video(url, output_path=None, resolution='best', audio_only=False):
     """
-    Downloads a YouTube video or its audio using yt-dlp, with automatic conversion to MP4 for videos.
+    Downloads a YouTube video or its audio using yt-dlp, ensuring MP4 output with both video and audio for videos.
 
     Parameters:
     - url: str, the YouTube video URL
@@ -54,20 +54,24 @@ def download_youtube_video(url, output_path=None, resolution='best', audio_only=
             })
             print(f"Downloading audio from: {url}")
         else:
-            # Video download with MP4 preference and conversion
-            format_str = 'bestvideo[height<={res}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={res}]+bestaudio/best[height<={res}]' if resolution != 'best' else 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
-            # Convert resolution to int if possible (e.g., '720p' -> 720)
-            res_num = resolution.rstrip('p') if resolution.endswith('p') else resolution
-            format_str = format_str.format(res=res_num) if resolution != 'best' else format_str
-            ydl_opts['format'] = format_str
+            # Video download: Prioritize combined MP4, then separate streams, ensuring video is included
+            if resolution == 'best':
+                format_str = 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
+            else:
+                # Convert resolution to int if possible (e.g., '720p' -> 720)
+                res_num = resolution.rstrip('p') if resolution.endswith('p') else resolution
+                format_str = f'best[height<={res_num}][ext=mp4]/bestvideo[height<={res_num}][ext=mp4]+bestaudio[ext=m4a]/best[height<={res_num}]/bestvideo[height<={res_num}]+bestaudio/best[height<={res_num}]'
             
-            # Add postprocessor to convert to MP4 if necessary
+            ydl_opts['format'] = format_str
+            ydl_opts['merge_output_format'] = 'mp4'  # Ensure merged output is MP4
+            
+            # Add postprocessor to convert/remux to MP4 if necessary
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegVideoConvertor',
                 'preferedformat': 'mp4',  # Convert to mp4 (remux if possible)
             }]
             
-            print(f"Downloading video from: {url} at up to {resolution} (will be converted to MP4 if needed)")
+            print(f"Downloading video from: {url} at up to {resolution} (ensuring MP4 with video and audio)")
         
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -76,7 +80,7 @@ def download_youtube_video(url, output_path=None, resolution='best', audio_only=
             if audio_only:
                 file_path = file_path.rsplit('.', 1)[0] + '.mp3'
             else:
-                # For video, ensure it's .mp4 after conversion
+                # For video, ensure it's .mp4 after processing
                 file_path = file_path.rsplit('.', 1)[0] + '.mp4'
             print(f"Download completed! File saved at: {file_path}")
             return file_path
@@ -105,5 +109,5 @@ if __name__ == "__main__":
 # 2. Install FFmpeg: On macOS, if you have Homebrew installed (brew --version to check), run 'brew install ffmpeg'. Otherwise, download from https://ffmpeg.org/download.html and add it to your PATH.
 # 3. Usage example: python script.py "https://www.youtube.com/watch?v=example" -r 720p -o /path/to/save
 # 4. Be aware that downloading YouTube videos may violate their Terms of Service. Use responsibly and for personal use only.
-# 5. This script now prefers MP4 formats where available and uses FFmpeg to convert to MP4 if the downloaded format is WebM or similar.
-# 6. For audio, it downloads as MP3. Adjust 'preferredquality' in the code if you want different bitrate.
+# 5. This script now prioritizes formats that include both video and audio, prefers MP4, and uses merging/conversion to ensure the output MP4 has video. If the video still plays without visuals, it might be a player/codec issue—try opening in VLC or check the file properties.
+# 6. For audio-only downloads, it outputs MP3. Adjust 'preferredquality' in the code if you want a different bitrate.
