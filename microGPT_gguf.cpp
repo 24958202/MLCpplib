@@ -13,6 +13,10 @@
 //
 // Compile: g++ -std=c++17 -O2 -o microGPT_gguf microGPT_gguf.cpp
 
+// microGPT_gguf.cpp
+// 
+// Compile: g++ -std=c++20 -O2 -o microGPT_gguf microGPT_gguf.cpp
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -30,6 +34,13 @@
 #include <cstring>
 #include <cstdint>
 #include <sstream>
+#include <span>
+
+// POSIX headers for mmap
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 // ============================================================================
 // Part 1: Autograd Engine (needed for training)
@@ -206,36 +217,8 @@ DVec d_rmsnorm(const DVec& x) {
 }
 
 // ============================================================================
-// Part 3: GGUF format (simplified, compatible with llama.cpp design philosophy)
+// Part 3: GGUF format
 // ============================================================================
-//
-// Binary layout:
-//
-//   +------------------------------------------+
-//   |  Magic:      "GGUF" (4 bytes)            |
-//   |  Version:    uint32_t = 3                 |
-//   |  n_tensors:  uint32_t                    |
-//   |  n_metadata: uint32_t                    |
-//   +------------------------------------------+
-//   |  Metadata KV pairs (x n_metadata):       |
-//   |    key_len:   uint32_t                   |
-//   |    key:       char[key_len]              |
-//   |    val_type:  uint32_t (0=int,1=float,   |
-//   |                          2=string)       |
-//   |    val:       depends on val_type        |
-//   +------------------------------------------+
-//   |  Tensor Info entries (x n_tensors):      |
-//   |    name_len:  uint32_t                   |
-//   |    name:      char[name_len]             |
-//   |    nrows:     uint32_t                   |
-//   |    ncols:     uint32_t                   |
-//   |    offset:    uint64_t (data offset)     |
-//   +------------------------------------------+
-//   |  Tensor Data (FP32, row-major):          |
-//   |    tensor[0].data[nrowsxncols]           |
-//   |    tensor[1].data[nrowsxncols]           |
-//   |    ...                                   |
-//   +------------------------------------------+
 
 struct GGUFMeta {
     std::string key;
@@ -279,7 +262,6 @@ public:
         metas.push_back({key, GGUFMeta::STRING, 0, 0.0, val});
     }
 
-    // Add a tensor (name + 2D matrix)
     void add_tensor(const std::string& name, const DMat& data) {
         uint64_t offset = 0;
         if (!tensor_datas.empty()) {
@@ -290,12 +272,11 @@ public:
         tensor_datas.push_back(data);
     }
 
-    // Extract pure double matrix from autograd Vec2D and add as tensor
     void add_tensor_from_val(const std::string& name, const std::vector<std::vector<ValuePtr>>& data) {
         DMat mat(data.size(), DVec(data[0].size()));
         for (size_t i = 0; i < data.size(); ++i)
             for (size_t j = 0; j < data[i].size(); ++j)
-                mat[i][j] = data[i][j]->data;  // only take .data, discard grad and computation graph!
+                mat[i][j] = data[i][j]->data; 
         add_tensor(name, mat);
     }
 
@@ -335,22 +316,37 @@ public:
             }
         }
 
-        // (3) Tensor info
+        // (3) Tensor info with 32-Byte Alignment Calculation
+        uint64_t current_offset = out.tellp();
+        for (auto& t : tensor_infos) {
+            current_offset += 4 + t.name.size() + 4 + 4 + 8;
+        }
+
+        uint64_t alignment = 32;
+        uint64_t padding = (alignment - (current_offset % alignment)) % alignment;
+        uint64_t data_start_offset = current_offset + padding;
+
         for (auto& t : tensor_infos) {
             uint32_t nlen = (uint32_t)t.name.size();
             out.write(reinterpret_cast<char*>(&nlen), 4);
             out.write(t.name.data(), nlen);
             out.write(reinterpret_cast<char*>(&t.nrows), 4);
             out.write(reinterpret_cast<char*>(&t.ncols), 4);
+            
+            t.offset += data_start_offset; // Apply padding shift
             out.write(reinterpret_cast<char*>(&t.offset), 8);
         }
 
-        // (4) Tensor data (FP32 format, consistent with llama.cpp)
+        // Write alignment padding bytes
+        std::vector<char> pad_bytes(padding, 0);
+        out.write(pad_bytes.data(), padding);
+
+        // (4) Tensor data (FP32 format)
         for (size_t ti = 0; ti < tensor_datas.size(); ++ti) {
             auto& mat = tensor_datas[ti];
             for (auto& row : mat) {
                 for (double val : row) {
-                    float fval = (float)val;  // store as FP32 (GGUF standard)
+                    float fval = (float)val;  
                     out.write(reinterpret_cast<char*>(&fval), sizeof(float));
                 }
             }
@@ -358,14 +354,13 @@ public:
 
         out.close();
         std::cout << "[OK] GGUF saved: " << tensor_infos.size() << " tensors, "
-                  << metas.size() << " metadata entries\n";
+                  << metas.size() << " metadata entries (Aligned to " << alignment << " bytes)\n";
     }
 };
 
-// --- GGUF Reader ---
+// --- GGUF Reader (Optimized with mmap) ---
 
 struct GGUFModel {
-    // Hyperparameters
     int n_layer;
     int n_embd;
     int block_size;
@@ -374,13 +369,8 @@ struct GGUFModel {
     int vocab_size;
     int BOS;
 
-    // Tokenizer
     std::vector<char> uchars;
-
-    // Weights (pure double, no autograd)
     std::map<std::string, DMat> weights;
-
-    // Metadata (all retained, useful for debugging)
     std::vector<GGUFMeta> metas;
 };
 
@@ -388,116 +378,133 @@ class GGUFReader {
 public:
     GGUFModel load(const std::string& path) {
         GGUFModel model;
-        std::ifstream in(path, std::ios::binary);
-        if (!in.is_open()) {
+
+        // 1. Open file descriptor
+        int fd = open(path.c_str(), O_RDONLY);
+        if (fd == -1) {
             std::cerr << "ERROR: Cannot open " << path << " for reading\n";
             return model;
         }
 
+        // 2. Get file size
+        struct stat sb;
+        if (fstat(fd, &sb) == -1) {
+            close(fd);
+            return model;
+        }
+        size_t file_size = sb.st_size;
+
+        // 3. Map file into virtual memory
+        void* mapped_data = mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        close(fd); // Safe to close fd once mapped
+
+        if (mapped_data == MAP_FAILED) {
+            std::cerr << "ERROR: mmap failed\n";
+            return model;
+        }
+
+        const uint8_t* ptr = static_cast<const uint8_t*>(mapped_data);
+
         // (1) File header
-        uint32_t magic, version, n_tensors, n_metas;
-        in.read(reinterpret_cast<char*>(&magic), 4);
-        in.read(reinterpret_cast<char*>(&version), 4);
-        in.read(reinterpret_cast<char*>(&n_tensors), 4);
-        in.read(reinterpret_cast<char*>(&n_metas), 4);
+        uint32_t magic = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+        uint32_t version = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+        uint32_t n_tensors = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+        uint32_t n_metas = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
 
         if (magic != 0x46554747) {
             std::cerr << "ERROR: Not a GGUF file (bad magic)\n";
+            munmap(mapped_data, file_size);
             return model;
         }
+        
         std::cout << "GGUF version: " << version << ", tensors: " << n_tensors
                   << ", metadata: " << n_metas << "\n";
 
         // (2) Metadata
         for (uint32_t i = 0; i < n_metas; ++i) {
             GGUFMeta m;
-            uint32_t klen;
-            in.read(reinterpret_cast<char*>(&klen), 4);
-            m.key.resize(klen);
-            in.read(m.key.data(), klen);
+            uint32_t klen = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+            m.key = std::string(reinterpret_cast<const char*>(ptr), klen); ptr += klen;
 
-            uint32_t vtype;
-            in.read(reinterpret_cast<char*>(&vtype), 4);
+            uint32_t vtype = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
             m.type = (GGUFMeta::Type)vtype;
 
             if (m.type == GGUFMeta::INT) {
-                in.read(reinterpret_cast<char*>(&m.int_val), 8);
+                m.int_val = *reinterpret_cast<const int64_t*>(ptr); ptr += 8;
             } else if (m.type == GGUFMeta::FLOAT) {
-                in.read(reinterpret_cast<char*>(&m.float_val), 8);
+                m.float_val = *reinterpret_cast<const double*>(ptr); ptr += 8;
             } else {
-                uint32_t slen;
-                in.read(reinterpret_cast<char*>(&slen), 4);
-                m.str_val.resize(slen);
-                in.read(m.str_val.data(), slen);
+                uint32_t slen = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+                m.str_val = std::string(reinterpret_cast<const char*>(ptr), slen); ptr += slen;
             }
             model.metas.push_back(m);
         }
 
-        // Restore hyperparameters from metadata
+        // Restore hyperparameters
         for (auto& m : model.metas) {
-            if (m.key == "n_layer")     model.n_layer    = (int)m.int_val;
-            if (m.key == "n_embd")      model.n_embd     = (int)m.int_val;
-            if (m.key == "block_size")  model.block_size = (int)m.int_val;
-            if (m.key == "n_head")      model.n_head     = (int)m.int_val;
-            if (m.key == "head_dim")    model.head_dim   = (int)m.int_val;
-            if (m.key == "vocab_size")  model.vocab_size = (int)m.int_val;
-            if (m.key == "bos_token")   model.BOS        = (int)m.int_val;
+            if (m.key == "n_layer")         model.n_layer    = (int)m.int_val;
+            if (m.key == "n_embd")          model.n_embd     = (int)m.int_val;
+            if (m.key == "block_size")      model.block_size = (int)m.int_val;
+            if (m.key == "n_head")          model.n_head     = (int)m.int_val;
+            if (m.key == "head_dim")        model.head_dim   = (int)m.int_val;
+            if (m.key == "vocab_size")      model.vocab_size = (int)m.int_val;
+            if (m.key == "bos_token")       model.BOS        = (int)m.int_val;
             if (m.key == "tokenizer_chars") {
                 model.uchars.assign(m.str_val.begin(), m.str_val.end());
             }
         }
         model.head_dim = model.n_embd / model.n_head;
 
-        std::cout << "  n_layer="    << model.n_layer
-                  << "  n_embd="     << model.n_embd
-                  << "  block_size=" << model.block_size
-                  << "  n_head="     << model.n_head
-                  << "  vocab_size=" << model.vocab_size << "\n";
-
         // (3) Tensor info
         struct RawTensorInfo { std::string name; uint32_t nrows, ncols; uint64_t offset; };
         std::vector<RawTensorInfo> tinfos(n_tensors);
 
         for (uint32_t i = 0; i < n_tensors; ++i) {
-            uint32_t nlen;
-            in.read(reinterpret_cast<char*>(&nlen), 4);
-            tinfos[i].name.resize(nlen);
-            in.read(tinfos[i].name.data(), nlen);
-            in.read(reinterpret_cast<char*>(&tinfos[i].nrows), 4);
-            in.read(reinterpret_cast<char*>(&tinfos[i].ncols), 4);
-            in.read(reinterpret_cast<char*>(&tinfos[i].offset), 8);
+            uint32_t nlen = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+            tinfos[i].name = std::string(reinterpret_cast<const char*>(ptr), nlen); ptr += nlen;
+            tinfos[i].nrows = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+            tinfos[i].ncols = *reinterpret_cast<const uint32_t*>(ptr); ptr += 4;
+            tinfos[i].offset = *reinterpret_cast<const uint64_t*>(ptr); ptr += 8;
         }
 
-        // (4) Read tensor data (FP32 -> double)
+        // (4) Read tensor data directly from memory map
         for (auto& ti : tinfos) {
             DMat mat(ti.nrows, DVec(ti.ncols));
+            
+            // Pointer directly to the aligned tensor data on disk/virtual memory
+            const float* tensor_data_ptr = reinterpret_cast<const float*>(
+                static_cast<const uint8_t*>(mapped_data) + ti.offset
+            );
+
+            size_t idx = 0;
             for (uint32_t r = 0; r < ti.nrows; ++r) {
                 for (uint32_t c = 0; c < ti.ncols; ++c) {
-                    float fval;
-                    in.read(reinterpret_cast<char*>(&fval), sizeof(float));
-                    mat[r][c] = (double)fval;
+                    mat[r][c] = static_cast<double>(tensor_data_ptr[idx++]);
                 }
             }
             model.weights[ti.name] = mat;
-            std::cout << "  loaded tensor: " << ti.name
+            std::cout << "  mapped tensor: " << ti.name
                       << " [" << ti.nrows << "x" << ti.ncols << "]\n";
         }
 
-        in.close();
+        // Unmap memory after copying to DMat. 
+        // (If rewriting inference to use span<float>, this unmap happens in a destructor instead).
+        munmap(mapped_data, file_size);
+
         std::cout << "[OK] GGUF loaded: " << model.weights.size() << " tensors\n";
         return model;
     }
 };
 
 // ============================================================================
-// Part 4: Pure inference GPT forward pass (used after loading GGUF, no autograd overhead)
+// Part 4: Pure inference GPT forward pass
 // ============================================================================
 
 DVec gpt_inference(
     int token_id, int pos_id,
     const GGUFModel& model,
     std::vector<std::vector<DVec>>& keys,    // KV Cache: keys[layer][timestep]
-    std::vector<std::vector<DVec>>& values    // KV Cache: values[layer][timestep]
+    std::vector<std::vector<DVec>>& values   // KV Cache: values[layer][timestep]
 ) {
     // Token + Position Embedding
     DVec tok_emb = model.weights.at("wte")[token_id];
@@ -528,10 +535,8 @@ DVec gpt_inference(
         for (int h = 0; h < model.n_head; ++h) {
             int hs = h * model.head_dim;
 
-            // Query for current position (slice for this head)
             DVec q_h(q.begin() + hs, q.begin() + hs + model.head_dim);
 
-            // Keys and values from all past positions (slice for this head)
             std::vector<DVec> k_h, v_h;
             for (const auto& ki : keys[li]) {
                 k_h.push_back(DVec(ki.begin() + hs, ki.begin() + hs + model.head_dim));
@@ -574,12 +579,11 @@ DVec gpt_inference(
         for (int i = 0; i < model.n_embd; ++i) x[i] += x_residual[i];
     }
 
-    // Output projection -> logits
     return d_linear(x, model.weights.at("lm_head"));
 }
 
 // ============================================================================
-// Part 5: GGUF save function (called after training)
+// Part 5: GGUF save function
 // ============================================================================
 
 void save_gguf(
@@ -604,11 +608,11 @@ void save_gguf(
     writer.add_meta_int("trained_steps", trained_steps);
     writer.add_meta_float("final_loss", final_loss);
 
-    // (2) Write tokenizer (encode character table as a single string)
+    // (2) Write tokenizer
     std::string tok_str(uchars.begin(), uchars.end());
     writer.add_meta_string("tokenizer_chars", tok_str);
 
-    // (3) Write weights (only take .data, discard grad, computation graph, and Adam moments)
+    // (3) Write weights
     for (auto& [name, mat] : state_dict) {
         writer.add_tensor_from_val(name, mat);
     }
@@ -852,7 +856,7 @@ int main(int argc, char* argv[]) {
     save_gguf(gguf_path, state_dict, n_layer, n_embd, block_size, n_head,
               vocab_size, BOS, uchars, num_steps, final_loss);
 
-    // 9. Load GGUF and run inference (verify save/load correctness)
+    // 9. Load GGUF and run inference
     std::cout << "\n[>>] Loading model from " << gguf_path << " ...\n";
     GGUFReader reader;
     GGUFModel model = reader.load(gguf_path);
