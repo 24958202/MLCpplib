@@ -218,6 +218,34 @@ DVec d_rmsnorm(const DVec& x) {
 
 // ============================================================================
 // Part 3: GGUF format
+//
+// Binary layout:
+//
+//   +------------------------------------------+
+//   |  Magic:      "GGUF" (4 bytes)            |
+//   |  Version:    uint32_t = 3                 |
+//   |  n_tensors:  uint32_t                    |
+//   |  n_metadata: uint32_t                    |
+//   +------------------------------------------+
+//   |  Metadata KV pairs (x n_metadata):       |
+//   |    key_len:   uint32_t                   |
+//   |    key:       char[key_len]              |
+//   |    val_type:  uint32_t (0=int,1=float,   |
+//   |                          2=string)       |
+//   |    val:       depends on val_type        |
+//   +------------------------------------------+
+//   |  Tensor Info entries (x n_tensors):      |
+//   |    name_len:  uint32_t                   |
+//   |    name:      char[name_len]             |
+//   |    nrows:     uint32_t                   |
+//   |    ncols:     uint32_t                   |
+//   |    offset:    uint64_t (data offset)     |
+//   +------------------------------------------+
+//   |  Tensor Data (FP32, row-major):          |
+//   |    tensor[0].data[nrowsxncols]           |
+//   |    tensor[1].data[nrowsxncols]           |
+//   |    ...                                   |
+//   +------------------------------------------+
 // ============================================================================
 
 struct GGUFMeta {
