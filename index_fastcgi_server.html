@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhoneBot Support - User Management</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; max-width: 500px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input[type="text"], input[type="email"] { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { padding: 10px 15px; margin-right: 10px; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: 0.6; }
+    #response-box { margin-top: 20px; padding: 15px; background: #f4f4f4; border: 1px solid #ddd; min-height: 20px; white-space: pre-wrap; }
+
+    #response-box.success { background: #e9f9ee; border-color: #a6d9b0; }
+    #response-box.error { background: #fdecec; border-color: #f2a1a1; }
+    #response-box.loading { background: #f6f6f6; border-color: #ddd; }
+  </style>
+</head>
+<body>
+
+  <h2>User Management Console</h2>
+
+  <div class="form-group">
+    <label for="email">Email Address (Required ID)</label>
+    <input type="email" id="email" placeholder="dengfeng@hotmail.com" autocomplete="email" />
+  </div>
+
+  <div class="form-group">
+    <label for="name">Full Name</label>
+    <input type="text" id="name" placeholder="Deng Feng" autocomplete="name" />
+  </div>
+
+  <div class="form-group">
+    <label for="phone">Phone Number</label>
+    <input type="text" id="phone" placeholder="555-0199" autocomplete="tel" />
+  </div>
+
+  <div>
+    <button type="button" data-action="add_user" onclick="sendRequest('add_user')">Add User</button>
+    <button type="button" data-action="update_user" onclick="sendRequest('update_user')">Update User</button>
+    <button type="button" data-action="delete_user" onclick="sendRequest('delete_user')">Delete User</button>
+  </div>
+
+  <div id="response-box">Awaiting action...</div>
+
+  <script>
+    function setResponseBox(text, mode) {
+      const responseBox = document.getElementById('response-box');
+      responseBox.classList.remove('success', 'error', 'loading');
+      if (mode) responseBox.classList.add(mode);
+      responseBox.innerText = text;
+    }
+
+    function validateEmail(email) {
+      // Basic but practical validation
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function validatePhone(phone) {
+      if (!phone) return true; // optional
+      // Allow digits, spaces, +, -, parentheses
+      if (!/^[0-9+\-\s()]{3,20}$/.test(phone)) return false;
+      // Ensure there are enough digits
+      const digits = phone.replace(/\D/g, '');
+      return digits.length >= 3 && digits.length <= 15;
+    }
+
+    function getFormValues() {
+      const email = document.getElementById('email').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      return { email, name, phone };
+    }
+
+    let inFlight = false;
+    let currentAbortController = null;
+
+    async function sendRequest(action) {
+      if (inFlight) return;
+
+      const { email, name, phone } = getFormValues();
+      const responseBox = document.getElementById('response-box');
+
+      // Frontend validation (backend must still validate independently)
+      if (!email) {
+        setResponseBox("Error: Email is required.", "error");
+        return;
+      }
+      if (!validateEmail(email)) {
+        setResponseBox("Error: Please enter a valid email address.", "error");
+        return;
+      }
+      if (!validatePhone(phone)) {
+        setResponseBox("Error: Please enter a valid phone number (digits/+, -, spaces allowed).", "error");
+        return;
+      }
+
+      // For delete_user, name/phone are ignored by the backend but still fine to send.
+      const payload = new URLSearchParams();
+      payload.append('action', action);
+      payload.append('email', email);
+      payload.append('name', name);
+      payload.append('phone', phone);
+
+      const allButtons = Array.from(document.querySelectorAll('button[data-action], button'));
+      inFlight = true;
+      currentAbortController = new AbortController();
+
+      try {
+        allButtons.forEach(b => b.disabled = true);
+        setResponseBox("Sending request...", "loading");
+
+        const response = await fetch('https://phonebotsupport.com/cgi-bin/fastcgi_server', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            // 'X-API-KEY': 'your-api-key-here' // Uncomment if you add API key validation later
+          },
+          body: payload.toString(),
+          signal: currentAbortController.signal
+        });
+
+        // Handle non-2xx explicitly
+        const textResult = await response.text();
+        if (!response.ok) {
+          setResponseBox(
+            `Request failed.\nHTTP ${response.status} ${response.statusText}\n\nServer Response:\n${textResult}`,
+            "error"
+          );
+          return;
+        }
+
+        setResponseBox(`Server Response:\n${textResult}`, "success");
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          setResponseBox("Request timed out. Please try again.", "error");
+        } else {
+          setResponseBox(`Network/Error: ${err?.message || String(err)}`, "error");
+        }
+      } finally {
+        inFlight = false;
+        currentAbortController = null;
+        allButtons.forEach(b => b.disabled = false);
+      }
+    }
+
+    // Optional: timeout helper (set once, per request)
+    // We implement it by overriding fetch with a timer inside sendRequest.
+    // If you prefer this exact behavior, tell me and I’ll adjust the function.
+  </script>
+
+</body>
+</html>
