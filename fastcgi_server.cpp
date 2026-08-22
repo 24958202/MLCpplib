@@ -19,7 +19,7 @@
 // ── Database Configuration ──
 constexpr const char* DB_HOST = "localhost";
 constexpr const char* DB_USER = "cpp_user";
-constexpr const char* DB_PASS = "!Njxl2307!Njxl2307";
+constexpr const char* DB_PASS = "STRONGPASSWORD";
 constexpr const char* DB_NAME = "phonebot_db";
 constexpr unsigned int DB_PORT = 3306;
 
