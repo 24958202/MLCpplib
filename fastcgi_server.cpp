@@ -19,7 +19,7 @@
 // ── Database Configuration ──
 constexpr const char* DB_HOST = "localhost";
 constexpr const char* DB_USER = "cpp_user";
-constexpr const char* DB_PASS = "STRONGPASSWORD";
+constexpr const char* DB_PASS = "StrongPassword";
 constexpr const char* DB_NAME = "phonebot_db";
 constexpr unsigned int DB_PORT = 3306;
 
@@ -96,9 +96,8 @@ private:
     template<typename... Args>
     static void log(const char* level, const std::format_string<Args...> fmt, Args&&... args) {
         auto now = std::chrono::system_clock::now();
-        auto time = std::chrono::system_clock::to_time_t(now);
         std::cerr << std::format("[{}] [{}] {}\n", 
-            std::format("{:%H:%M:%S}", std::chrono::system_clock::to_time_t(now)),
+            std::format("{:%H:%M:%S}", now), // Fix: Pass the time_point directly
             level,
             std::format(fmt, std::forward<Args>(args)...));
     }
@@ -433,10 +432,11 @@ int main() {
             Logger::info("Shutdown initiated - requesting stop tokens");
         });
         
-        // Sleep until stop is requested
-        std::unique_lock lock(std::mutex{});
+        // Fix: Use a persistent mutex variable instead of a temporary one
+        std::mutex wait_mutex; 
+        std::unique_lock lock(wait_mutex);
         std::condition_variable_any cv;
-        cv.wait(lock, g_stop_source.get_token());
+        cv.wait(lock, g_stop_source.get_token(), [] { return false; });
     }
 
     Logger::info("Waiting for acceptors to finish accepting requests...");
