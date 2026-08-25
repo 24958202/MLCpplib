@@ -1,371 +1,234 @@
 #include <iostream>
-#include <vector>
-#include <deque>
-#include <map>
-#include <string>
-#include <chrono>
-#include <thread>
-#include <filesystem>
 #include <fstream>
-#include <random>
-#include <system_error>
-#include <optional>  // FIXED: Required for std::optional
-#include <cstdlib>   // FIXED: Required for exit()
+#include <string>
+#include <queue>
+#include <mutex>
+#include <thread>
+#include <chrono>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <array>
+#include <map>
+#include <vector>
+#include <format>         // For std::format in Logger
+#include <boost/json.hpp> // For JSON logging and parsing
 
-#if defined(_WIN32)
-    #define NOMINMAX
-    #include <windows.h>
-#elif defined(__APPLE__)
-    #include <mach-o/dyld.h>
-#elif defined(__linux__)
-    #include <unistd.h>
-#else
-    #error "Executable-path lookup is not implemented for this platform."
-#endif
-
-namespace fs = std::filesystem;
-
-// =========================================================
-// Cross-Platform Process Management Abstraction
-// =========================================================
 #ifdef _WIN32
-    const std::string SLAVE_EXE_NAME = "slave.exe";
-    struct ProcessHandle {
-        HANDLE hProcess;
-        HANDLE hThread;
-        DWORD pid;
-    };
-#else
-    #include <sys/wait.h>
-    #include <signal.h>
-    #include <unistd.h> // FIXED: Required for fork, execl, kill across all POSIX (macOS included)
-    const std::string SLAVE_EXE_NAME = "slave";
-    struct ProcessHandle {
-        pid_t pid;
-    };
-#endif
-
-
-namespace nemslib {
-
-std::string get_executable_dir()
-{
-    namespace fs = std::filesystem;
-    fs::path executablePath;
-#if defined(_WIN32)
-    std::vector<wchar_t> buffer(260);
-    while (true) {
-        const DWORD length = GetModuleFileNameW(
-            nullptr,
-            buffer.data(),
-            static_cast<DWORD>(buffer.size())
-        );
-        if (length == 0) {
-            return {};
-        }
-        if (length < buffer.size() - 1) {
-            executablePath = fs::path(std::wstring(buffer.data(), length));
-            break;
-        }
-        buffer.resize(buffer.size() * 2);
-    }
+#include <windows.h>
 #elif defined(__APPLE__)
-    uint32_t size = 0;
-    _NSGetExecutablePath(nullptr, &size);
-    std::vector<char> buffer(size);
-    if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
-        return {};
-    }
-    executablePath = fs::path(buffer.data());
-#elif defined(__linux__)
-    std::vector<char> buffer(256);
-    while (true) {
-        const ssize_t length = readlink(
-            "/proc/self/exe",
-            buffer.data(),
-            buffer.size()
-        );
-        if (length < 0) {
-            return {};
-        }
-        if (static_cast<std::size_t>(length) < buffer.size()) {
-            executablePath = fs::path(
-                std::string(buffer.data(), static_cast<std::size_t>(length))
-            );
-            break;
-        }
-        buffer.resize(buffer.size() * 2);
-    }
+#include <mach/mach_host.h>
+#include <mach/mach_init.h>
+#include <unistd.h>
+#else
+#include <unistd.h>
 #endif
-    std::error_code ec;
-    executablePath = fs::weakly_canonical(executablePath, ec);
-    if (ec) {
-        return {};
-    }
-    return executablePath.parent_path().string();
-}
-} // namespace nemslib
 
-class ProcessManager {
+// ==========================================
+// Thread-Safe Boost JSON Logger
+// ==========================================
+class Logger {
+private:
+    static inline std::mutex log_mutex;
+
 public:
-    static std::optional<ProcessHandle> spawn(const std::string& task_id, const std::string& params) {
-        fs::path exe_path = fs::current_path() / SLAVE_EXE_NAME;
+    template<typename... Args>
+    static void info(const std::format_string<Args...> fmt, Args&&... args) {
+        log("INFO", fmt, std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    static void warn(const std::format_string<Args...> fmt, Args&&... args) {
+        log("WARN", fmt, std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    static void error(const std::format_string<Args...> fmt, Args&&... args) {
+        log("ERROR", fmt, std::forward<Args>(args)...);
+    }
+
+private:
+    template<typename... Args>
+    static void log(const char* level, const std::format_string<Args...> fmt, Args&&... args) {
+        // 1. Get current time
+        auto now = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(now);
+        char time_buf[25];
+        std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", std::localtime(&time));
+
+        // 2. Format the message
+        std::string message = std::format(fmt, std::forward<Args>(args)...);
+
+        // 3. Construct a Boost JSON Object
+        boost::json::object log_entry;
+        log_entry["timestamp"] = time_buf;
+        log_entry["level"] = level;
+        log_entry["message"] = message;
+
+        // 4. Serialize to string
+        std::string json_str = boost::json::serialize(log_entry);
+
+        // 5. Write to console and file in a thread-safe manner
+        std::lock_guard<std::mutex> lock(log_mutex);
+        std::cout << json_str << "\n";
         
-        if (!fs::exists(exe_path)) {
-            std::cerr << "\n[ERROR] Cannot find executable: " << exe_path << "\n";
-            return std::nullopt;
+        // Appends each JSON object on a new line (JSON Lines format)
+        std::ofstream out("log.json", std::ios::app);
+        if (out) {
+            out << json_str << "\n";
         }
-
-#ifdef _WIN32
-        // FIXED: Wrap exe_path in double quotes to prevent CreateProcess bugs if the path contains spaces
-        std::string cmd = "\"" + exe_path.string() + "\" " + task_id + " " + params;
-        STARTUPINFOA si;
-        PROCESS_INFORMATION pi;
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-        ZeroMemory(&pi, sizeof(pi));
-
-        if (CreateProcessA(NULL, cmd.data(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-            return ProcessHandle{pi.hProcess, pi.hThread, pi.dwProcessId};
-        }
-        return std::nullopt;
-#else
-        pid_t pid = fork();
-        if (pid == 0) {
-            // Child process
-            execl(exe_path.c_str(), exe_path.c_str(), task_id.c_str(), params.c_str(), (char*)NULL);
-            exit(1); // Exit if execl fails
-        } else if (pid > 0) {
-            // Parent process
-            return ProcessHandle{pid};
-        }
-        return std::nullopt; // Fork failed
-#endif
-    }
-
-    static bool is_finished(const ProcessHandle& ph) {
-#ifdef _WIN32
-        return WaitForSingleObject(ph.hProcess, 0) == WAIT_OBJECT_0;
-#else
-        int status;
-        return waitpid(ph.pid, &status, WNOHANG) == ph.pid;
-#endif
-    }
-
-    static void terminate(const ProcessHandle& ph) {
-#ifdef _WIN32
-        TerminateProcess(ph.hProcess, 1);
-#else
-        kill(ph.pid, SIGTERM);
-#endif
-    }
-
-    static void cleanup(const ProcessHandle& ph) {
-#ifdef _WIN32
-        CloseHandle(ph.hProcess);
-        CloseHandle(ph.hThread);
-#endif
-        // On POSIX, waitpid during is_finished() already cleans up the zombie
     }
 };
 
-// =========================================================
-// Data Structures & Monitors
-// =========================================================
-struct Task {
-    int task_id;
-    std::string parameters;
-};
-
-struct ActiveSlave {
-    Task task;
-    ProcessHandle handle;
-    bool unloading; 
-};
-
-class SystemMonitor {
-public:
-    static bool is_disk_critical() {
-        try {
-            auto space = fs::space(".");
-            return space.available < (1024ULL * 1024 * 1024); // 1GB
-        } catch (...) { return false; }
-    }
-
-    static bool is_ram_critical() {
-        static std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> dist(1, 100);
-        return dist(rng) <= 5; // Simulate 5% chance of RAM spike
-    }
-};
-
-// =========================================================
-// Server Class
-// =========================================================
+// ==========================================
+// Main Server Class
+// ==========================================
 class Server {
 private:
-    std::deque<Task> pending_list;
-    std::vector<Task> error_list;
-    std::vector<int> completed_list; // Just storing successful IDs for display
+    std::mutex queue_mutex;
+    std::queue<std::string> pending_tasks;
+    std::jthread monitor_thread;
     
-    // Using a map keyed by task_id to manage active slaves
-    std::map<int, ActiveSlave> active_slaves;
-    
-    const size_t MAX_CONCURRENT_SLAVES = 4;
-    bool running = true;
+    const size_t MIN_RAM_MB = 500;
+    const size_t MIN_DISK_MB = 1024;
+
+    size_t get_free_ram_mb() {
+#ifdef _WIN32
+        MEMORYSTATUSEX status;
+        status.dwLength = sizeof(status);
+        GlobalMemoryStatusEx(&status);
+        return status.ullAvailPhys / (1024 * 1024);
+#elif defined(__APPLE__)
+        mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
+        vm_statistics64_data_t vm_stat;
+        if (host_statistics64(mach_host_self(), HOST_VM_INFO64, (host_info64_t)&vm_stat, &count) == KERN_SUCCESS) {
+            long long free_memory = (int64_t)(vm_stat.free_count + vm_stat.inactive_count) * sysconf(_SC_PAGESIZE);
+            return free_memory / (1024 * 1024);
+        }
+        return 0;
+#else
+        long pages = sysconf(_SC_AVPHYS_PAGES);
+        long page_size = sysconf(_SC_PAGE_SIZE);
+        return (pages * page_size) / (1024 * 1024);
+#endif
+    }
+
+    size_t get_free_disk_mb() {
+        std::filesystem::space_info si = std::filesystem::space(".");
+        return si.available / (1024 * 1024);
+    }
+
+    bool check_resources(bool log_failure = true) {
+        size_t free_ram = get_free_ram_mb();
+        size_t free_disk = get_free_disk_mb();
+        if (free_ram < MIN_RAM_MB || free_disk < MIN_DISK_MB) {
+            if (log_failure) {
+                // Using the new logger with format arguments
+                Logger::warn("RESOURCE LIMIT REACHED - RAM: {}MB, Disk: {}MB", free_ram, free_disk);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    std::string execute_slave(const std::string& params) {
+        std::string cmd;
+#ifdef _WIN32
+        cmd = "slave.exe \"" + params + "\"";
+        std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(cmd.c_str(), "r"), _pclose);
+#else
+        cmd = "/Users/jidengfeng/Downloads/MLCpplib/slave \"" + params + "\""; 
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+#endif
+        if (!pipe) {
+            Logger::error("Failed to start slave process.");
+            return "";
+        }
+        
+        std::array<char, 256> buffer;
+        std::string result;
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
+    }
+
+    void resource_monitor(std::stop_token stoken) {
+        while (!stoken.stop_requested()) {
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            if (!pending_tasks.empty() && check_resources(false)) {
+                std::string task = pending_tasks.front();
+                pending_tasks.pop();
+                
+                Logger::info("Resources recovered. Dequeued task: {}", task);
+                std::thread(&Server::run_task_async, this, task, [](const std::string&){}).detach();
+            }
+        }
+    }
+
+    void run_task_async(const std::string& params, std::function<void(const std::string&)> callback) {
+        Logger::info("Starting slave process for task: {}", params);
+        std::string result = execute_slave(params);
+        
+        // Log the return from the slave (it will automatically escape the JSON quotes)
+        Logger::info("Slave successfully returned data.");
+        
+        if (callback) callback(result);
+    }
 
 public:
-    void add_task(const Task& task) {
-        pending_list.push_back(task);
+    Server() {
+        monitor_thread = std::jthread([this](std::stop_token stoken) { this->resource_monitor(stoken); });
+        Logger::info("Server initialized. Monitoring resources.");
     }
 
-    void run() {
-        while (running) {
-            check_running_slaves();
-            manage_resources_and_slaves();
-            update_real_time_display();
-
-            if (pending_list.empty() && active_slaves.empty()) {
-                running = false;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        }
-        std::cout << "\n[Server] All tasks finished. Shutting down...\n";
-    }
-
-private:
-    void check_running_slaves() {
-        for (auto it = active_slaves.begin(); it != active_slaves.end(); ) {
-            ActiveSlave& slave = it->second;
-
-            if (ProcessManager::is_finished(slave.handle)) {
-                if (slave.unloading) {
-                    // Task was killed for resources, put it back in queue
-                    pending_list.push_front(slave.task);
-                } else {
-                    // Task finished naturally, read results
-                    process_slave_output(slave.task);
-                }
-                
-                ProcessManager::cleanup(slave.handle);
-                it = active_slaves.erase(it); // Remove from active map
-            } else {
-                ++it;
-            }
-        }
-    }
-
-    void process_slave_output(const Task& task) {
-        std::string filename = "result_" + std::to_string(task.task_id) + ".txt";
-        
-        if (fs::exists(filename)) {
-            std::ifstream file(filename);
-            std::string content;
-            std::getline(file, content);
-            file.close();
-            fs::remove(filename); 
-
-            if (content.starts_with("SUCCESS")) {
-                completed_list.push_back(task.task_id);
-            } else {
-                error_list.push_back(task);
-            }
+    void submit_task(const std::string& params, std::function<void(const std::string&)> callback) {
+        if (check_resources(true)) {
+            std::thread(&Server::run_task_async, this, params, callback).detach();
         } else {
-            // No output file found, slave crashed
-            error_list.push_back(task);
+            Logger::warn("Task queued due to low resources: {}", params);
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            pending_tasks.push(params);
         }
-    }
-
-    void manage_resources_and_slaves() {
-        bool resources_critical = SystemMonitor::is_disk_critical() || SystemMonitor::is_ram_critical();
-
-        if (resources_critical) {
-            // Unload a slave
-            for (auto& [id, slave] : active_slaves) {
-                if (!slave.unloading) {
-                    slave.unloading = true;
-                    ProcessManager::terminate(slave.handle);
-                    break; // Unload one per tick
-                }
-            }
-        } else {
-            // Load new slaves
-            while (active_slaves.size() < MAX_CONCURRENT_SLAVES && !pending_list.empty()) {
-                Task task = pending_list.front();
-                pending_list.pop_front();
-
-                auto handle_opt = ProcessManager::spawn(std::to_string(task.task_id), task.parameters);
-                
-                if (handle_opt.has_value()) {
-                    active_slaves[task.task_id] = {task, handle_opt.value(), false};
-                } else {
-                    // Spawn failed (e.g., file not found). Put it in errors.
-                    error_list.push_back(task);
-                }
-            }
-        }
-    }
-
-    void update_real_time_display() {
-        // Clear screen (ANSI escape code, works on MacOS/Linux and modern Windows 10/11)
-        std::cout << "\033[2J\033[1;1H"; 
-        
-        std::cout << "========================================\n";
-        std::cout << "  CROSS-PLATFORM MULTI-PROCESS SERVER   \n";
-        std::cout << "========================================\n";
-        
-        std::cout << "Active Slaves (Task IDs): ";
-        for (const auto& [id, slave] : active_slaves) {
-            std::cout << "[" << id << (slave.unloading ? " - Unloading!" : "") << "] ";
-        }
-        std::cout << "\n\n";
-
-        std::cout << "Pending List : " << pending_list.size() << " tasks\n";
-        std::cout << "Success List : " << completed_list.size() << " tasks\n";
-        std::cout << "Error List   : " << error_list.size() << " tasks\n";
-        
-        if (!error_list.empty()) {
-            std::cout << " -> Errors on Tasks: ";
-            for (const auto& t : error_list) {
-                std::cout << t.task_id << " ";
-            }
-            std::cout << "\n";
-        }
-        std::cout << "========================================\n";
     }
 };
 
-// =========================================================
-// Main
-// =========================================================
 int main() {
-    const std::string executableDir = nemslib::get_executable_dir();
-    if (executableDir.empty()) {
-        std::cerr << "Could not determine the executable directory.\n";
-        return 1;
-    }
-    
-    // FIXED: Set the application's working directory to the executable's directory.
-    // This perfectly synchronizes ProcessManager::spawn, process_slave_output, and
-    // the slave instances themselves without needing complex path injections everywhere.
-    std::error_code ec;
-    fs::current_path(executableDir, ec);
-    if (ec) {
-        std::cerr << "Warning: Could not set working directory to " << executableDir << "\n";
-    }
-
-    // Clean up leftover result files from previous runs
-    for (const auto& entry : fs::directory_iterator(fs::current_path())) {
-        if (entry.is_regular_file() && entry.path().filename().string().starts_with("result_")) {
-            fs::remove(entry);
-        }
-    }
-    
     Server server;
-    for (int i = 1; i <= 15; ++i) {
-        server.add_task({i, "Param_A=10;Param_B=20"});
-    }
-    server.run();
+
+    auto on_slave_complete = [](const std::string& raw_output) {
+        try {
+            boost::json::value parsed = boost::json::parse(raw_output);
+            std::map<std::string, std::vector<std::string>> parsed_map;
+            
+            if (parsed.is_object()) {
+                for (auto const& [key, val] : parsed.as_object()) {
+                    if (val.is_array()) {
+                        std::vector<std::string> vec;
+                        for (auto const& item : val.as_array()) {
+                            vec.push_back(item.as_string().c_str());
+                        }
+                        parsed_map[std::string(key)] = vec;
+                    }
+                }
+            }
+
+            std::cout << "\n[Callback] Native C++ Map Reconstructed:\n";
+            for (const auto& [key, vec] : parsed_map) {
+                std::cout << "  - " << key << ": [ ";
+                for (const auto& item : vec) std::cout << item << " ";
+                std::cout << "]\n";
+            }
+
+        } catch (const std::exception& e) {
+            Logger::error("Failed to parse slave JSON: {}", e.what());
+        }
+    };
+
+    server.submit_task("Param_A=10;Param_B=20", on_slave_complete);
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    
     return 0;
 }

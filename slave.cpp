@@ -1,40 +1,37 @@
 #include <iostream>
-#include <fstream>
 #include <string>
-#include <chrono>
+#include <map>
+#include <vector>
 #include <thread>
+#include <chrono>
+#include <boost/json.hpp> // Include Boost JSON
 
 int main(int argc, char* argv[]) {
-    // 1. Read parameters
-    if (argc < 3) {
-        std::cerr << "Usage: slave <task_id> <parameters>\n";
-        return 1;
+    std::string params = (argc > 1) ? argv[1] : "NoParams";
+
+    // Simulate work
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // 1. Create your complex C++ data structure
+    std::map<std::string, std::vector<std::string>> compute_results = {
+        {"ProcessedParams", {params}},
+        {"Users", {"Alice", "Bob"}},
+        {"Status", {"Active", "Completed"}},
+        {"Warnings", {}} // Empty vector example
+    };
+
+    // 2. Convert the C++ map into a Boost JSON Object
+    boost::json::object json_payload;
+    for (const auto& [key, vec] : compute_results) {
+        boost::json::array json_arr;
+        for (const auto& item : vec) {
+            json_arr.emplace_back(item); // Add items to the JSON array
+        }
+        json_payload[key] = json_arr;    // Attach array to the JSON object
     }
+    //
+    // 3. Serialize to string and send to stdout
+    std::cout << boost::json::serialize(json_payload);
 
-    std::string task_id = argv[1];
-    std::string params = argv[2];
-
-    // 2. Start the task (Simulate work)
-    int progress = 0;
-    while (progress < 100) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        progress += 10;
-    }
-
-    // 3. Return results via file
-    std::string filename = "result_" + task_id + ".txt";
-    std::ofstream out(filename);
-
-    if (!out.is_open()) {
-        return 1; // Failed to write
-    }
-
-    // Simulating an error on task 5
-    if (task_id == "5") {
-        out << "ERROR: Internal computation failed for " << params;
-        return 1; 
-    } 
-
-    out << "SUCCESS: Processed data [" << params << "] successfully.";
     return 0;
 }
