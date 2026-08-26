@@ -11,8 +11,8 @@
 #include <array>
 #include <map>
 #include <vector>
-#include <format>         // For std::format in Logger
-#include <boost/json.hpp> // For JSON logging and parsing
+#include <format>            // For std::format in Logger
+#include "nlohmann/json.hpp" // For JSON logging and parsing
 
 #ifdef _WIN32
 #include <windows.h>
@@ -25,7 +25,7 @@
 #endif
 
 // ==========================================
-// Thread-Safe Boost JSON Logger
+// Thread-Safe nlohmann JSON Logger
 // ==========================================
 class Logger {
 private:
@@ -59,14 +59,14 @@ private:
         // 2. Format the message
         std::string message = std::format(fmt, std::forward<Args>(args)...);
 
-        // 3. Construct a Boost JSON Object
-        boost::json::object log_entry;
+        // 3. Construct a nlohmann JSON Object
+        nlohmann::json log_entry;
         log_entry["timestamp"] = time_buf;
         log_entry["level"] = level;
         log_entry["message"] = message;
 
         // 4. Serialize to string
-        std::string json_str = boost::json::serialize(log_entry);
+        std::string json_str = log_entry.dump();
 
         // 5. Write to console and file in a thread-safe manner
         std::lock_guard<std::mutex> lock(log_mutex);
@@ -199,17 +199,17 @@ int main() {
 
     auto on_slave_complete = [](const std::string& raw_output) {
         try {
-            boost::json::value parsed = boost::json::parse(raw_output);
+            nlohmann::json parsed = nlohmann::json::parse(raw_output);
             std::map<std::string, std::vector<std::string>> parsed_map;
             
             if (parsed.is_object()) {
-                for (auto const& [key, val] : parsed.as_object()) {
+                for (auto const& [key, val] : parsed.items()) {
                     if (val.is_array()) {
                         std::vector<std::string> vec;
-                        for (auto const& item : val.as_array()) {
-                            vec.push_back(item.as_string().c_str());
+                        for (auto const& item : val) {
+                            vec.push_back(item.get<std::string>());
                         }
-                        parsed_map[std::string(key)] = vec;
+                        parsed_map[key] = vec;
                     }
                 }
             }
